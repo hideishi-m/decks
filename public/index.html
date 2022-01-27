@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<title>deck app</title>
+</head>
+<body>
+	<p><button id="post">Post</button></p>
+	<p><button id="get">Get</button></p>
+	<div id="result"></div>
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script>
+$(function () {
+	$("#post").click(function (event) {
+		$.ajax({
+			type: "POST",
+			url: "/games",
+			data: JSON.stringify({
+				players: ["DEIRmen", "Litzia", "yuzuki"]
+			}),
+			contentType: "application/json",
+			dataType: "json"
+		})
+		.done(function (data) {
+			console.log(data);
+			$("#result").html(JSON.stringify(data));
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			console.log(errorThrown);
+		});
+	});
+	$("#get").click(function (event) {
+		$.ajax({
+			type: "GET",
+			url: "/games",
+			dataType: "json"
+		})
+		.done(function (data) {
+			console.log(data);
+			$("#result").html(JSON.stringify(data));
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			console.log(errorThrown);
+		});
+	});
+});
+	</script>
+</body>
+</html>
