@@ -137,14 +137,19 @@ app.param('tid', function (req, res, next, tid) {
 
 app.route('/games')
 	.get(function (req, res) {
-		const ids = games.map((game, index) => undefined !== game ? index + 1 : undefined ).filter(item => undefined !== item);
+		const ids = [];
+		games.forEach((game, index) => {
+			if (undefined !== game) {
+				ids.push(`${index}`);
+			}
+		});
 		if (0 === ids.length) {
 			return res.status(404).json({ error: {
 				message: 'game not found'
 			} });
 		}
 		return res.status(200).json({
-			games: ids.map(id => `${id}`)
+			games: ids
 		});
 	})
 	.post(function (req, res) {
@@ -217,7 +222,7 @@ app.route('/games/:id')
 	});
 
 app.route('/games/:id/players/:pid')
-	.get((req, res) => {
+	.get(function (req, res) {
 		try {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
@@ -239,7 +244,7 @@ app.route('/games/:id/players/:pid')
 	});
 
 app.route('/games/:id/players/:pid/draw')
-	.put((req, res) => {
+	.put(function (req, res) {
 		try {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
@@ -262,7 +267,7 @@ app.route('/games/:id/players/:pid/draw')
 	});
 
 app.route('/games/:id/players/:pid/discard/:cid')
-	.put((req, res) => {
+	.put(function (req, res) {
 		try {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
@@ -285,7 +290,7 @@ app.route('/games/:id/players/:pid/discard/:cid')
 	});
 
 app.route('/games/:id/players/:pid/recycle')
-	.put((req, res) => {
+	.put(function (req, res) {
 		try {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
@@ -308,7 +313,7 @@ app.route('/games/:id/players/:pid/recycle')
 	});
 
 app.route('/games/:id/players/:pid/pass/:cid/to/:tid')
-	.put((req, res) => {
+	.put(function (req, res) {
 		try {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
@@ -332,7 +337,7 @@ app.route('/games/:id/players/:pid/pass/:cid/to/:tid')
 	});
 
 app.route('/games/:id/players/:pid/pick/:tid')
-	.put((req, res) => {
+	.put(function (req, res) {
 		try {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
