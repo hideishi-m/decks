@@ -230,6 +230,7 @@ app.route('/games/:id/players/:pid')
 			const hand = game.getHandOf(req.params.pid);
 			logger(`GET game ${req.params.id} for player ${req.params.pid} ${player}`);
 			return res.status(200).json({
+				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
 				hand: hand.cards
@@ -253,29 +254,7 @@ app.route('/games/:id/players/:pid/draw')
 			hand.draw();
 			logger(`DRAW game ${req.params.id} for player ${req.params.pid} ${player}`);
 			return res.status(200).json({
-				pid: req.params.pid,
-				player: player,
-				hand: hand.cards
-			});
-		} catch (error) {
-			logger(error);
-			return res.status(500).json({ error: {
-				message: `${error.name}: ${error.message}`,
-				error: error
-			} });
-		}
-	});
-
-app.route('/games/:id/players/:pid/discard/:cid')
-	.put(function (req, res) {
-		try {
-			const game = games[req.params.id];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getHandOf(req.params.pid);
-			hand.discard(req.params.cid);
-			logger(`DISCARD card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player}`);
-			return res.status(200).json({
+				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
 				hand: hand.cards
@@ -299,6 +278,7 @@ app.route('/games/:id/players/:pid/recycle')
 			hand.recycle();
 			logger(`RECYCLE game ${req.params.id} for player ${req.params.pid} ${player}`);
 			return res.status(200).json({
+				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
 				hand: hand.cards
@@ -312,7 +292,56 @@ app.route('/games/:id/players/:pid/recycle')
 		}
 	});
 
-app.route('/games/:id/players/:pid/pass/:cid/to/:tid')
+app.route('/games/:id/players/:pid/cards/:cid')
+	.get(function (req, res) {
+		try {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			const card = hand.cards.at(req.params.cid);
+			logger(`GET card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player}`);
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				cid: req.params.cid,
+				card: card
+			});
+		} catch (error) {
+			logger(error);
+			return res.status(500).json({ error: {
+				message: `${error.name}: ${error.message}`,
+				error: error
+			} });
+		}
+	});
+
+app.route('/games/:id/players/:pid/cards/:cid/discard')
+	.put(function (req, res) {
+		try {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			hand.discard(req.params.cid);
+			logger(`DISCARD card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player}`);
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				hand: hand.cards
+			});
+		} catch (error) {
+			logger(error);
+			return res.status(500).json({ error: {
+				message: `${error.name}: ${error.message}`,
+				error: error
+			} });
+		}
+	});
+
+app.route('/games/:id/players/:pid/cards/:cid/pass/:tid')
 	.put(function (req, res) {
 		try {
 			const game = games[req.params.id];
@@ -323,6 +352,7 @@ app.route('/games/:id/players/:pid/pass/:cid/to/:tid')
 			hand.passTo(req.params.cid, req.params.tid);
 			logger(`PASS card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player} to ${req.params.tid} ${to}`);
 			return res.status(200).json({
+				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
 				hand: hand.cards
@@ -347,6 +377,7 @@ app.route('/games/:id/players/:pid/pick/:tid')
 			hand.pickFrom(req.params.tid);
 			logger(`PICK from ${req.params.tid} ${to} in game ${req.params.id} for player ${req.params.pid} ${player}`);
 			return res.status(200).json({
+				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
 				hand: hand.cards

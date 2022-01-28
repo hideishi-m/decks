@@ -56,29 +56,39 @@ class Hand {
 
 	draw() {
 		const card = this.game.deck.shift();
-		this.cards.push(card);
+		if (undefined !== card) {
+			this.cards.push(card);
+		}
 	}
 
 	discard(index) {
 		const card = this.cards.splice(index);
-		this.game.pile.unshift(card);
+		if (undefined !== card) {
+			this.game.pile.unshift(card);
+		}
 	}
 
 	recycle() {
 		const card = this.game.pile.shift();
-		this.cards.push(card);
+		if (undefined !== card) {
+			this.cards.push(card);
+		}
 	}
 
 	passTo(index, player) {
 		const card = this.cards.splice(index);
-		this.game.hands[player].push(card);
+		if (undefined !== card) {
+			this.game.hands[player].push(card);
+		}
 	}
 
 	pickFrom(player) {
 		const cards = this.game.hands[player];
 		const index = Math.floor(Math.random() * cards.count());
 		const card = cards.splice(index);
-		this.cards.push(card);
+		if (undefined !== card) {
+			this.cards.push(card);
+		}
 	}
 
 	cards() {

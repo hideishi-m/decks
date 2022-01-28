@@ -8,7 +8,7 @@ POST /games
 
 request: { players: [ "pc1", "pc2", "pc3" ] }
 
-response: { id : id }
+response: { id : "1" }
 
 ### ゲーム一覧
 
@@ -16,11 +16,58 @@ GET /games
 
 response: { games: [ "1", "2" ] }
 
-## ゲーム取得
+### ゲーム取得
 
 GET /games/:id
 
-response: { players: [ "pc1", "pc2", "pc3" ] }
+response: {
+  id: "1",
+  players: [ "pc1", "pc2", "pc3" ]
+}
+
+### ゲーム終了
+
+DELETE /games/:id
+
+response: { id: "1" }
+
+### 山札 TODO
+
+GET /games/:id/deck
+
+response: {
+  id: "1",
+  deck: { length: 108 }
+}
+
+### 山札をめくる TODO
+
+GET /games/:id/deck/discard
+
+response: {
+  id: "1",
+  deck: { length: 107 },
+  card: card
+}
+
+### 捨て札 TODO
+
+GET /games/:id/pile
+
+response: {
+  id: "1",
+  pile: { length: 1 },
+  card: card
+}
+
+### 捨て札を全て山札に戻す TODO
+
+GET /games/:id/pile/shuffle
+
+response: {
+  id: "1",
+  pile: { length: 0 }
+}
 
 
 ## 手札
@@ -30,8 +77,9 @@ response: { players: [ "pc1", "pc2", "pc3" ] }
 GET /games/:id/players/:pid
 
 response: {
-  player: "pc1",
+  id: "1",
   pid: "1",
+  player: "pc1",
   cards: [ array of card ]
 }
 
@@ -40,18 +88,9 @@ response: {
 PUT /games/:id/players/:pid/draw
 
 response: {
-  player: "pc1",
+  id: "1",
   pid: "1",
-  cards: [ array of card ]
-}
-
-### 捨て札にする
-
-PUT /games/:id/players/:pid/discard/:cid
-
-response: {
   player: "pc1",
-  pid: "1",
   cards: [ array of card ]
 }
 
@@ -60,18 +99,43 @@ response: {
 PUT /games/:id/players/:pid/recycle
 
 response: {
-  player: "pc1",
+  id: "1",
   pid: "1",
+  player: "pc1",
+  cards: [ array of card ]
+}
+
+### 手札取得
+
+GET /games/:id/players/:pid/cards/:cid
+
+response: {
+  id: "1",
+  pid: "1",
+  player: "pc1",
+  cid: "1",
+  card: card
+}
+
+### 捨て札にする
+
+PUT /games/:id/players/:pid/cards/:cid/discard
+
+response: {
+  id: "1",
+  pid: "1",
+  player: "pc1",
   cards: [ array of card ]
 }
 
 ### 手札を別のプレーヤーに渡す
 
-PUT /games/:id/players/:pid/pass/:cid/to/:tid
+PUT /games/:id/players/:pid/cards/:cid/pass/:tid
 
 response: {
-  player: "pc1",
+  id: "1",
   pid: "1",
+  player: "pc1",
   cards: [ array of card ]
 }
 
@@ -80,8 +144,9 @@ response: {
 PUT /games/:id/players/:pid/pick/:tid
 
 response: {
-  player: "pc1",
+  id: "1",
   pid: "1",
+  player: "pc1",
   cards: [ array of card ]
 }
 
