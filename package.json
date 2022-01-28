@@ -9,12 +9,11 @@
   "author": "",
   "license": "BSD-3-Clause",
   "config": {
-    "appPort": "60000",
-    "serverPort": 60001
+    "port": "60000"
   },
   "dependencies": {
     "debug": "^4.3.3",
-    "express": "^4.17.1",
+    "express": "^4.17.2",
     "ws": "^8.4.2"
   }
 }

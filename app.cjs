@@ -10,13 +10,12 @@ function isTypeOf(type, value) {
 	return `[object ${type}]` === Object.prototype.toString.call(value);
 }
 
-function newApp(emitter, port, name) {
-	port = port ?? 60000;
+function newApp(emitter, name) {
 	name = name ? `${name}:app` : 'app';
 
-	const app = express();
 	const logger = debug(name);
 	const games = [];
+	const app = express();
 
 	app.use(express.json({
 		limit: '10mb'
@@ -409,10 +408,6 @@ function newApp(emitter, port, name) {
 				} });
 			}
 		});
-
-	app.listen(port, function () {
-		logger(`Listening on port ${port}`);
-	});
 
 	return app;
 }
