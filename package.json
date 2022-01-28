@@ -9,7 +9,8 @@
   "author": "",
   "license": "BSD-3-Clause",
   "config": {
-    "port": "60000"
+    "port": "60000",
+    "timeout": "3000"
   },
   "dependencies": {
     "debug": "^4.3.3",

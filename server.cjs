@@ -21,6 +21,7 @@ function newServer(emitter, name) {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify(data));
+					logger(`CARD to ${key}`);
 				} else {
 					wsMap.delete(key);
 					logger(`delete ${key}`);
@@ -38,6 +39,7 @@ function newServer(emitter, name) {
 		if (undefined !== value) {
 			if (wsServer.clients.has(value)) {
 				value.send(JSON.stringify(data));
+				logger(`CARD to ${key}`);
 			} else {
 				wsMap.delete(key);
 				logger(`delete ${key}`);
@@ -66,11 +68,12 @@ function newServer(emitter, name) {
 		});
 	});
 
-	wsServer.on('close', function() {
-		logger('Closing websockets');
+	emitter.on('close', function() {
 		wsServer.clients.forEach(ws => {
 			ws.terminate();
 		});
+		wsServer.close();
+		server.close();
 	});
 
 	return server;

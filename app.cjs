@@ -6,10 +6,6 @@ const path = require('path');
 
 const { newGame } = require('./game.cjs');
 
-function isTypeOf(type, value) {
-	return `[object ${type}]` === Object.prototype.toString.call(value);
-}
-
 function newApp(emitter, name) {
 	name = name ? `${name}:app` : 'app';
 
@@ -26,7 +22,7 @@ function newApp(emitter, name) {
 	}));
 	app.use(function (req, res, next) {
 		logger({
-			time: new Date().toString(),
+			time: new Date(),
 			method: req.method,
 			path: req.path,
 			body: req.body
@@ -159,7 +155,7 @@ function newApp(emitter, name) {
 						body: req.body
 					} });
 				}
-				if (false === isTypeOf('Object', req.body)) {
+				if ( '[object Object]' !== Object.prototype.toString.call(req.body)) {
 					return res.status(400).json({ error: {
 						message: 'invalid format for body',
 						body: req.body
