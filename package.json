@@ -2,12 +2,16 @@
   "name": "decks",
   "version": "1.0.0",
   "description": "",
-  "main": "app.cjs",
+  "main": "index.cjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC",
+  "license": "BSD-3-Clause",
+  "config": {
+    "appPort": "60000",
+    "socketPort": 60001
+  },
   "dependencies": {
     "debug": "^4.3.3",
     "express": "^4.17.1",
