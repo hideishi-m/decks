@@ -4,7 +4,7 @@ const debug = require('debug');
 const logger = debug('test');
 debug.enable('test');
 
-const { newGame } = require('../games.cjs');
+const { newGame } = require('../game.cjs');
 
 const game = newGame(['DEIRmen', 'Litzia', 'yuzuki']);
 logger(game.getStatus());

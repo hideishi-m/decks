@@ -4,7 +4,7 @@ const debug = require('debug');
 const express = require('express');
 const path = require('path');
 
-const { newGame } = require('./games.cjs');
+const { newGame } = require('./game.cjs');
 
 function isTypeOf(type, value) {
 	return `[object ${type}]` === Object.prototype.toString.call(value);

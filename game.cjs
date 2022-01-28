@@ -1,6 +1,6 @@
 'use strict';
 
-const { newDrawDeck, newDiscardPile, newHand } = require('./cards.cjs');
+const { newDrawDeck, newDiscardPile, newHand } = require('./card.cjs');
 
 class Game {
 	constructor(players, deck, jocker, shuffle, draw) {
