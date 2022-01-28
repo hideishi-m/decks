@@ -10,7 +10,7 @@ function isTypeOf(type, value) {
 	return `[object ${type}]` === Object.prototype.toString.call(value);
 }
 
-function newApp(port, name) {
+function newApp(emitter, port, name) {
 	port = port ?? 60000;
 	name = name ? `${name}:app` : 'app';
 
@@ -324,8 +324,15 @@ function newApp(port, name) {
 				const players = game.getPlayers();
 				const player = players[req.params.pid];
 				const hand = game.getHandOf(req.params.pid);
+				const card = hand.cards.at(req.params.cid);
 				hand.discard(req.params.cid);
 				logger(`DISCARD card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player}`);
+				emitter.emit('card', {
+					id: req.params.id,
+					pid: req.params.pid,
+					player: player,
+					card: card
+				});
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -351,6 +358,12 @@ function newApp(port, name) {
 				const to = players[req.params.tid];
 				hand.passTo(req.params.cid, req.params.tid);
 				logger(`PASS card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player} to ${req.params.tid} ${to}`);
+				emitter.emit('hand', {
+					id: req.params.id,
+					pid: req.params.pid,
+					player: player,
+					tid: req.params.tid
+				});
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -376,6 +389,12 @@ function newApp(port, name) {
 				const to = players[req.params.tid];
 				hand.pickFrom(req.params.tid);
 				logger(`PICK from ${req.params.tid} ${to} in game ${req.params.id} for player ${req.params.pid} ${player}`);
+				emitter.emit('hand', {
+					id: req.params.id,
+					pid: req.params.pid,
+					player: player,
+					tid: req.params.tid
+				});
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -394,6 +413,8 @@ function newApp(port, name) {
 	app.listen(port, function () {
 		logger(`Listening on port ${port}`);
 	});
+
+	return app;
 }
 
 module.exports = { newApp };

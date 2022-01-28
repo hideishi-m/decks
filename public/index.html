@@ -15,6 +15,14 @@
     <h1>Game</h1>
 
     <div class="border p-2">
+      <h2>Log</h2>
+      <div class="row">
+        <div id="resultLog" class="col-md">
+        </div>
+      </div>
+    </div>
+
+    <div class="border p-2">
       <h2>New Game</h2>
       <div class="row">
         <div class="col-md">
@@ -24,7 +32,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultNewGame" class="form-control"></textarea>
+            <textarea id="resultNewGame" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -40,7 +48,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultListGame" class="form-control"></textarea>
+            <textarea id="resultListGame" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -57,7 +65,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultSelectGame" class="form-control"></textarea>
+            <textarea id="resultSelectGame" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -74,7 +82,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultDeleteGame" class="form-control"></textarea>
+            <textarea id="resultDeleteGame" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -95,7 +103,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultSelectHand" class="form-control"></textarea>
+            <textarea id="resultSelectHand" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -116,7 +124,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultSelectCard" class="form-control"></textarea>
+            <textarea id="resultSelectCard" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -135,7 +143,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultDraw" class="form-control"></textarea>
+            <textarea id="resultDraw" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -154,7 +162,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultRecycle" class="form-control"></textarea>
+            <textarea id="resultRecycle" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -176,7 +184,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultDiscardCard" class="form-control"></textarea>
+            <textarea id="resultDiscardCard" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -199,7 +207,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultPassCard" class="form-control"></textarea>
+            <textarea id="resultPassCard" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -220,7 +228,7 @@
           </div>
           <div class="input-group">
             <span class="input-group-text">result</span>
-  	      <textarea id="resultPickCard" class="form-control"></textarea>
+            <textarea id="resultPickCard" class="form-control"></textarea>
           </div>
         </div>
       </div>
@@ -232,177 +240,191 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
+const socket = new WebSocket(`ws://${document.location.hostname}:${parseInt(document.location.port) + 1}`);
+socket.addEventListener('message', function (event) {
+	$("#resultLog").append($("<div />").text(event.data));
+    console.log(event.data);
+});
+
 $(function () {
-	function ajax(settings, resultSelector) {
-		$.ajax(settings)
-		.done(function (data) {
-			$(resultSelector).html(JSON.stringify(data, null, 2));
-		})
-		.fail(function (jqXHR, textStatus, errorThrown) {
-			$(resultSelector).html(errorThrown);
-		});
-	}
+    function ajax(settings, resultSelector, callback) {
+        $.ajax(settings)
+        .done(function (data) {
+            $(resultSelector).html(JSON.stringify(data, null, 2));
+            if (undefined !== callback) {
+                callback();
+            }
+        })
+        .fail(function (jqXHR, textStatus, errorThrown) {
+            $(resultSelector).html(errorThrown);
+        });
+    }
 
-	function parse(settings, resultSelector) {
-		const data = {};
-		for (const [key, selector] of Object.entries(settings)) {
-			data[key] = $(selector).val();
-			if (false === /^\d+$/.test(data[key])) {
-				$(resultSelector).html(key + " is empty");
-				return undefined;
-			}
-		}
-		return data;
-	}
+    function parse(settings, resultSelector) {
+        const data = {};
+        for (const [key, selector] of Object.entries(settings)) {
+            data[key] = $(selector).val();
+            if (false === /^\d+$/.test(data[key])) {
+                $(resultSelector).html(key + " is empty");
+                return undefined;
+            }
+        }
+        return data;
+    }
 
-	$("#buttonNewGame").click(function (event) {
-		ajax({
-			type: "POST",
-			url: "/games",
-			data: JSON.stringify({
-				players: ["DEIRmen", "Litzia", "yuzuki"]
-			}),
-			contentType: "application/json",
-			dataType: "json"
-		}, "#resultNewGame");
-	});
+    $("#buttonNewGame").click(function (event) {
+        ajax({
+            type: "POST",
+            url: "/games",
+            data: JSON.stringify({
+                players: ["DEIRmen", "Litzia", "yuzuki"]
+            }),
+            contentType: "application/json",
+            dataType: "json"
+        }, "#resultNewGame");
+    });
 
-	$("#buttonListGame").click(function (event) {
-		ajax({
-			type: "GET",
-			url: "/games",
-			dataType: "json"
-		}, "#resultListGame");
-	});
+    $("#buttonListGame").click(function (event) {
+        ajax({
+            type: "GET",
+            url: "/games",
+            dataType: "json"
+        }, "#resultListGame");
+    });
 
-	$("#buttonSelectGame").click(function (event) {
-		const data = parse({
-			id: "#inputSelectGame"
-		}, "#resultSelectGame");
-		if (undefined !== data) {
-			ajax({
-				type: "GET",
-				url: "/games/" + data.id,
-				dataType: "json"
-			}, "#resultSelectGame");
-		}
-	});
+    $("#buttonSelectGame").click(function (event) {
+        const data = parse({
+            id: "#inputSelectGame"
+        }, "#resultSelectGame");
+        if (undefined !== data) {
+            ajax({
+                type: "GET",
+                url: "/games/" + data.id,
+                dataType: "json"
+            }, "#resultSelectGame");
+        }
+    });
 
-	$("#buttonDeleteGame").click(function (event) {
-		const data = parse({
-			id: "#inputDeleteGame"
-		}, "#resultDeleteGame");
-		if (undefined !== data) {
-			ajax({
-				type: "DELETE",
-				url: "/games/" + data.id,
-				dataType: "json"
-			}, "#resultDeleteGame");
-		}
-	});
+    $("#buttonDeleteGame").click(function (event) {
+        const data = parse({
+            id: "#inputDeleteGame"
+        }, "#resultDeleteGame");
+        if (undefined !== data) {
+            ajax({
+                type: "DELETE",
+                url: "/games/" + data.id,
+                dataType: "json"
+            }, "#resultDeleteGame");
+        }
+    });
 
-	$("#buttonSelectHand").click(function (event) {
-		const data = parse({
-			id: "#inputSelectHand",
-			pid: "#inputSelectHandPlayer"
-		}, "#resultSelectHand");
-		if (undefined !== data) {
-			ajax({
-				type: "GET",
-				url: "/games/" + data.id + "/players/" + data.pid,
-				dataType: "json"
-			}, "#resultSelectHand");
-		}
-	});
+    $("#buttonSelectHand").click(function (event) {
+        const data = parse({
+            id: "#inputSelectHand",
+            pid: "#inputSelectHandPlayer"
+        }, "#resultSelectHand");
+        if (undefined !== data) {
+            ajax({
+                type: "GET",
+                url: "/games/" + data.id + "/players/" + data.pid,
+                dataType: "json"
+            }, "#resultSelectHand", function () {
+                socket.send(JSON.stringify({
+                    id: data.id,
+                    pid: data.pid
+                }));
+            });
+        }
+    });
 
-	$("#buttonSelectCard").click(function (event) {
-		const data = parse({
-			id: "#inputSelectCardHand",
-			pid: "#inputSelectCardPlayer",
-			cid: "#inputSelectCard"
-		}, "#resultSelectCard");
-		if (undefined !== data) {
-			ajax({
-				type: "GET",
-				url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid,
-				dataType: "json"
-			}, "#resultSelectCard");
-		}
-	});
+    $("#buttonSelectCard").click(function (event) {
+        const data = parse({
+            id: "#inputSelectCardHand",
+            pid: "#inputSelectCardPlayer",
+            cid: "#inputSelectCard"
+        }, "#resultSelectCard");
+        if (undefined !== data) {
+            ajax({
+                type: "GET",
+                url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid,
+                dataType: "json"
+            }, "#resultSelectCard");
+        }
+    });
 
-	$("#buttonDraw").click(function (event) {
-		const data = parse({
-			id: "#inputDraw",
-			pid: "#inputDrawPlayer"
-		}, "#resultDraw");
-		if (undefined !== data) {
-			ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/draw",
-				dataType: "json"
-			}, "#resultDraw");
-		}
-	});
+    $("#buttonDraw").click(function (event) {
+        const data = parse({
+            id: "#inputDraw",
+            pid: "#inputDrawPlayer"
+        }, "#resultDraw");
+        if (undefined !== data) {
+            ajax({
+                type: "PUT",
+                url: "/games/" + data.id + "/players/" + data.pid + "/draw",
+                dataType: "json"
+            }, "#resultDraw");
+        }
+    });
 
-	$("#buttonRecycle").click(function (event) {
-		const data = parse({
-			id: "#inputRecycle",
-			pid: "#inputRecyclePlayer"
-		}, "#resultRecycle");
-		if (undefined !== data) {
-			ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/recycle",
-				dataType: "json"
-			}, "#resultRecycle");
-		}
-	});
+    $("#buttonRecycle").click(function (event) {
+        const data = parse({
+            id: "#inputRecycle",
+            pid: "#inputRecyclePlayer"
+        }, "#resultRecycle");
+        if (undefined !== data) {
+            ajax({
+                type: "PUT",
+                url: "/games/" + data.id + "/players/" + data.pid + "/recycle",
+                dataType: "json"
+            }, "#resultRecycle");
+        }
+    });
 
-	$("#buttonDiscardCard").click(function (event) {
-		const data = parse({
-			id: "#inputDiscardCardHand",
-			pid: "#inputDiscardCardPlayer",
-			cid: "#inputDiscardCard"
-		}, "#resultDiscardCard");
-		if (undefined !== data) {
-			ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/discard",
-				dataType: "json"
-			}, "#resultDiscardCard");
-		}
-	});
+    $("#buttonDiscardCard").click(function (event) {
+        const data = parse({
+            id: "#inputDiscardCardHand",
+            pid: "#inputDiscardCardPlayer",
+            cid: "#inputDiscardCard"
+        }, "#resultDiscardCard");
+        if (undefined !== data) {
+            ajax({
+                type: "PUT",
+                url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/discard",
+                dataType: "json"
+            }, "#resultDiscardCard");
+        }
+    });
 
-	$("#buttonPassCard").click(function (event) {
-		const data = parse({
-			id: "#inputPassCardHand",
-			pid: "#inputPassCardPlayer",
-			cid: "#inputPassCard",
-			tid: "#inputPassCardToPlayer"
-		}, "#resultPassCard");
-		if (undefined !== data) {
-			ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/pass/" + data.tid,
-				dataType: "json"
-			}, "#resultPassCard");
-		}
-	});
+    $("#buttonPassCard").click(function (event) {
+        const data = parse({
+            id: "#inputPassCardHand",
+            pid: "#inputPassCardPlayer",
+            cid: "#inputPassCard",
+            tid: "#inputPassCardToPlayer"
+        }, "#resultPassCard");
+        if (undefined !== data) {
+            ajax({
+                type: "PUT",
+                url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/pass/" + data.tid,
+                dataType: "json"
+            }, "#resultPassCard");
+        }
+    });
 
-	$("#buttonPickCard").click(function (event) {
-		const data = parse({
-			id: "#inputPickCardHand",
-			pid: "#inputPickCardPlayer",
-			tid: "#inputPickCardToPlayer"
-		}, "#resultPickCard");
-		if (undefined !== data) {
-			ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/pick/" + data.tid,
-				dataType: "json"
-			}, "#resultPickCard");
-		}
-	});
+    $("#buttonPickCard").click(function (event) {
+        const data = parse({
+            id: "#inputPickCardHand",
+            pid: "#inputPickCardPlayer",
+            tid: "#inputPickCardToPlayer"
+        }, "#resultPickCard");
+        if (undefined !== data) {
+            ajax({
+                type: "PUT",
+                url: "/games/" + data.id + "/players/" + data.pid + "/pick/" + data.tid,
+                dataType: "json"
+            }, "#resultPickCard");
+        }
+    });
 });
   </script>
 </body>

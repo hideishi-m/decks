@@ -10,7 +10,7 @@
   "license": "BSD-3-Clause",
   "config": {
     "appPort": "60000",
-    "socketPort": 60001
+    "serverPort": 60001
   },
   "dependencies": {
     "debug": "^4.3.3",
