@@ -31,7 +31,7 @@ DELETE /games/:id
 
 response: { id: "1" }
 
-### 山札 TODO
+### 山札
 
 GET /games/:id/deck
 
@@ -46,18 +46,22 @@ GET /games/:id/deck/discard
 
 response: {
   id: "1",
-  deck: { length: 107 },
-  card: card
+  deck: {
+    length: 107,
+    card: card
+  }
 }
 
-### 捨て札 TODO
+### 捨て札
 
 GET /games/:id/pile
 
 response: {
   id: "1",
-  pile: { length: 1 },
-  card: card
+  pile: {
+    length: 1,
+    card: card
+  }
 }
 
 ### 捨て札を全て山札に戻す TODO

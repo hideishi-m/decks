@@ -216,6 +216,42 @@ function newApp(emitter, name) {
 			}
 		});
 
+	app.route('/games/:id/deck')
+		.get(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				logger(`GET deck for game ${req.params.id}`);
+				return res.status(200).json({
+					id: req.params.id,
+					deck: game.getDeck()
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
+	app.route('/games/:id/pile')
+		.get(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				logger(`GET pile for game ${req.params.id}`);
+				return res.status(200).json({
+					id: req.params.id,
+					pile: game.getPile()
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
 	app.route('/games/:id/players/:pid')
 		.get(function (req, res) {
 			try {

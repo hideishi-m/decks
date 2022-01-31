@@ -7,7 +7,7 @@ class Game {
 		this.deck = newDrawDeck(deck, jocker, shuffle)
 		this.pile = newDiscardPile();
 		this.hands = [];
-		this.players = [ 'ルーラー' ];
+		this.players = [ 'マスター' ];
 		for (const player of players) {
 			this.players.push(player);
 		}
@@ -43,6 +43,19 @@ class Game {
 
 	getHandOf(player) {
 		return new Hand(this, player);
+	}
+
+	getDeck() {
+		return {
+			length: this.deck.count()
+		}
+	}
+
+	getPile() {
+		return {
+			length: this.pile.count(),
+			card: this.pile.count() ? this.pile.at(0) : undefined
+		}
 	}
 }
 
