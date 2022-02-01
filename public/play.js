@@ -1,5 +1,6 @@
 $(document).ready(function () {
 	let id, pid;
+	let gameModal, playerModal, handModal, deckModal, pileModal;
 
 	function getCardImgSrc(card) {
 		const suits = { C: "club", D: "diamond", H: "heart", S: "spade" };
@@ -113,7 +114,7 @@ $(document).ready(function () {
 		.done(function (data) {
 			utils.updateStatus("#status", JSON.stringify(data, null, 2));
 			updateSelectGame(data);
-			gameModal();
+			toggleGameModal();
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
 			utils.updateStatus("#status", errorThrown);
@@ -140,7 +141,7 @@ $(document).ready(function () {
 				updatePickSelect(data);
 				updateDeck(data);
 				updatePile(data);
-				playerModal();
+				togglePlayerModal();
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
@@ -289,56 +290,64 @@ $(document).ready(function () {
 		});
     }
 
-	function gameModal() {
-		const modal = document.getElementById('gameModal');
-		bootstrap.Modal.getOrCreateInstance(modal).toggle();
+	function toggleGameModal() {
+		gameModal = gameModal ?? new bootstrap.Modal(document.getElementById("gameModal"), {
+			backdrop: 'static',
+			keyboard: false
+		});
+		gameModal.toggle();
 	}
 
-	function playerModal() {
-		const modal = document.getElementById('playerModal');
-		bootstrap.Modal.getOrCreateInstance(modal).toggle();
+	function togglePlayerModal() {
+		playerModal = playerModal ?? new bootstrap.Modal(document.getElementById("playerModal"), {
+			backdrop: 'static',
+			keyboard: false
+		});
+		playerModal.toggle();
 	}
 
-	function handModal() {
-		const modal = document.getElementById('handModal');
-		bootstrap.Modal.getOrCreateInstance(modal).toggle();
+	function toggleHandModal() {
+		handModal = handModal ?? new bootstrap.Modal(document.getElementById("handModal"));
+		handModal.toggle();
 	}
 
-	function drawModal() {
-		const modal = document.getElementById('drawModal');
-		bootstrap.Modal.getOrCreateInstance(modal).toggle();
+	function toggleDeckModal() {
+		deckModal = deckModal ?? new bootstrap.Modal(document.getElementById("deckModal"));
+		deckModal.toggle();
 	}
 
-	function pileModal() {
-		const modal = document.getElementById('pileModal');
-		bootstrap.Modal.getOrCreateInstance(modal).toggle();
+	function togglePileModal() {
+		pileModal = pileModal ?? new bootstrap.Modal(document.getElementById("pileModal"));
+		pileModal.toggle();
 	}
 
-	$("#gameModal").on("click", "button", gameModal);
+	$("#gameModal").on("click", "button", toggleGameModal);
 	$("#selectGame").click(selectGame);
 
-	$("#playerModal").on("click", "button", playerModal);
+	$("#playerModal").on("click", "button", togglePlayerModal);
 	$("#selectPlayer").click(selectPlayer);
 
-	$("#handModal").on("click", "button", handModal);
+	$("#handModal").on("click", "button", toggleHandModal);
 	$("#discardHand").click(discardHand);
 	$("#passHand").click(passHand);
 
-	$("#drawModal").on("click", "button", drawModal);
+	$("#deckModal").on("click", "button", toggleDeckModal);
 	$("#drawDeck").click(drawDeck);
 
-	$("#pileModal").on("click", "button", pileModal);
+	$("#pileModal").on("click", "button", togglePileModal);
 	$("#recycleHand").click(recycleHand);
 	$("#recycleDeck").click(recycleDeck);
 
 	$("#hand").on("click", "img", function () {
 		$("#handModalCard").empty().append($(this).clone());
-		handModal();
+		toggleHandModal();
 	});
-	$("#deck").on("click", "img", drawModal);
+	$("#deck").on("click", "img", function () {
+		toggleDeckModal();
+	});
 	$("#pile").on("click", "img", function () {
 		$("#pileModalCard").empty().append($(this).clone());
-		pileModal()
+		togglePileModal();
 	});
 	$("#pick").click(pickHand);
 
