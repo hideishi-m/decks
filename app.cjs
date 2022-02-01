@@ -243,8 +243,16 @@ function newApp(emitter, name) {
 			try {
 				const game = games[req.params.id];
 				const deck = game.getDeck();
+				const pile = game.getPile();
 				deck.discard(0);
 				logger(`DISCARD card 0 for deck in game ${req.params.id}`);
+				emitter.emit('deck', {
+					id: req.params.id
+				});
+				emitter.emit('pile', {
+					id: req.params.id,
+					pile: pile.face()
+				});
 				return res.status(200).json({
 					id: req.params.id,
 					deck: { length: deck.cards.count() }
@@ -263,8 +271,16 @@ function newApp(emitter, name) {
 			try {
 				const game = games[req.params.id];
 				const deck = game.getDeck();
+				const pile = game.getPile();
 				deck.recycle();
 				logger(`RECYCLE for deck in game ${req.params.id}`);
+				emitter.emit('deck', {
+					id: req.params.id
+				});
+				emitter.emit('pile', {
+					id: req.params.id,
+					pile: pile.face()
+				});
 				return res.status(200).json({
 					id: req.params.id,
 					deck: { length: deck.cards.count() }
@@ -284,6 +300,34 @@ function newApp(emitter, name) {
 				const game = games[req.params.id];
 				const pile = game.getPile();
 				logger(`GET pile in game ${req.params.id}`);
+				return res.status(200).json({
+					id: req.params.id,
+					pile: { length: pile.cards.count() },
+					card: pile.face()
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
+	app.route('/games/:id/pile/shuffle')
+		.put(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				const pile = game.getPile();
+				game.shuffle();
+				logger(`SHUFFLE pile in game ${req.params.id}`);
+				emitter.emit('deck', {
+					id: req.params.id
+				});
+				emitter.emit('pile', {
+					id: req.params.id,
+					pile: pile.face()
+				});
 				return res.status(200).json({
 					id: req.params.id,
 					pile: { length: pile.cards.count() },
@@ -330,6 +374,11 @@ function newApp(emitter, name) {
 				const hand = game.getHandOf(req.params.pid);
 				hand.draw();
 				logger(`DRAW for player ${req.params.pid} ${player} in game ${req.params.id}`);
+				emitter.emit('deck', {
+					id: req.params.id,
+					pid: req.params.pid,
+					player: player
+				});
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -352,8 +401,15 @@ function newApp(emitter, name) {
 				const players = game.getPlayers();
 				const player = players[req.params.pid];
 				const hand = game.getHandOf(req.params.pid);
+				const pile = game.getPile();
 				hand.recycle();
 				logger(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.id}`);
+				emitter.emit('pile', {
+					id: req.params.id,
+					pid: req.params.pid,
+					player: player,
+					pile: pile.face()
+				});
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -404,11 +460,11 @@ function newApp(emitter, name) {
 				const card = hand.cards.at(req.params.cid);
 				hand.discard(req.params.cid);
 				logger(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.id}`);
-				emitter.emit('card', {
+				emitter.emit('pile', {
 					id: req.params.id,
 					pid: req.params.pid,
 					player: player,
-					card: card
+					pile: card
 				});
 				return res.status(200).json({
 					id: req.params.id,
