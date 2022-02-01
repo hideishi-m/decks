@@ -30,10 +30,12 @@ $(document).ready(function () {
 	}
 
     function newGame() {
-		const data = utils.parseValueEach({
+		utils.parseValuesEach({
 			players: "input[name^=players]"
-		});
-		if (undefined !== data) {
+		}, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
 			$.ajax({
 				type: "POST",
 				url: "/games",
@@ -50,14 +52,16 @@ $(document).ready(function () {
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
-		}
+		});
     }
 
     function deleteGame() {
-        const data = utils.parseValue({
+        utils.parseValue({
             id: "#deleteGameSelect"
-        });
-        if (undefined !== data) {
+        }, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
             $.ajax({
                 type: "DELETE",
                 url: "/games/" + data.id,
@@ -70,7 +74,7 @@ $(document).ready(function () {
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
-        }
+        });
     }
 
     $("#listGames").click(listGames);
@@ -82,7 +86,7 @@ $(document).ready(function () {
 		$("#players").parent().append(html);
 	});
 
-	$("#players").parent().on("click", ".remove", function() {
+	$("#players").parent().on("click", ".remove", function () {
 		$(this).parents(".input-group").remove();
 	});
 });

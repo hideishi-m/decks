@@ -95,10 +95,12 @@ $(document).ready(function () {
 	}
 
 	function selectGame() {
-		const data = utils.parseValue({
+		utils.parseValue({
 			id: "#selectGameSelect"
-		});
-		if (undefined !== data) {
+		}, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
 			$.ajax({
 				type: "GET",
 				url: "/games/" + data.id,
@@ -114,15 +116,17 @@ $(document).ready(function () {
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
-		}
+		});
 	}
 
 	function selectPlayer() {
-		const data = utils.parseValue({
+		utils.parseValue({
 			id: "#selectPlayerInput",
 			pid: "#selectPlayerSelect"
-		});
-		if (undefined !== data) {
+		}, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
 			$.ajax({
 				type: "GET",
 				url: "/games/" + data.id + "/players/" + data.pid,
@@ -136,16 +140,18 @@ $(document).ready(function () {
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
-		}
+		});
 	}
 
 	function discardHand() {
-        const data = utils.parseData({
+        utils.parseData({
             id: "#game",
             pid: "#player",
 			cid: "#handModalCard img"
-        });
-        if (undefined !== data) {
+        }, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
 			$.ajax({
 				type: "PUT",
 				url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/discard",
@@ -159,15 +165,17 @@ $(document).ready(function () {
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
-        }
+        });
 	}
 
     function drawDeck() {
-        const data = utils.parseData({
+        utils.parseData({
             id: "#game",
             pid: "#player"
-        });
-        if (undefined !== data) {
+        }, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
 			$.ajax({
 				type: "PUT",
 				url: "/games/" + data.id + "/players/" + data.pid + "/draw",
@@ -181,15 +189,17 @@ $(document).ready(function () {
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
-        }
+        });
     }
 
     function recycleHand() {
-        const data = utils.parseData({
+        utils.parseData({
             id: "#game",
             pid: "#player"
-        });
-        if (undefined !== data) {
+        }, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
 			$.ajax({
 				type: "PUT",
 				url: "/games/" + data.id + "/players/" + data.pid + "/recycle",
@@ -203,14 +213,16 @@ $(document).ready(function () {
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
-        }
+        });
     }
 
     function recycleDeck() {
-        const data = utils.parseData({
+        utils.parseData({
             id: "#game"
-        });
-        if (undefined !== data) {
+        }, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
 			$.ajax({
 				type: "PUT",
 				url: "/games/" + data.id + "/deck/recycle",
@@ -224,7 +236,7 @@ $(document).ready(function () {
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
-        }
+        });
     }
 
 	function handModal() {
@@ -246,7 +258,7 @@ $(document).ready(function () {
 	$("#selectGame").click(selectGame);
 	$("#selectPlayer").click(selectPlayer);
 
-	$("#hand").on("click", "img", function() {
+	$("#hand").on("click", "img", function () {
 		$("#handModalCard").empty().append($(this).clone());
 		handModal();
 	});
@@ -257,7 +269,7 @@ $(document).ready(function () {
 	$("#drawModal").on("click", "button", drawModal);
 	$("#drawDeck").click(drawDeck);
 
-	$("#pile").on("click", "img", function() {
+	$("#pile").on("click", "img", function () {
 		$("#pileModalCard").empty().append($(this).clone());
 		pileModal()
 	});

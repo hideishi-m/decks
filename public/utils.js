@@ -3,31 +3,29 @@ const utils = (function () {
 		$(selector).empty().append($("<pre />").text(text));
 	}
 
-	function parseValue(settings) {
+	function parseValue(settings, callback) {
 		const data = {};
 		for (const [key, selector] of Object.entries(settings)) {
 			data[key] = $(selector).val();
 			if (false === /^\d+$/.test(data[key])) {
-				status(key + " is empty");
-				return undefined;
+				return callback(key + " is empty");
 			}
 		}
-		return data;
+		return callback(null, data);
 	}
 
-	function parseData(settings) {
+	function parseData(settings, callback) {
 		const data = {};
 		for (const [key, selector] of Object.entries(settings)) {
 			data[key] = $(selector).data(key);
 			if (false === /^\d+$/.test(data[key])) {
-				status(key + " is empty");
-				return undefined;
+				return callback(key + " is empty");
 			}
 		}
-		return data;
+		return callback(null, data);
 	}
 
-	function parseValueEach(settings) {
+	function parseValuesEach(settings, callback) {
 		const data = {};
 		for (const [key, selector] of Object.entries(settings)) {
 			data[key] = [];
@@ -38,11 +36,10 @@ const utils = (function () {
 				}
 			});
 			if (0 === data[key].length) {
-				status(key + " is empty");
-				return undefined;
+				return callback(key + " is empty");
 			}
 		}
-		return data;
+		return callback(null, data);
 	}
 
 	function appendOption(selector, value, text) {
