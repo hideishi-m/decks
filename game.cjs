@@ -46,16 +46,53 @@ class Game {
 	}
 
 	getDeck() {
-		return {
-			length: this.deck.count()
-		}
+		return new Deck(this);
 	}
 
 	getPile() {
-		return {
-			length: this.pile.count(),
-			card: this.pile.count() ? this.pile.at(0) : undefined
+		return new Pile(this);
+	}
+}
+
+
+class Deck {
+	constructor(game) {
+		this.game = game;
+		this.cards = this.game.deck;
+	}
+
+	discard(index) {
+		const card = this.cards.splice(index);
+		if (undefined !== card) {
+			this.game.pile.unshift(card);
 		}
+	}
+
+	recycle() {
+		const card = this.game.pile.shift();
+		if (undefined !== card) {
+			this.cards.unshift(card);  // 先頭に戻す
+		}
+	}
+
+	cards() {
+		return this.cards.from();
+	}
+}
+
+
+class Pile {
+	constructor(game) {
+		this.game = game;
+		this.cards = this.game.pile;
+	}
+
+	face() {
+		return (this.cards.count() ? this.cards.at(0) : undefined);
+	}
+
+	cards() {
+		return this.cards.from();
 	}
 }
 

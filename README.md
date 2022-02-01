@@ -40,16 +40,22 @@ response: {
   deck: { length: 108 }
 }
 
-### 山札をめくる TODO
+### 山札をめくる
 
 GET /games/:id/deck/discard
 
 response: {
   id: "1",
-  deck: {
-    length: 107,
-    card: card
-  }
+  deck: { length: 107 }
+}
+
+### 捨て札を山札に戻す
+
+GET /games/:id/deck/recycle
+
+response: {
+  id: "1",
+  deck: { length: 108 }
 }
 
 ### 捨て札

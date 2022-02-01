@@ -21,12 +21,15 @@ function newApp(emitter, name) {
 		limit: '10mb'
 	}));
 	app.use(function (req, res, next) {
-		logger({
-			time: new Date(),
-			method: req.method,
-			path: req.path,
-			body: req.body
-		});
+		if (false === /\.(ico|png|js)$/.test(req.path)) {
+			logger({
+				time: new Date(),
+				ip: req.ip,
+				method: req.method,
+				path: req.path,
+				body: req.body
+			});
+		}
 		next();
 	});
 	app.use('/', express.static(path.join(__dirname, 'public')));
@@ -220,10 +223,51 @@ function newApp(emitter, name) {
 		.get(function (req, res) {
 			try {
 				const game = games[req.params.id];
+				const deck = game.getDeck();
 				logger(`GET deck for game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
-					deck: game.getDeck()
+					deck: { length: deck.cards.count() }
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
+	app.route('/games/:id/deck/discard')
+		.put(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				const deck = game.getDeck();
+				deck.discard(0);
+				logger(`DISCARD deck 0 for game ${req.params.id}`);
+				return res.status(200).json({
+					id: req.params.id,
+					deck: { length: deck.cards.count() }
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
+	app.route('/games/:id/deck/recycle')
+		.put(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				const deck = game.getDeck();
+				deck.recycle();
+				logger(`RECYCLE deck for game ${req.params.id}`);
+				return res.status(200).json({
+					id: req.params.id,
+					deck: { length: deck.cards.count() }
 				});
 			} catch (error) {
 				logger(error);
@@ -238,10 +282,12 @@ function newApp(emitter, name) {
 		.get(function (req, res) {
 			try {
 				const game = games[req.params.id];
+				const pile = game.getPile();
 				logger(`GET pile for game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
-					pile: game.getPile()
+					pile: { length: pile.cards.count() },
+					card: pile.face()
 				});
 			} catch (error) {
 				logger(error);
