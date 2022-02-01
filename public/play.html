@@ -16,47 +16,28 @@
     <h1>Play</h1>
 
     <div class="border p-2">
-      <h2>Status</h2>
-      <div class="row">
-        <div class="col mb-3">
-          <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#status">collapse</button>
-        </div>
-      </div>
-      <div class="row">
-        <div id="status" class="col collapse">
-        </div>
-      </div>
-    </div>
-
-    <div class="border p-2">
-      <h2>Hand</h2>
+      <h2>Game</h2>
       <div class="row">
         <div class="col-3">Game:</div>
-        <div id="game" class="col-9">
-        </div>
+        <div id="gameLabel" class="col-9"></div>
       </div>
+      <h2>Hand</h2>
       <div class="row">
         <div class="col-3">Player:</div>
-        <div id="player" class="col-9">
-        </div>
+        <div id="playerLabel" class="col-9"></div>
       </div>
-      <div id="hand" class="row">
-      </div>
+      <div id="hand" class="row"></div>
       <h2>Table</h2>
       <div class="row">
         <div class="col-3">Deck:</div>
-        <div id="deckLabel" class="col-3">
-        </div>
+        <div id="deckLabel" class="col-3"></div>
         <div class="col-3">Pile:</div>
-        <div id="pileLabel" class="col-3">
-        </div>
+        <div id="pileLabel" class="col-3"></div>
       </div>
       <div class="row">
-        <div id="deck" class="col-3">
-        </div>
+        <div id="deck" class="col-3"></div>
         <div class="col-3"></div>
-        <div id="pile" class="col-3">
-        </div>
+        <div id="pile" class="col-3"></div>
         <div class="col-3"></div>
       </div>
       <h2>Players</h2>
@@ -69,6 +50,18 @@
             </select>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="border p-2">
+      <h2>Status</h2>
+      <div class="row">
+        <div class="col mb-3">
+          <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#status">collapse</button>
+        </div>
+      </div>
+      <div class="row">
+        <div id="status" class="col collapse"></div>
       </div>
     </div>
 
@@ -131,8 +124,7 @@
         <div class="modal-body">
           <div class="container-fluid">
             <div class="row">
-              <div id="handModalCard" class="col">
-              </div>
+              <div id="handModalCard" class="col"></div>
               <div class="col">
                 <div class="row">
                   <div class="col mb-3">
@@ -198,8 +190,7 @@
         <div class="modal-body">
           <div class="container-fluid">
             <div class="row">
-              <div id="pileModalCard" class="col">
-              </div>
+              <div id="pileModalCard" class="col"></div>
               <div class="col">
                 <div class="row">
                   <div class="col mb-3">

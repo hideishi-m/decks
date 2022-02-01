@@ -25,6 +25,17 @@ const utils = (function () {
 		return callback(null, data);
 	}
 
+	function parseDataValue(settings, callback) {
+		const data = {};
+		for (const [key, selector] of Object.entries(settings)) {
+			data[key] = undefined !== $(selector).data(key) ? $(selector).data(key) : $(selector).val();
+			if (false === /^\d+$/.test(data[key])) {
+				return callback(key + " is empty");
+			}
+		}
+		return callback(null, data);
+	}
+
 	function parseValuesEach(settings, callback) {
 		const data = {};
 		for (const [key, selector] of Object.entries(settings)) {
@@ -54,6 +65,7 @@ const utils = (function () {
 		updateStatus: updateStatus,
 		parseValue: parseValue,
 		parseData: parseData,
+		parseDataValue: parseDataValue,
 		parseValuesEach: parseValuesEach,
 		appendOption: appendOption,
 		removeOption: removeOption
