@@ -1,4 +1,6 @@
 $(document).ready(function () {
+	let id, pid;
+
 	function parseCard(card, i) {
 		const suits = { C: "club", D: "diamond", H: "heart", S: "spade" };
 		const ranks = { A: "01", 0: "10", J: "11", Q: "12", K: "13", X: "joker" };
@@ -21,7 +23,7 @@ $(document).ready(function () {
 	function updateSelectPlayer(data) {
 		$("#selectPlayerSelect").empty();
 		for (let i = 0; i < data.players.length; i++) {
-			utils.appendOption("#selectPlayerSelect", i, `${i}: [${data.players[i]}]`);
+			utils.appendOption("#selectPlayerSelect", i, data.players[i]);
 		}
 	}
 
@@ -79,11 +81,27 @@ $(document).ready(function () {
 	}
 
 	function updateGame(data) {
-		$("#game").attr("data-id", data.id).text(data.id);
+		id = data.id;
+		$("#game").text(data.id);
 	}
 
 	function updatePlayer(data) {
-		$("#player").attr("data-pid", data.pid).text(`${data.pid} [${data.player}]`);
+		pid = data.pid;
+		$("#player").text(data.player);
+	}
+
+	function updatePassHandSelect(data) {
+		$("#passHandSelect").empty();
+		for (let i = 0; i < data.players.length; i++) {
+			utils.appendOption("#passHandSelect", i, data.players[i]);
+		}
+	}
+
+	function updatePickSelect(data) {
+		$("#pickSelect").empty();
+		for (let i = 0; i < data.players.length; i++) {
+			utils.appendOption("#pickSelect", i, data.players[i]);
+		}
 	}
 
 	function listGames() {
@@ -131,41 +149,32 @@ $(document).ready(function () {
 	}
 
 	function selectPlayer() {
-        utils.parseData({
-            id: "#game",
-        }, function (error, data) {
+		utils.parseValue({
+			pid: "#selectPlayerSelect"
+		}, function (error, value) {
 			if (error) {
 				return utils.updateStatus("#status", error);
 			}
-			utils.parseValue({
-				pid: "#selectPlayerSelect"
-			}, function (error, value) {
-				if (error) {
-					return utils.updateStatus("#status", error);
-				}
-				$.ajax({
-					type: "GET",
-					url: "/games/" + data.id + "/players/" + value.pid,
-					dataType: "json"
-				})
-				.done(function (data) {
-					utils.updateStatus("#status", JSON.stringify(data, null, 2));
-					utils.removeOption("#passHandSelect", value.pid);
-					utils.removeOption("#pickSelect", value.pid);
-					updatePlayer(data);
-					updateHand(data);
-				})
-				.fail(function (jqXHR, textStatus, errorThrown) {
-					utils.updateStatus("#status", errorThrown);
-				});
+			$.ajax({
+				type: "GET",
+				url: "/games/" + id + "/players/" + value.pid,
+				dataType: "json"
+			})
+			.done(function (data) {
+				utils.updateStatus("#status", JSON.stringify(data, null, 2));
+				utils.removeOption("#passHandSelect", value.pid);
+				utils.removeOption("#pickSelect", value.pid);
+				updatePlayer(data);
+				updateHand(data);
+			})
+			.fail(function (jqXHR, textStatus, errorThrown) {
+				utils.updateStatus("#status", errorThrown);
 			});
 		});
 	}
 
 	function discardHand() {
         utils.parseData({
-            id: "#game",
-            pid: "#player",
 			cid: "#handModalCard img"
         }, function (error, data) {
 			if (error) {
@@ -173,7 +182,7 @@ $(document).ready(function () {
 			}
 			$.ajax({
 				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/discard",
+				url: "/games/" + id + "/players/" + pid + "/cards/" + data.cid + "/discard",
 				dataType: "json"
 			})
 			.done(function (data) {
@@ -189,8 +198,6 @@ $(document).ready(function () {
 
 	function passHand() {
         utils.parseData({
-            id: "#game",
-            pid: "#player",
 			cid: "#handModalCard img"
         }, function (error, data) {
 			if (error) {
@@ -204,7 +211,7 @@ $(document).ready(function () {
 				}
 				$.ajax({
 					type: "PUT",
-					url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/pass/" + values.tid,
+					url: "/games/" + id + "/players/" + pid + "/cards/" + data.cid + "/pass/" + values.tid,
 					dataType: "json"
 				})
 				.done(function (data) {
@@ -219,119 +226,74 @@ $(document).ready(function () {
 	}
 
 	function pickHand() {
-        utils.parseData({
-            id: "#game",
-            pid: "#player",
-        }, function (error, data) {
+		utils.parseValue({
+			tid: "#pickSelect"
+		}, function (error, values) {
 			if (error) {
 				return utils.updateStatus("#status", error);
 			}
-			utils.parseValue({
-				tid: "#pickSelect"
-			}, function (error, values) {
-				if (error) {
-					return utils.updateStatus("#status", error);
-				}
-				$.ajax({
-					type: "PUT",
-					url: "/games/" + data.id + "/players/" + data.pid + "/pick/" + values.tid,
-					dataType: "json"
-				})
-				.done(function (data) {
-					utils.updateStatus("#status", JSON.stringify(data, null, 2));
-					updateHand(data);
-				})
-				.fail(function (jqXHR, textStatus, errorThrown) {
-					utils.updateStatus("#status", errorThrown);
-				});
+			$.ajax({
+				type: "PUT",
+				url: "/games/" + id + "/players/" + pid + "/pick/" + values.tid,
+				dataType: "json"
+			})
+			.done(function (data) {
+				utils.updateStatus("#status", JSON.stringify(data, null, 2));
+				updateHand(data);
+			})
+			.fail(function (jqXHR, textStatus, errorThrown) {
+				utils.updateStatus("#status", errorThrown);
 			});
-        });
+		});
 	}
 
     function drawDeck() {
-        utils.parseData({
-            id: "#game",
-            pid: "#player"
-        }, function (error, data) {
-			if (error) {
-				return utils.updateStatus("#status", error);
-			}
-			$.ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/draw",
-				dataType: "json"
-			})
-			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
-				updateHand(data);
-				updateDeck(data);
-			})
-			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
-			});
-        });
+		$.ajax({
+			type: "PUT",
+			url: "/games/" + id + "/players/" + pid + "/draw",
+			dataType: "json"
+		})
+		.done(function (data) {
+			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateHand(data);
+			updateDeck(data);
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			utils.updateStatus("#status", errorThrown);
+		});
     }
 
     function recycleHand() {
-        utils.parseData({
-            id: "#game",
-            pid: "#player"
-        }, function (error, data) {
-			if (error) {
-				return utils.updateStatus("#status", error);
-			}
-			$.ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/recycle",
-				dataType: "json"
-			})
-			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
-				updateHand(data);
-				updatePile(data);
-			})
-			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
-			});
-        });
+		$.ajax({
+			type: "PUT",
+			url: "/games/" + id + "/players/" + pid + "/recycle",
+			dataType: "json"
+		})
+		.done(function (data) {
+			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateHand(data);
+			updatePile(data);
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			utils.updateStatus("#status", errorThrown);
+		});
     }
 
     function recycleDeck() {
-        utils.parseData({
-            id: "#game"
-        }, function (error, data) {
-			if (error) {
-				return utils.updateStatus("#status", error);
-			}
-			$.ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/deck/recycle",
-				dataType: "json"
-			})
-			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
-				updateDeck(data);
-				updatePile(data);
-			})
-			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
-			});
-        });
+		$.ajax({
+			type: "PUT",
+			url: "/games/" + id + "/deck/recycle",
+			dataType: "json"
+		})
+		.done(function (data) {
+			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateDeck(data);
+			updatePile(data);
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			utils.updateStatus("#status", errorThrown);
+		});
     }
-
-	function updatePassHandSelect(data) {
-		$("#passHandSelect").empty();
-		for (let i = 0; i < data.players.length; i++) {
-			utils.appendOption("#passHandSelect", i, `${i}: [${data.players[i]}]`);
-		}
-	}
-
-	function updatePickSelect(data) {
-		$("#pickSelect").empty();
-		for (let i = 0; i < data.players.length; i++) {
-			utils.appendOption("#pickSelect", i, `${i}: [${data.players[i]}]`);
-		}
-	}
 
 	function gameModal() {
 		const modal = document.getElementById('gameModal');
