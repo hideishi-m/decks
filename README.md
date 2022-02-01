@@ -70,7 +70,7 @@ response: {
   }
 }
 
-### 捨て札を全て山札に戻す TODO
+### 捨て札を全て山札に戻す
 
 GET /games/:id/pile/shuffle
 
