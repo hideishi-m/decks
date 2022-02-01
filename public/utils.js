@@ -54,7 +54,7 @@ const utils = (function () {
 		updateStatus: updateStatus,
 		parseValue: parseValue,
 		parseData: parseData,
-		parseValueEach: parseValueEach,
+		parseValuesEach: parseValuesEach,
 		appendOption: appendOption,
 		removeOption: removeOption
 	}
