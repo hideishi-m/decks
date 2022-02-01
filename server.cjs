@@ -68,7 +68,7 @@ function newServer(emitter, name) {
 		});
 	});
 
-	emitter.on('close', function() {
+	emitter.on('close', function () {
 		wsServer.clients.forEach(ws => {
 			ws.terminate();
 		});

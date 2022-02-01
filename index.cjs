@@ -31,17 +31,17 @@ function shutdown() {
 	});
 }
 
-process.on('SIGINT', function() {
+process.on('SIGINT', function () {
 	logger('SIGINT received');
 	shutdown();
 });
-process.on('SIGTERM', function() {
+process.on('SIGTERM', function () {
 	logger('SIGTERM received');
 	shutdown();
 });
 
 server.on('request', app);
 
-server.listen(port, function() {
+server.listen(port, function () {
 	logger(`Listening on port ${port}`);
 });
