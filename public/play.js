@@ -79,6 +79,14 @@ $(document).ready(function () {
 		});
 	}
 
+	function updateGame(data) {
+		$("#game").attr("data-id", data.id).text(data.id);
+	}
+
+	function updatePlayer(data) {
+		$("#player").attr("data-pid", data.pid).text(`${data.pid} [${data.player}]`);
+	}
+
 	function listGames() {
 		$.ajax({
 			type: "GET",
@@ -108,8 +116,10 @@ $(document).ready(function () {
 			})
 			.done(function (data) {
 				utils.updateStatus("#status", JSON.stringify(data, null, 2));
-				$("#game").attr("data-id", data.id).text(data.id);
+				updateGame(data);
 				updateSelectPlayer(data);
+				updatePassHandSelect(data);
+				updatePickSelect(data);
 				updateDeck(data);
 				updatePile(data);
 			})
@@ -134,7 +144,9 @@ $(document).ready(function () {
 			})
 			.done(function (data) {
 				utils.updateStatus("#status", JSON.stringify(data, null, 2));
-				$("#player").attr("data-pid", data.pid).text(`${data.pid} [${data.player}]`);
+				utils.removeOption("#passHandSelect", data.pid);
+				utils.removeOption("#pickSelect", data.pid);
+				updatePlayer(data);
 				updateHand(data);
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
@@ -164,6 +176,67 @@ $(document).ready(function () {
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
+			});
+        });
+	}
+
+	function passHand() {
+        utils.parseData({
+            id: "#game",
+            pid: "#player",
+			cid: "#handModalCard img"
+        }, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
+			utils.parseValue({
+				tid: "#passHandSelect"
+			}, function (error, values) {
+				if (error) {
+					return utils.updateStatus("#status", error);
+				}
+				$.ajax({
+					type: "PUT",
+					url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/pass/" + values.tid,
+					dataType: "json"
+				})
+				.done(function (data) {
+					utils.updateStatus("#status", JSON.stringify(data, null, 2));
+					updateHand(data);
+				})
+				.fail(function (jqXHR, textStatus, errorThrown) {
+					utils.updateStatus("#status", errorThrown);
+				});
+			});
+        });
+	}
+
+	function pickHand() {
+        utils.parseData({
+            id: "#game",
+            pid: "#player",
+        }, function (error, data) {
+			if (error) {
+				return utils.updateStatus("#status", error);
+			}
+			utils.parseValue({
+				tid: "#pickSelect"
+			}, function (error, values) {
+				if (error) {
+					return utils.updateStatus("#status", error);
+				}
+				$.ajax({
+					type: "PUT",
+					url: "/games/" + data.id + "/players/" + data.pid + "/pick/" + values.tid,
+					dataType: "json"
+				})
+				.done(function (data) {
+					utils.updateStatus("#status", JSON.stringify(data, null, 2));
+					updateHand(data);
+				})
+				.fail(function (jqXHR, textStatus, errorThrown) {
+					utils.updateStatus("#status", errorThrown);
+				});
 			});
         });
 	}
@@ -239,6 +312,20 @@ $(document).ready(function () {
         });
     }
 
+	function updatePassHandSelect(data) {
+		$("#passHandSelect").empty();
+		for (let i = 0; i < data.players.length; i++) {
+			utils.appendOption("#passHandSelect", i, `${i}: [${data.players[i]}]`);
+		}
+	}
+
+	function updatePickSelect(data) {
+		$("#pickSelect").empty();
+		for (let i = 0; i < data.players.length; i++) {
+			utils.appendOption("#pickSelect", i, `${i}: [${data.players[i]}]`);
+		}
+	}
+
 	function handModal() {
 		const modal = document.getElementById('handModal');
 		bootstrap.Modal.getOrCreateInstance(modal).toggle();
@@ -264,6 +351,7 @@ $(document).ready(function () {
 	});
 	$("#handModal").on("click", "button", handModal);
 	$("#discardHand").click(discardHand);
+	$("#passHand").click(passHand);
 
 	$("#deck").on("click", "img", drawModal);
 	$("#drawModal").on("click", "button", drawModal);
@@ -276,4 +364,6 @@ $(document).ready(function () {
 	$("#pileModal").on("click", "button", pileModal);
 	$("#recycleHand").click(recycleHand);
 	$("#recycleDeck").click(recycleDeck);
+
+	$("#pick").click(pickHand);
 });
