@@ -224,7 +224,7 @@ function newApp(emitter, name) {
 			try {
 				const game = games[req.params.id];
 				const deck = game.getDeck();
-				logger(`GET deck for game ${req.params.id}`);
+				logger(`GET deck in game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
 					deck: { length: deck.cards.count() }
@@ -244,7 +244,7 @@ function newApp(emitter, name) {
 				const game = games[req.params.id];
 				const deck = game.getDeck();
 				deck.discard(0);
-				logger(`DISCARD deck 0 for game ${req.params.id}`);
+				logger(`DISCARD card 0 for deck in game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
 					deck: { length: deck.cards.count() }
@@ -264,7 +264,7 @@ function newApp(emitter, name) {
 				const game = games[req.params.id];
 				const deck = game.getDeck();
 				deck.recycle();
-				logger(`RECYCLE deck for game ${req.params.id}`);
+				logger(`RECYCLE for deck in game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
 					deck: { length: deck.cards.count() }
@@ -283,7 +283,7 @@ function newApp(emitter, name) {
 			try {
 				const game = games[req.params.id];
 				const pile = game.getPile();
-				logger(`GET pile for game ${req.params.id}`);
+				logger(`GET pile in game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
 					pile: { length: pile.cards.count() },
@@ -305,7 +305,7 @@ function newApp(emitter, name) {
 				const players = game.getPlayers();
 				const player = players[req.params.pid];
 				const hand = game.getHandOf(req.params.pid);
-				logger(`GET game ${req.params.id} for player ${req.params.pid} ${player}`);
+				logger(`GET hand for player ${req.params.pid} ${player} in game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -329,7 +329,7 @@ function newApp(emitter, name) {
 				const player = players[req.params.pid];
 				const hand = game.getHandOf(req.params.pid);
 				hand.draw();
-				logger(`DRAW game ${req.params.id} for player ${req.params.pid} ${player}`);
+				logger(`DRAW for player ${req.params.pid} ${player} in game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -353,7 +353,7 @@ function newApp(emitter, name) {
 				const player = players[req.params.pid];
 				const hand = game.getHandOf(req.params.pid);
 				hand.recycle();
-				logger(`RECYCLE game ${req.params.id} for player ${req.params.pid} ${player}`);
+				logger(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -377,7 +377,7 @@ function newApp(emitter, name) {
 				const player = players[req.params.pid];
 				const hand = game.getHandOf(req.params.pid);
 				const card = hand.cards.at(req.params.cid);
-				logger(`GET card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player}`);
+				logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.id`);
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
@@ -403,7 +403,7 @@ function newApp(emitter, name) {
 				const hand = game.getHandOf(req.params.pid);
 				const card = hand.cards.at(req.params.cid);
 				hand.discard(req.params.cid);
-				logger(`DISCARD card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player}`);
+				logger(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.id}`);
 				emitter.emit('card', {
 					id: req.params.id,
 					pid: req.params.pid,
@@ -434,7 +434,7 @@ function newApp(emitter, name) {
 				const hand = game.getHandOf(req.params.pid);
 				const to = players[req.params.tid];
 				hand.passTo(req.params.cid, req.params.tid);
-				logger(`PASS card ${req.params.cid} in game ${req.params.id} for player ${req.params.pid} ${player} to ${req.params.tid} ${to}`);
+				logger(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${to} in game ${req.params.id}`);
 				emitter.emit('hand', {
 					id: req.params.id,
 					pid: req.params.pid,
@@ -465,7 +465,7 @@ function newApp(emitter, name) {
 				const hand = game.getHandOf(req.params.pid);
 				const to = players[req.params.tid];
 				hand.pickFrom(req.params.tid);
-				logger(`PICK from ${req.params.tid} ${to} in game ${req.params.id} for player ${req.params.pid} ${player}`);
+				logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${to} in game ${req.params.id}`);
 				emitter.emit('hand', {
 					id: req.params.id,
 					pid: req.params.pid,
