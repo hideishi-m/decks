@@ -72,44 +72,56 @@
       </div>
     </div>
 
-    <div class="border p-2">
-      <h2>List Games</h2>
-      <div class="row">
-        <div class="col">
-          <div class="input-group mb-3">
-            <button id="listGames" class="btn btn-primary" type="button">GET</button>
-            <span class="input-group-text">/games</span>
-          </div>
+  </div>
+
+  <!-- Modal: game -->
+  <div class="modal fade" id="gameModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5>Select game to join</h5>
         </div>
-      </div>
-      <h2>Select Game</h2>
-      <div class="row">
-        <div class="col">
-          <div class="input-group mb-3">
-            <button id="selectGame" class="btn btn-primary" type="button">GET</button>
-            <span class="input-group-text">/games/</span>
-            <select id="selectGameSelect" class="form-select">
-              <option selected>Select game</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <h2>Select Player</h2>
-      <div class="row">
-        <div class="col">
-          <div class="input-group mb-3">
-            <button id="selectPlayer" class="btn btn-primary" type="button">GET</button>
-            <span class="input-group-text">/games/</span>
-            <input id="selectPlayerInput" class="form-control" type="text" placeholder="id" readonly>
-            <span class="input-group-text">/players/</span>
-            <select id="selectPlayerSelect" class="form-select">
-              <option selected>Select player</option>
-            </select>
+        <div class="modal-body">
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col">
+                <div class="input-group mb-3">
+                  <button id="selectGame" class="btn btn-primary" type="button">Select game</button>
+                  <select id="selectGameSelect" class="form-select">
+                    <option selected>Select game</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- Modal: player -->
+  <div class="modal fade" id="playerModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5>Select player to join</h5>
+        </div>
+        <div class="modal-body">
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col">
+                <div class="input-group mb-3">
+                  <button id="selectPlayer" class="btn btn-primary" type="button">Select player</button>
+                  <select id="selectPlayerSelect" class="form-select">
+                    <option selected>Select player</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: hand -->

@@ -19,7 +19,6 @@ $(document).ready(function () {
 	}
 
 	function updateSelectPlayer(data) {
-		$("#selectPlayerInput").attr("value", data.id);
 		$("#selectPlayerSelect").empty();
 		for (let i = 0; i < data.players.length; i++) {
 			utils.appendOption("#selectPlayerSelect", i, `${i}: [${data.players[i]}]`);
@@ -96,6 +95,7 @@ $(document).ready(function () {
 		.done(function (data) {
 			utils.updateStatus("#status", JSON.stringify(data, null, 2));
 			updateSelectGame(data);
+			gameModal();
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
 			utils.updateStatus("#status", errorThrown);
@@ -122,6 +122,7 @@ $(document).ready(function () {
 				updatePickSelect(data);
 				updateDeck(data);
 				updatePile(data);
+				playerModal();
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
@@ -130,27 +131,33 @@ $(document).ready(function () {
 	}
 
 	function selectPlayer() {
-		utils.parseValue({
-			id: "#selectPlayerInput",
-			pid: "#selectPlayerSelect"
-		}, function (error, data) {
+        utils.parseData({
+            id: "#game",
+        }, function (error, data) {
 			if (error) {
 				return utils.updateStatus("#status", error);
 			}
-			$.ajax({
-				type: "GET",
-				url: "/games/" + data.id + "/players/" + data.pid,
-				dataType: "json"
-			})
-			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
-				utils.removeOption("#passHandSelect", data.pid);
-				utils.removeOption("#pickSelect", data.pid);
-				updatePlayer(data);
-				updateHand(data);
-			})
-			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
+			utils.parseValue({
+				pid: "#selectPlayerSelect"
+			}, function (error, value) {
+				if (error) {
+					return utils.updateStatus("#status", error);
+				}
+				$.ajax({
+					type: "GET",
+					url: "/games/" + data.id + "/players/" + value.pid,
+					dataType: "json"
+				})
+				.done(function (data) {
+					utils.updateStatus("#status", JSON.stringify(data, null, 2));
+					utils.removeOption("#passHandSelect", value.pid);
+					utils.removeOption("#pickSelect", value.pid);
+					updatePlayer(data);
+					updateHand(data);
+				})
+				.fail(function (jqXHR, textStatus, errorThrown) {
+					utils.updateStatus("#status", errorThrown);
+				});
 			});
 		});
 	}
@@ -326,6 +333,16 @@ $(document).ready(function () {
 		}
 	}
 
+	function gameModal() {
+		const modal = document.getElementById('gameModal');
+		bootstrap.Modal.getOrCreateInstance(modal).toggle();
+	}
+
+	function playerModal() {
+		const modal = document.getElementById('playerModal');
+		bootstrap.Modal.getOrCreateInstance(modal).toggle();
+	}
+
 	function handModal() {
 		const modal = document.getElementById('handModal');
 		bootstrap.Modal.getOrCreateInstance(modal).toggle();
@@ -341,29 +358,33 @@ $(document).ready(function () {
 		bootstrap.Modal.getOrCreateInstance(modal).toggle();
 	}
 
-	$("#listGames").click(listGames);
+	$("#gameModal").on("click", "button", gameModal);
 	$("#selectGame").click(selectGame);
+
+	$("#playerModal").on("click", "button", playerModal);
 	$("#selectPlayer").click(selectPlayer);
+
+	$("#handModal").on("click", "button", handModal);
+	$("#discardHand").click(discardHand);
+	$("#passHand").click(passHand);
+
+	$("#drawModal").on("click", "button", drawModal);
+	$("#drawDeck").click(drawDeck);
+
+	$("#pileModal").on("click", "button", pileModal);
+	$("#recycleHand").click(recycleHand);
+	$("#recycleDeck").click(recycleDeck);
 
 	$("#hand").on("click", "img", function () {
 		$("#handModalCard").empty().append($(this).clone());
 		handModal();
 	});
-	$("#handModal").on("click", "button", handModal);
-	$("#discardHand").click(discardHand);
-	$("#passHand").click(passHand);
-
 	$("#deck").on("click", "img", drawModal);
-	$("#drawModal").on("click", "button", drawModal);
-	$("#drawDeck").click(drawDeck);
-
 	$("#pile").on("click", "img", function () {
 		$("#pileModalCard").empty().append($(this).clone());
 		pileModal()
 	});
-	$("#pileModal").on("click", "button", pileModal);
-	$("#recycleHand").click(recycleHand);
-	$("#recycleDeck").click(recycleDeck);
-
 	$("#pick").click(pickHand);
+
+	listGames();
 });
