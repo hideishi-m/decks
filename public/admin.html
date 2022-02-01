@@ -16,40 +16,21 @@
     <h1>Admin</h1>
 
     <div class="border p-2">
-      <h2>Status</h2>
+      <h2>Game</h2>
       <div class="row">
-        <div class="col">
-          <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#status">collapse</button>
-        </div>
+        <div class="col-3">Game</div>
+        <div class="col-9">Players</div>
       </div>
-      <div class="row">
-        <div id="status" class="col collapse">
-        </div>
+      <div id="game" class="row mb-3">
+        <div class="col-3">id</div>
+        <div class="col-9">players</div>
       </div>
-    </div>
-
-    <div class="border p-2">
-      <h2>List Games</h2>
-      <div class="row">
-        <div class="col">
-          <div class="input-group mb-3">
-            <button id="listGames" class="btn btn-primary" type="button">GET</button>
-            <span class="input-group-text">/games</span>
-          </div>
+      <div class="row mb-3">
+        <div class="col-4">
+          <button id="newGame" class="btn btn-primary" type="button">New game</button>
         </div>
-      </div>
-    </div>
-
-    <div class="border p-2">
-      <h2>New Game</h2>
-      <div class="row">
-        <div class="col">
-          <div class="input-group mb-3">
-            <button id="newGame" class="btn btn-primary" type="button">POST</button>
-            <span class="input-group-text">/games</span>
-          </div>
-          <div class="mb-3">
-            <label for="players" class="form-label">Players</label>
+        <div class="col-8">
+          <label for="players" class="form-label">Players</label>
             <div id="players" class="input-group mb-3">
               <input name="players[]" class="form-control" type="text" placeholder="PC" value="DEIRmen">
 			  <button class="btn btn-success add" type="button"><i class="bi-plus"></i></button>
@@ -62,7 +43,6 @@
               <input name="players[]" class="form-control" placeholder="PC" value="yuzuki">
 			  <button class="btn btn-danger remove" type="button"><i class="bi-dash"></i></button>
             </div>
-          </div>
           <div class="copy d-none">
             <div class="input-group mb-3">
               <input name="players[]" class="form-control" placeholder="PC">
@@ -71,19 +51,27 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="border p-2">
-      <h2>Delete Game</h2>
-      <div class="row">
+      <div class="row mb-3">
         <div class="col">
-          <div class="input-group mb-3">
-            <button id="deleteGame" class="btn btn-primary" type="button">DELETE</button>
-            <span class="input-group-text">/games/</span>
+          <div class="input-group">
+            <button id="deleteGame" class="btn btn-primary" type="button">Delete game</button>
             <select id="deleteGameSelect" class="form-select">
               <option selected>Select game</option>
             </select>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="border p-2">
+      <h2>Status</h2>
+      <div class="row mb-3">
+        <div class="col">
+          <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#status">collapse</button>
+        </div>
+      </div>
+      <div class="row">
+        <div id="status" class="col collapse">
         </div>
       </div>
     </div>
