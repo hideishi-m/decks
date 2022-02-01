@@ -377,7 +377,7 @@ function newApp(emitter, name) {
 				const player = players[req.params.pid];
 				const hand = game.getHandOf(req.params.pid);
 				const card = hand.cards.at(req.params.cid);
-				logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.id`);
+				logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id,
 					pid: req.params.pid,
