@@ -17,7 +17,7 @@
 
     <div class="border p-2">
       <h2>Game</h2>
-      <div class="row">
+      <div class="row mb-3">
         <div class="col-3">Game:</div>
         <div id="gameLabel" class="col-9"></div>
       </div>
@@ -26,7 +26,7 @@
         <div class="col-3">Player:</div>
         <div id="playerLabel" class="col-9"></div>
       </div>
-      <div id="hand" class="row"></div>
+      <div id="hand" class="row mb-3"></div>
       <h2>Table</h2>
       <div class="row">
         <div class="col-3">Deck:</div>
@@ -34,16 +34,16 @@
         <div class="col-3">Pile:</div>
         <div id="pileLabel" class="col-3"></div>
       </div>
-      <div class="row">
+      <div class="row mb-3">
         <div id="deck" class="col-3"></div>
         <div class="col-3"></div>
         <div id="pile" class="col-3"></div>
         <div class="col-3"></div>
       </div>
       <h2>Players</h2>
-      <div class="row">
+      <div class="row mb-3">
         <div class="col">
-          <div class="input-group mb-3">
+          <div class="input-group">
             <button id="pick" type="button" class="btn btn-primary">Pick from</button>
             <select id="pickSelect" class="form-select">
               <option selected>Select player</option>
@@ -55,8 +55,8 @@
 
     <div class="border p-2">
       <h2>Status</h2>
-      <div class="row">
-        <div class="col mb-3">
+      <div class="row mb-3">
+        <div class="col">
           <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#status">collapse</button>
         </div>
       </div>
@@ -67,7 +67,7 @@
 
     <div class="border p-2">
       <h2>Log</h2>
-      <div class="row">
+      <div class="row mb-3">
         <div class="col">
           <div class="overflow-scroll" style="max-height: 100px">
             <pre id="log"></pre>
@@ -89,7 +89,7 @@
           <div class="container-fluid">
             <div class="row">
               <div class="col">
-                <div class="input-group mb-3">
+                <div class="input-group">
                   <button id="selectGame" class="btn btn-primary" type="button">Select game</button>
                   <select id="selectGameSelect" class="form-select">
                     <option selected>Select game</option>
@@ -114,7 +114,7 @@
           <div class="container-fluid">
             <div class="row">
               <div class="col">
-                <div class="input-group mb-3">
+                <div class="input-group">
                   <button id="selectPlayer" class="btn btn-primary" type="button">Select player</button>
                   <select id="selectPlayerSelect" class="form-select">
                     <option selected>Select player</option>
@@ -140,14 +140,14 @@
             <div class="row">
               <div id="handModalCard" class="col"></div>
               <div class="col">
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button id="discardHand" type="button" class="btn btn-primary">Discard</button>
                   </div>
                 </div>
-                <div class="row">
+                <div class="row mb-3">
                   <div class="col">
-                    <div class="input-group mb-3">
+                    <div class="input-group">
                       <button id="passHand" type="button" class="btn btn-primary">Pass to</button>
                       <select id="passHandSelect" class="form-select">
                         <option selected>Select player</option>
@@ -155,8 +155,8 @@
                     </div>
                   </div>
                 </div>
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button type="button" class="btn btn-secondary">Cancel</button>
                   </div>
                 </div>
@@ -182,18 +182,18 @@
                 <img class="img-fluid" src="/images/card_back.png" alt="">
               </div>
               <div class="col">
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button id="drawDeck" type="button" class="btn btn-primary">Draw</button>
                   </div>
                 </div>
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button id="discardDeck" type="button" class="btn btn-primary">Discard</button>
                   </div>
                 </div>
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button type="button" class="btn btn-secondary">Cancel</button>
                   </div>
                 </div>
@@ -217,23 +217,23 @@
             <div class="row">
               <div id="pileModalCard" class="col"></div>
               <div class="col">
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button id="recycleHand" type="button" class="btn btn-primary">Recycle to hand</button>
                   </div>
                 </div>
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button id="recycleDeck" type="button" class="btn btn-primary">Recycle to deck</button>
                   </div>
                 </div>
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button id="shufflePile" type="button" class="btn btn-primary">Shuffle to deck</button>
                   </div>
                 </div>
-                <div class="row">
-                  <div class="col mb-3">
+                <div class="row mb-3">
+                  <div class="col">
                     <button type="button" class="btn btn-secondary">Cancel</button>
                   </div>
                 </div>
