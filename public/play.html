@@ -65,6 +65,17 @@
       </div>
     </div>
 
+    <div class="border p-2">
+      <h2>Log</h2>
+      <div class="row">
+        <div class="col">
+          <div class="overflow-scroll" style="max-height: 100px">
+            <pre id="log"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Modal: game -->
@@ -178,6 +189,11 @@
                 </div>
                 <div class="row">
                   <div class="col mb-3">
+                    <button id="discardDeck" type="button" class="btn btn-primary">Discard</button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col mb-3">
                     <button type="button" class="btn btn-secondary">Cancel</button>
                   </div>
                 </div>
@@ -209,6 +225,11 @@
                 <div class="row">
                   <div class="col mb-3">
                     <button id="recycleDeck" type="button" class="btn btn-primary">Recycle to deck</button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col mb-3">
+                    <button id="shufflePile" type="button" class="btn btn-primary">Shuffle to deck</button>
                   </div>
                 </div>
                 <div class="row">

@@ -3,28 +3,6 @@ const utils = (function () {
 		$(selector).empty().append($("<pre />").text(text));
 	}
 
-	function parseValue(settings, callback) {
-		const data = {};
-		for (const [key, selector] of Object.entries(settings)) {
-			data[key] = $(selector).val();
-			if (false === /^\d+$/.test(data[key])) {
-				return callback(key + " is empty");
-			}
-		}
-		return callback(null, data);
-	}
-
-	function parseData(settings, callback) {
-		const data = {};
-		for (const [key, selector] of Object.entries(settings)) {
-			data[key] = $(selector).data(key);
-			if (false === /^\d+$/.test(data[key])) {
-				return callback(key + " is empty");
-			}
-		}
-		return callback(null, data);
-	}
-
 	function parseDataValue(settings, callback) {
 		const data = {};
 		for (const [key, selector] of Object.entries(settings)) {
@@ -36,12 +14,12 @@ const utils = (function () {
 		return callback(null, data);
 	}
 
-	function parseValuesEach(settings, callback) {
+	function parseDataValuesEach(settings, callback) {
 		const data = {};
 		for (const [key, selector] of Object.entries(settings)) {
 			data[key] = [];
 			$(selector).each(function () {
-				const value = $(this).val();
+				const value = undefined !== $(this).data(key) ? $(this).data(key) : $(this).val();
 				if (value) {
 					data[key].push(value);
 				}
@@ -63,10 +41,8 @@ const utils = (function () {
 
 	return {
 		updateStatus: updateStatus,
-		parseValue: parseValue,
-		parseData: parseData,
 		parseDataValue: parseDataValue,
-		parseValuesEach: parseValuesEach,
+		parseDataValuesEach: parseDataValuesEach,
 		appendOption: appendOption,
 		removeOption: removeOption
 	}

@@ -2,12 +2,58 @@ $(document).ready(function () {
 	let id, pid;
 	let gameModal, playerModal, handModal, deckModal, pileModal;
 
+	const socket = new WebSocket(`ws://${document.location.host}`);
+	socket.addEventListener('message', function (event) {
+		console.log(event.data);
+		parseMessage(event.data);
+	});
+
+	function logMessage(data) {
+		const text = $("#log").text();
+		$("#log").text(data + "\n" + text);
+	}
+
+	function parseMessage(data) {
+		try {
+			data = JSON.parse(data) ?? {};
+			// hand: id,pid,player,tid
+			if (data.hand) {
+				logMessage(`${data.hand.player} picked a card from you`);
+				getHand();
+			}
+			// deck: id,pid,player
+			// deck: id
+			else if (data.deck) {
+				if (data.deck.player) {
+					logMessage(`${data.deck.player} drew a card`);
+					updateDeck(data.deck);
+				} else {
+					logMessage("deck was updated");
+					updateDeck(data.deck);
+				}
+			}
+			// pile: id,pid,player,pile
+			// pile: id,pile
+			else if (data.pile) {
+				if (data.pile.player) {
+					logMessage(`${data.pile.player} discarded a card`);
+					updatePile(data.pile);
+				} else {
+					logMessage("pile was updated");
+					updatePile(data.pile);
+				}
+			}
+		} catch (error) {
+			console.error(error);
+		}
+	}
+
 	function getCardImgSrc(card) {
 		const suits = { C: "club", D: "diamond", H: "heart", S: "spade" };
 		const ranks = { A: "01", 0: "10", J: "11", Q: "12", K: "13", X: "joker" };
-		const suit = "_" + suits[card.suit];
+		const suit = suits[card.suit] ? ("_" + suits[card.suit]) : "";
 		const rank = "_" + (ranks[card.rank] ?? ("0" + card.rank));
-		return "/images/card" + (suit ? suit : "") + rank + ".png";
+		return "/images/card" + suit + rank + ".png";
 	}
 
 	function updateSelectGame(data) {
@@ -32,7 +78,7 @@ $(document).ready(function () {
 					$("<img />", {
 						class: "img-fluid",
 						["data-cid"]: i,
-						src: getCardImgSrc(data.hand.cards.at(i))
+						src: getCardImgSrc(data.hand.cards[i])
 					})
 				)
 			);
@@ -167,10 +213,29 @@ $(document).ready(function () {
 				utils.removeOption("#pickSelect", data.pid);
 				updatePlayer(data);
 				updateHand(data);
+				socket.send(JSON.stringify({
+					id: id,
+					pid: pid
+				}));
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
 				utils.updateStatus("#status", errorThrown);
 			});
+		});
+	}
+
+	function getHand() {
+		$.ajax({
+			type: "GET",
+			url: "/games/" + id + "/players/" + pid,
+			dataType: "json"
+		})
+		.done(function (data) {
+			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateHand(data);
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			utils.updateStatus("#status", errorThrown);
 		});
 	}
 
@@ -258,6 +323,22 @@ $(document).ready(function () {
 		});
     }
 
+    function discardDeck() {
+		$.ajax({
+			type: "PUT",
+			url: "/games/" + id + "/deck/discard",
+			dataType: "json"
+		})
+		.done(function (data) {
+			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateDeck(data);
+			updatePile(data);
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			utils.updateStatus("#status", errorThrown);
+		});
+    }
+
     function recycleHand() {
 		$.ajax({
 			type: "PUT",
@@ -278,6 +359,22 @@ $(document).ready(function () {
 		$.ajax({
 			type: "PUT",
 			url: "/games/" + id + "/deck/recycle",
+			dataType: "json"
+		})
+		.done(function (data) {
+			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateDeck(data);
+			updatePile(data);
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			utils.updateStatus("#status", errorThrown);
+		});
+    }
+
+    function shufflePile() {
+		$.ajax({
+			type: "PUT",
+			url: "/games/" + id + "/pile/shuffle",
 			dataType: "json"
 		})
 		.done(function (data) {
@@ -333,10 +430,12 @@ $(document).ready(function () {
 
 	$("#deckModal").on("click", "button", toggleDeckModal);
 	$("#drawDeck").click(drawDeck);
+	$("#discardDeck").click(discardDeck);
 
 	$("#pileModal").on("click", "button", togglePileModal);
 	$("#recycleHand").click(recycleHand);
 	$("#recycleDeck").click(recycleDeck);
+	$("#shufflePile").click(shufflePile);
 
 	$("#hand").on("click", "img", function () {
 		$("#handModalCard").empty().append($(this).clone());
