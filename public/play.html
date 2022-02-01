@@ -107,6 +107,34 @@
 
   </div>
 
+  <!-- Modal: hand -->
+  <div class="modal fade" id="handModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-body">
+          <div class="container-fluid">
+            <div class="row">
+              <div id="handModalCard" class="col">
+              </div>
+              <div class="col">
+                <div class="row">
+                  <div class="col mb-3">
+                    <button id="discardHand" type="button" class="btn btn-primary">Discard</button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col mb-3">
+                    <button type="button" class="btn btn-secondary">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: draw -->
   <div class="modal fade" id="drawModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
@@ -136,19 +164,24 @@
     </div>
   </div>
 
-  <!-- Modal: hand -->
-  <div class="modal fade" id="handModal" tabindex="-1" role="dialog">
+  <!-- Modal: pile -->
+  <div class="modal fade" id="pileModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
         <div class="modal-body">
           <div class="container-fluid">
             <div class="row">
-              <div id="handModalCard" class="col">
+              <div id="pileModalCard" class="col">
               </div>
               <div class="col">
                 <div class="row">
                   <div class="col mb-3">
-                    <button id="discardHand" type="button" class="btn btn-primary">Discard</button>
+                    <button id="recycleHand" type="button" class="btn btn-primary">Recycle to hand</button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col mb-3">
+                    <button id="recycleDeck" type="button" class="btn btn-primary">Recycle to deck</button>
                   </div>
                 </div>
                 <div class="row">
@@ -168,221 +201,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="/utils.js"></script>
-  <script>
-$(document).ready(function () {
-	function parseCard(card, i) {
-		const suits = { C: "club", D: "diamond", H: "heart", S: "spade" };
-		const ranks = { A: "01", 0: "10", J: "11", Q: "12", K: "13", X: "joker" };
-		const suit = "_" + suits[card.suit];
-		const rank = "_" + (ranks[card.rank] ?? ("0" + card.rank));
-		return {
-			["data-suit"]: card.suit,
-			["data-rank"]: card.rank,
-			["data-deck"]: card.deck,
-			["data-cid"]: i,
-			src: "/images/card" + (suit ? suit : "") + rank + ".png",
-			class: "img-fluid"
-		};
-	}
-
-	function updateSelectGame(data) {
-		$("#selectGameSelect").empty();
-		for (const game of data.games) {
-			appendOption("#selectGameSelect", game, game);
-		}
-	}
-
-	function updateSelectPlayer(data) {
-		$("#selectPlayerInput").attr("value", data.id);
-		$("#selectPlayerSelect").empty();
-		for (let i = 0; i < data.players.length; i++) {
-			appendOption("#selectPlayerSelect", i, `${i}: [${data.players[i]}]`);
-		}
-	}
-
-	function updateHand(data) {
-		$("#hand").empty();
-		for (let i = 0; i < data.hand.cards.length; i++) {
-			$("#hand").append(
-				$("<div />", { class: "col" }).append(
-					$("<img />", parseCard(data.hand.cards.at(i), i))
-				)
-			);
-		}
-	}
-
-	function updateDeck(data) {
-		$.ajax({
-			type: "GET",
-			url: "/games/" + data.id + "/deck",
-			dataType: "json"
-		})
-		.done(function (data) {
-			status(JSON.stringify(data, null, 2));
-			$("#deckLabel").text(data.deck.length);
-			$("#deck").empty().append(
-				$("<img />", {
-					src: "/images/card_back.png",
-					class: "img-fluid"
-				})
-			);
-		})
-		.fail(function (jqXHR, textStatus, errorThrown) {
-			status(errorThrown);
-		});
-	}
-
-	function updatePile(data) {
-		$.ajax({
-			type: "GET",
-			url: "/games/" + data.id + "/pile",
-			dataType: "json"
-		})
-		.done(function (data) {
-			status(JSON.stringify(data, null, 2));
-			$("#pileLabel").text(data.pile.length);
-			$("#pile").empty().append(
-				$("<img />", data.pile.card ? parseCard(data.pile.card) : {
-					src: "/images/card_back.png",
-					class: "img-fluid"
-				})
-			);
-		})
-		.fail(function (jqXHR, textStatus, errorThrown) {
-			status(errorThrown);
-		});
-	}
-
-	function listGames() {
-		$.ajax({
-			type: "GET",
-			url: "/games",
-			dataType: "json"
-		})
-		.done(function (data) {
-			status(JSON.stringify(data, null, 2));
-			updateSelectGame(data);
-		})
-		.fail(function (jqXHR, textStatus, errorThrown) {
-			status(errorThrown);
-		});
-	}
-
-	function selectGame() {
-		const data = parse({
-			id: "#selectGameSelect"
-		});
-		if (undefined !== data) {
-			$.ajax({
-				type: "GET",
-				url: "/games/" + data.id,
-				dataType: "json"
-			})
-			.done(function (data) {
-				status(JSON.stringify(data, null, 2));
-				$("#game").attr("data-id", data.id).text(data.id);
-				updateSelectPlayer(data);
-				updateDeck(data);
-				updatePile(data);
-			})
-			.fail(function (jqXHR, textStatus, errorThrown) {
-				status(errorThrown);
-			});
-		}
-	}
-
-	function selectPlayer() {
-		const data = parse({
-			id: "#selectPlayerInput",
-			pid: "#selectPlayerSelect"
-		});
-		if (undefined !== data) {
-			$.ajax({
-				type: "GET",
-				url: "/games/" + data.id + "/players/" + data.pid,
-				dataType: "json"
-			})
-			.done(function (data) {
-				status(JSON.stringify(data, null, 2));
-				$("#player").attr("data-pid", data.pid).text(`${data.pid} [${data.player}]`);
-				updateHand(data);
-			})
-			.fail(function (jqXHR, textStatus, errorThrown) {
-				status(errorThrown);
-			});
-		}
-	}
-
-	function discardHand() {
-        const data = parseData({
-            id: "#game",
-            pid: "#player",
-			cid: "#handModalCard img"
-        });
-        if (undefined !== data) {
-			$.ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/cards/" + data.cid + "/discard",
-				dataType: "json"
-			})
-			.done(function (data) {
-				status(JSON.stringify(data, null, 2));
-				updateHand(data);
-				updatePile(data);
-			})
-			.fail(function (jqXHR, textStatus, errorThrown) {
-				status(errorThrown);
-			});
-        }
-	}
-	
-    function drawDeck() {
-        const data = parseData({
-            id: "#game",
-            pid: "#player"
-        });
-        if (undefined !== data) {
-			$.ajax({
-				type: "PUT",
-				url: "/games/" + data.id + "/players/" + data.pid + "/draw",
-				dataType: "json"
-			})
-			.done(function (data) {
-				status(JSON.stringify(data, null, 2));
-				updateHand(data);
-				updateDeck(data);
-			})
-			.fail(function (jqXHR, textStatus, errorThrown) {
-				status(errorThrown);
-			});
-        }
-    }
-
-	function drawModal() {
-		const modal = document.getElementById('drawModal');
-		bootstrap.Modal.getOrCreateInstance(modal).toggle();
-	}
-
-	function handModal() {
-		const modal = document.getElementById('handModal');
-		bootstrap.Modal.getOrCreateInstance(modal).toggle();
-	}
-
-	$("#listGames").click(listGames);
-	$("#selectGame").click(selectGame);
-	$("#selectPlayer").click(selectPlayer);
-
-	$("#deck").on("click", "img", drawModal);
-	$("#drawModal").on("click", "button", drawModal);
-	$("#drawDeck").click(drawDeck);
-
-	$("#hand").on("click", "img", function() {
-		$("#handModalCard").empty().append($(this).clone());
-		handModal();
-	});
-	$("#handModal").on("click", "button", handModal);
-	$("#discardHand").click(discardHand);
-});
-  </script>
+  <script src="/play.js"></script>
 </body>
 </html>
