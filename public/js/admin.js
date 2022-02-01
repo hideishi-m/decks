@@ -30,7 +30,7 @@ $(document).ready(function () {
 	}
 
     function newGame() {
-		utils.parseValuesEach({
+		utils.parseDataValuesEach({
 			players: "input[name^=players]"
 		}, function (error, data) {
 			if (error) {
@@ -56,7 +56,7 @@ $(document).ready(function () {
     }
 
     function deleteGame() {
-        utils.parseValue({
+        utils.parseDataValue({
             id: "#deleteGameSelect"
         }, function (error, data) {
 			if (error) {
