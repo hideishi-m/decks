@@ -18,7 +18,7 @@ async function ajax(url, args) {
 }
 
 function updateStatus(text) {
-	$("#status").empty().append($("<pre />").text(text));
+	$('#status').empty().append($('<pre />').text(text));
 }
 
 function parseDataValuesEach(settings) {
@@ -32,7 +32,7 @@ function parseDataValuesEach(settings) {
 			}
 		});
 		if (0 === data[key].length) {
-			throw new Error(key + " is empty");
+			throw new Error(key + ' is empty');
 		}
 	}
 	return data;
@@ -43,7 +43,7 @@ function parseDataValue(settings) {
 	for (const [key, selector] of Object.entries(settings)) {
 		data[key] = undefined !== $(selector).data(key) ? $(selector).data(key) : $(selector).val();
 		if (false === /^\d+$/.test(data[key])) {
-			throw new Error(key + " is empty");
+			throw new Error(key + ' is empty');
 		}
 	}
 	return data;
@@ -61,20 +61,20 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('/games/' + id, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
-			$("#game").append($("<div />", {
-				class: "col-3",
-				["data-id"]: data.id
+			$('#game').append($('<div />', {
+				class: 'col-3',
+				['data-id']: data.id
 			}).text(data.id));
-			$("#game").append($("<div />", {
-				class: "col-9",
-				["data-id"]: data.id
+			$('#game').append($('<div />', {
+				class: 'col-9',
+				['data-id']: data.id
 			}).text(data.players));
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
 	}
 	function removeGame(id) {
-		$(`#game div[data-id="${id}"]`).each(function () {
+		$(`#game div[data-id='${id}']`).each(function () {
 			$(this).remove();
 		});
 	}
@@ -86,20 +86,20 @@ $(document).ready(async function () {
 		}
 	}
 	function appendDeleteGame(id) {
-		$("#deleteGameSelect").append($("<option />", {
+		$('#deleteGameSelect').append($('<option />', {
 			value: id
 		}).text(id));
 	}
 	function removeDeleteGame(id) {
-		$(`#deleteGameSelect option[value="${id}"]`).remove();
+		$(`#deleteGameSelect option[value='${id}']`).remove();
 	}
 
 	// #newGame
-    $("#newGame").click(newGame);
+    $('#newGame').click(newGame);
     async function newGame() {
 		try {
 			const params = parseDataValuesEach({
-				players: "input[name^=players]"
+				players: 'input[name^=players]'
 			});
 			const data = await ajax('/games', {
 				method: 'POST',
@@ -120,20 +120,20 @@ $(document).ready(async function () {
     }
 
 	// #players
-	$(".add").click(function () {
-		const html = $(".copy").html();
-		$("#players").parent().append(html);
+	$('.add').click(function () {
+		const html = $('.copy').html();
+		$('#players').parent().append(html);
 	});
-	$("#players").parent().on("click", ".remove", function () {
-		$(this).parents(".input-group").remove();
+	$('#players').parent().on('click', '.remove', function () {
+		$(this).parents('.input-group').remove();
 	});
 
 	// #deleteGame
-    $("#deleteGame").click(deleteGame);
+    $('#deleteGame').click(deleteGame);
     async function deleteGame() {
 		try {
 			const params = parseDataValue({
-				id: "#deleteGameSelect"
+				id: '#deleteGameSelect'
 			});
 			const data = await ajax('/games/' + params.id, { method: 'DELETE' } );
 			updateStatus(JSON.stringify(data, null, 2));
