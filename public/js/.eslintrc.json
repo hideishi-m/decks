@@ -4,7 +4,6 @@
     "jquery": true
   },
   "globals": {
-    "bootstrap": "readonly",
-    "utils": "readonly"
+    "bootstrap": "readonly"
   }
 }

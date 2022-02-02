@@ -9,20 +9,23 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import { appendOption, removeOption, updateStatus, parseDataValuesEach, parseDataValue } from "/js/utils.js";
+
 $(document).ready(function () {
+
 	function updateDeleteGame(data) {
 		$("#deleteGameSelect").empty();
 		for (const game of data.games) {
-			utils.appendOption("#deleteGameSelect", game, game);
+			appendOption("#deleteGameSelect", game, game);
 		}
 	}
 
 	function appendDeleteGame(id) {
-		utils.appendOption("#deleteGameSelect", id, id);
+		appendOption("#deleteGameSelect", id, id);
 	}
 
 	function removeDeleteGame(id) {
-		utils.removeOption("#deleteGameSelect", id);
+		removeOption("#deleteGameSelect", id);
 	}
 
 	function updateGames(data) {
@@ -56,11 +59,11 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			appendGame(data);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
 	}
 
@@ -71,21 +74,21 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			updateGames(data);
 			updateDeleteGame(data);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
 	}
 
     function newGame() {
-		utils.parseDataValuesEach({
+		parseDataValuesEach({
 			players: "input[name^=players]"
 		}, function (error, data) {
 			if (error) {
-				return utils.updateStatus("#status", error);
+				return updateStatus("#status", error);
 			}
 			$.ajax({
 				type: "POST",
@@ -97,22 +100,22 @@ $(document).ready(function () {
 				dataType: "json"
 			})
 			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
+				updateStatus("#status", JSON.stringify(data, null, 2));
 				getGame(data);
 				appendDeleteGame(data.id);
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
+				updateStatus("#status", errorThrown);
 			});
 		});
     }
 
     function deleteGame() {
-        utils.parseDataValue({
+        parseDataValue({
             id: "#deleteGameSelect"
         }, function (error, data) {
 			if (error) {
-				return utils.updateStatus("#status", error);
+				return updateStatus("#status", error);
 			}
             $.ajax({
                 type: "DELETE",
@@ -120,12 +123,12 @@ $(document).ready(function () {
                 dataType: "json"
             })
 			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
+				updateStatus("#status", JSON.stringify(data, null, 2));
 				removeGame(data);
 				removeDeleteGame(data.id);
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
+				updateStatus("#status", errorThrown);
 			});
         });
     }

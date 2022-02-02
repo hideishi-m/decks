@@ -9,6 +9,8 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import { appendOption, updateStatus, parseDataValue, removeOption} from '/js/utils.js';
+
 $(document).ready(function () {
 	let id, pid;
 	let gameModal, playerModal, handModal, deckModal, pileModal;
@@ -76,14 +78,14 @@ $(document).ready(function () {
 	function updateSelectGame(data) {
 		$("#selectGameSelect").empty();
 		for (const game of data.games) {
-			utils.appendOption("#selectGameSelect", game, game);
+			appendOption("#selectGameSelect", game, game);
 		}
 	}
 
 	function updateSelectPlayer(data) {
 		$("#selectPlayerSelect").empty();
 		for (let i = 0; i < data.players.length; i++) {
-			utils.appendOption("#selectPlayerSelect", i, data.players[i]);
+			appendOption("#selectPlayerSelect", i, data.players[i]);
 		}
 	}
 
@@ -105,14 +107,14 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			$("#deckLabel").text(data.deck.length);
 			$("#deck").empty().append(
 				getCardSvg()
 			);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
 	}
 
@@ -123,14 +125,14 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			$("#pileLabel").text(data.pile.length);
 			$("#pile").empty().append(
 				getCardSvg(data.card)
 			);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
 	}
 
@@ -147,14 +149,14 @@ $(document).ready(function () {
 	function updatePassHandSelect(data) {
 		$("#passHandSelect").empty();
 		for (let i = 0; i < data.players.length; i++) {
-			utils.appendOption("#passHandSelect", i, data.players[i]);
+			appendOption("#passHandSelect", i, data.players[i]);
 		}
 	}
 
 	function updatePickSelect(data) {
 		$("#pickSelect").empty();
 		for (let i = 0; i < data.players.length; i++) {
-			utils.appendOption("#pickSelect", i, data.players[i]);
+			appendOption("#pickSelect", i, data.players[i]);
 		}
 	}
 
@@ -165,21 +167,21 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			updateSelectGame(data);
 			toggleGameModal();
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
 	}
 
 	function selectGame() {
-		utils.parseDataValue({
+		parseDataValue({
 			id: "#selectGameSelect"
 		}, function (error, data) {
 			if (error) {
-				return utils.updateStatus("#status", error);
+				return updateStatus("#status", error);
 			}
 			$.ajax({
 				type: "GET",
@@ -187,7 +189,7 @@ $(document).ready(function () {
 				dataType: "json"
 			})
 			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
+				updateStatus("#status", JSON.stringify(data, null, 2));
 				updateGame(data);
 				updateSelectPlayer(data);
 				updatePassHandSelect(data);
@@ -197,17 +199,17 @@ $(document).ready(function () {
 				togglePlayerModal();
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
+				updateStatus("#status", errorThrown);
 			});
 		});
 	}
 
 	function selectPlayer() {
-		utils.parseDataValue({
+		parseDataValue({
 			pid: "#selectPlayerSelect"
 		}, function (error, data) {
 			if (error) {
-				return utils.updateStatus("#status", error);
+				return updateStatus("#status", error);
 			}
 			$.ajax({
 				type: "GET",
@@ -215,9 +217,9 @@ $(document).ready(function () {
 				dataType: "json"
 			})
 			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
-				utils.removeOption("#passHandSelect", data.pid);
-				utils.removeOption("#pickSelect", data.pid);
+				updateStatus("#status", JSON.stringify(data, null, 2));
+				removeOption("#passHandSelect", data.pid);
+				removeOption("#pickSelect", data.pid);
 				updatePlayer(data);
 				updateHand(data);
 				socket.send(JSON.stringify({
@@ -226,7 +228,7 @@ $(document).ready(function () {
 				}));
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
+				updateStatus("#status", errorThrown);
 			});
 		});
 	}
@@ -238,20 +240,20 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			updateHand(data);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
 	}
 
 	function discardHand() {
-        utils.parseDataValue({
+        parseDataValue({
 			cid: "#handModalCard svg"
         }, function (error, data) {
 			if (error) {
-				return utils.updateStatus("#status", error);
+				return updateStatus("#status", error);
 			}
 			$.ajax({
 				type: "PUT",
@@ -259,23 +261,23 @@ $(document).ready(function () {
 				dataType: "json"
 			})
 			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
+				updateStatus("#status", JSON.stringify(data, null, 2));
 				updateHand(data);
 				updatePile(data);
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
+				updateStatus("#status", errorThrown);
 			});
         });
 	}
 
 	function passHand() {
-        utils.parseDataValue({
+        parseDataValue({
 			cid: "#handModalCard svg",
 			tid: "#passHandSelect"
         }, function (error, data) {
 			if (error) {
-				return utils.updateStatus("#status", error);
+				return updateStatus("#status", error);
 			}
 			$.ajax({
 				type: "PUT",
@@ -283,21 +285,21 @@ $(document).ready(function () {
 				dataType: "json"
 			})
 			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
+				updateStatus("#status", JSON.stringify(data, null, 2));
 				updateHand(data);
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
+				updateStatus("#status", errorThrown);
 			});
         });
 	}
 
 	function pickHand() {
-		utils.parseDataValue({
+		parseDataValue({
 			tid: "#pickSelect"
 		}, function (error, data) {
 			if (error) {
-				return utils.updateStatus("#status", error);
+				return updateStatus("#status", error);
 			}
 			$.ajax({
 				type: "PUT",
@@ -305,11 +307,11 @@ $(document).ready(function () {
 				dataType: "json"
 			})
 			.done(function (data) {
-				utils.updateStatus("#status", JSON.stringify(data, null, 2));
+				updateStatus("#status", JSON.stringify(data, null, 2));
 				updateHand(data);
 			})
 			.fail(function (jqXHR, textStatus, errorThrown) {
-				utils.updateStatus("#status", errorThrown);
+				updateStatus("#status", errorThrown);
 			});
 		});
 	}
@@ -321,12 +323,12 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			updateHand(data);
 			updateDeck(data);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
     }
 
@@ -337,12 +339,12 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			updateDeck(data);
 			updatePile(data);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
     }
 
@@ -353,12 +355,12 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			updateHand(data);
 			updatePile(data);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
     }
 
@@ -369,12 +371,12 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			updateDeck(data);
 			updatePile(data);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
     }
 
@@ -385,12 +387,12 @@ $(document).ready(function () {
 			dataType: "json"
 		})
 		.done(function (data) {
-			utils.updateStatus("#status", JSON.stringify(data, null, 2));
+			updateStatus("#status", JSON.stringify(data, null, 2));
 			updateDeck(data);
 			updatePile(data);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
-			utils.updateStatus("#status", errorThrown);
+			updateStatus("#status", errorThrown);
 		});
     }
 
