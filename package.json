@@ -15,6 +15,7 @@
   "dependencies": {
     "debug": "^4.3.3",
     "express": "^4.17.2",
+    "svg-cards": "^4.0.0",
     "ws": "^8.4.2"
   }
 }

@@ -59,12 +59,18 @@ $(document).ready(function () {
 		}
 	}
 
-	function getCardImgSrc(card) {
-		const suits = { C: "club", D: "diamond", H: "heart", S: "spade" };
-		const ranks = { A: "01", 0: "10", J: "11", Q: "12", K: "13", X: "joker" };
-		const suit = suits[card.suit] ? ("_" + suits[card.suit]) : "";
-		const rank = "_" + (ranks[card.rank] ?? ("0" + card.rank));
-		return "/images/card" + suit + rank + ".png";
+	function getCardSvg(card) {
+		let use;
+		if (card) {
+			const suits = { C: "club", D: "diamond", H: "heart", S: "spade" };
+			const ranks = { A: "1", 0: "10", J: "jack", Q: "queen", K: "king", X: "joker_black" };
+			const suit = suits[card.suit] ? (suits[card.suit] + "_") : "";
+			const rank = ranks[card.rank] ?? card.rank;
+			use = `<use href="/images/svg-cards.svg#${suit}${rank}" x="0" y="0" />`;
+		} else {
+			use = '<use href="/images/svg-cards.svg#back" x="0" y="0" fill="red" />';
+		}
+		return $(`<svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >${use}</svg>`);
 	}
 
 	function updateSelectGame(data) {
@@ -86,11 +92,7 @@ $(document).ready(function () {
 		for (let i = 0; i < data.hand.cards.length; i++) {
 			$("#hand").append(
 				$("<div />", { class: "col" }).append(
-					$("<img />", {
-						class: "img-fluid",
-						["data-cid"]: i,
-						src: getCardImgSrc(data.hand.cards[i])
-					})
+					getCardSvg(data.hand.cards[i]).attr("data-cid", i)
 				)
 			);
 		}
@@ -106,10 +108,7 @@ $(document).ready(function () {
 			utils.updateStatus("#status", JSON.stringify(data, null, 2));
 			$("#deckLabel").text(data.deck.length);
 			$("#deck").empty().append(
-				$("<img />", {
-					src: "/images/card_back.png",
-					class: "img-fluid"
-				})
+				getCardSvg()
 			);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
@@ -127,10 +126,7 @@ $(document).ready(function () {
 			utils.updateStatus("#status", JSON.stringify(data, null, 2));
 			$("#pileLabel").text(data.pile.length);
 			$("#pile").empty().append(
-				$("<img />", {
-					class: "img-fluid",
-					src: data.card ? getCardImgSrc(data.card) : "/images/card_back.png"
-				})
+				getCardSvg(data.card)
 			);
 		})
 		.fail(function (jqXHR, textStatus, errorThrown) {
@@ -252,7 +248,7 @@ $(document).ready(function () {
 
 	function discardHand() {
         utils.parseDataValue({
-			cid: "#handModalCard img"
+			cid: "#handModalCard svg"
         }, function (error, data) {
 			if (error) {
 				return utils.updateStatus("#status", error);
@@ -275,7 +271,7 @@ $(document).ready(function () {
 
 	function passHand() {
         utils.parseDataValue({
-			cid: "#handModalCard img",
+			cid: "#handModalCard svg",
 			tid: "#passHandSelect"
         }, function (error, data) {
 			if (error) {
@@ -448,14 +444,14 @@ $(document).ready(function () {
 	$("#recycleDeck").click(recycleDeck);
 	$("#shufflePile").click(shufflePile);
 
-	$("#hand").on("click", "img", function () {
+	$("#hand").on("click", "svg", function () {
 		$("#handModalCard").empty().append($(this).clone());
 		toggleHandModal();
 	});
-	$("#deck").on("click", "img", function () {
+	$("#deck").on("click", "svg", function () {
 		toggleDeckModal();
 	});
-	$("#pile").on("click", "img", function () {
+	$("#pile").on("click", "svg", function () {
 		$("#pileModalCard").empty().append($(this).clone());
 		togglePileModal();
 	});
