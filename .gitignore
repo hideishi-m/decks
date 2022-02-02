@@ -1,2 +1,3 @@
 /node_modules
-/decks-*.tgz
+decks-*.tgz
+package-lock.json
