@@ -9,7 +9,13 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { newGames } from "/js/decks.js";
+async function ajax(url, args) {
+	const response = await fetch(url, args);
+	if (false === response.ok) {
+		throw new Error(`${response.status} ${response.statusText}`);
+	}
+	return await response.json();
+}
 
 function updateStatus(text) {
 	$("#status").empty().append($("<pre />").text(text));
@@ -44,25 +50,28 @@ function parseDataValue(settings) {
 }
 
 $(document).ready(async function () {
-	const games = newGames();
 
 	// #game
-	function updateGames() {
-		$("#game").empty();
-		for (const id of games.keys()) {
-			appendGame(id);
+	async function updateGames(data) {
+		for (const id of data.games) {
+			await appendGame(id);
 		}
 	}
-	function appendGame(id) {
-		const game = games.get(id);
-		$("#game").append($("<div />", {
-			class: "col-3",
-			["data-id"]: game.id
-		}).text(game.id));
-		$("#game").append($("<div />", {
-			class: "col-9",
-			["data-id"]: game.id
-		}).text(Array.from(game.values())));
+	async function appendGame(id) {
+		try {
+			const data = await ajax('/games/' + id, { method: 'GET' });
+			updateStatus(JSON.stringify(data, null, 2));
+			$("#game").append($("<div />", {
+				class: "col-3",
+				["data-id"]: data.id
+			}).text(data.id));
+			$("#game").append($("<div />", {
+				class: "col-9",
+				["data-id"]: data.id
+			}).text(data.players));
+		} catch (error) {
+			updateStatus(`${error.name}: ${error.message}`);
+		}
 	}
 	function removeGame(id) {
 		$(`#game div[data-id="${id}"]`).each(function () {
@@ -71,9 +80,8 @@ $(document).ready(async function () {
 	}
 
 	// #deleteGameSelect
-	function updateDeleteGame() {
-		$("#deleteGameSelect").empty();
-		for (const id of games.keys()) {
+	function updateDeleteGames(data) {
+		for (const id of data.games) {
 			appendDeleteGame(id);
 		}
 	}
@@ -88,35 +96,24 @@ $(document).ready(async function () {
 
 	// #newGame
     $("#newGame").click(newGame);
-
     async function newGame() {
 		try {
 			const params = parseDataValuesEach({
 				players: "input[name^=players]"
 			});
-			const data = await games.add({
-				players: params.players
+			const data = await ajax('/games', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				cache: 'no-cache',
+				body: JSON.stringify({
+					players: params.players
+				})
 			});
 			updateStatus(JSON.stringify(data, null, 2));
-			appendGame(data.id);
+			await appendGame(data.id);
 			appendDeleteGame(data.id);
-		} catch (error) {
-			updateStatus(`${error.name}: ${error.message}`);
-		}
-    }
-
-	// #deleteGame
-    $("#deleteGame").click(deleteGame);
-
-    async function deleteGame() {
-		try {
-			const params = parseDataValue({
-				id: "#deleteGameSelect"
-			});
-			const data = await games.delete(params.id);
-			updateStatus(JSON.stringify(data, null, 2));
-			removeGame(data.id);
-			removeDeleteGame(data.id);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -131,12 +128,28 @@ $(document).ready(async function () {
 		$(this).parents(".input-group").remove();
 	});
 
+	// #deleteGame
+    $("#deleteGame").click(deleteGame);
+    async function deleteGame() {
+		try {
+			const params = parseDataValue({
+				id: "#deleteGameSelect"
+			});
+			const data = await ajax('/games/' + params.id, { method: 'DELETE' } );
+			updateStatus(JSON.stringify(data, null, 2));
+			removeGame(data.id);
+			removeDeleteGame(data.id);
+		} catch (error) {
+			updateStatus(`${error.name}: ${error.message}`);
+		}
+    }
+
 	// ready
 	try {
-		const data = await games.update();
+		const data = await ajax('/games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
-		updateGames();
-		updateDeleteGame();
+		await updateGames(data);
+		updateDeleteGames(data);
 	} catch (error) {
 		updateStatus(`${error.name}: ${error.message}`);
 	}
