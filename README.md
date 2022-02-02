@@ -90,7 +90,7 @@ response: {
   id: "1",
   pid: "1",
   player: "pc1",
-  cards: [ array of card ]
+  hand: { cards: [ array of card ] }
 }
 
 ### 山札から引く
@@ -101,7 +101,7 @@ response: {
   id: "1",
   pid: "1",
   player: "pc1",
-  cards: [ array of card ]
+  hand: { cards: [ array of card ] }
 }
 
 ### 捨て札から戻す
@@ -112,7 +112,7 @@ response: {
   id: "1",
   pid: "1",
   player: "pc1",
-  cards: [ array of card ]
+  hand: { cards: [ array of card ] }
 }
 
 ### 手札取得
@@ -135,7 +135,7 @@ response: {
   id: "1",
   pid: "1",
   player: "pc1",
-  cards: [ array of card ]
+  hand: { cards: [ array of card ] }
 }
 
 ### 手札を別のプレーヤーに渡す
@@ -146,7 +146,7 @@ response: {
   id: "1",
   pid: "1",
   player: "pc1",
-  cards: [ array of card ]
+  hand: { cards: [ array of card ] }
 }
 
 ### 別のプレーヤーから手札を引く
@@ -157,6 +157,6 @@ response: {
   id: "1",
   pid: "1",
   player: "pc1",
-  cards: [ array of card ]
+  hand: { cards: [ array of card ] }
 }
 

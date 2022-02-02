@@ -21,6 +21,16 @@ function updateStatus(text) {
 	$('#status').empty().append($('<pre />').text(text));
 }
 
+function appendOption(selector, id, text) {
+	$(selector).append($('<option />', {
+		value: id
+	}).text(text));
+}
+
+function removeOption(selector, id) {
+	$(`${selector} option[value='${id}']`).remove();
+}
+
 function parseDataValuesEach(settings) {
 	const data = {};
 	for (const [key, selector] of Object.entries(settings)) {
@@ -51,16 +61,12 @@ function parseDataValue(settings) {
 
 $(document).ready(async function () {
 
-	// #game
-	async function updateGames(data) {
-		for (const id of data.games) {
-			await appendGame(id);
-		}
-	}
+	// common
 	async function appendGame(id) {
 		try {
 			const data = await ajax('/games/' + id, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
+
 			$('#game').append($('<div />', {
 				class: 'col-3',
 				['data-id']: data.id
@@ -69,29 +75,10 @@ $(document).ready(async function () {
 				class: 'col-9',
 				['data-id']: data.id
 			}).text(data.players));
+			appendOption('#deleteGameSelect', data.id, data.id);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
-	}
-	function removeGame(id) {
-		$(`#game div[data-id='${id}']`).each(function () {
-			$(this).remove();
-		});
-	}
-
-	// #deleteGameSelect
-	function updateDeleteGames(data) {
-		for (const id of data.games) {
-			appendDeleteGame(id);
-		}
-	}
-	function appendDeleteGame(id) {
-		$('#deleteGameSelect').append($('<option />', {
-			value: id
-		}).text(id));
-	}
-	function removeDeleteGame(id) {
-		$(`#deleteGameSelect option[value='${id}']`).remove();
 	}
 
 	// #newGame
@@ -112,8 +99,8 @@ $(document).ready(async function () {
 				})
 			});
 			updateStatus(JSON.stringify(data, null, 2));
+
 			await appendGame(data.id);
-			appendDeleteGame(data.id);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -137,8 +124,11 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('/games/' + params.id, { method: 'DELETE' } );
 			updateStatus(JSON.stringify(data, null, 2));
-			removeGame(data.id);
-			removeDeleteGame(data.id);
+
+			$(`#game div[data-id='${data.id}']`).each(function () {
+				$(this).remove();
+			});
+			removeOption('#deleteGameSelect', data.id);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -148,8 +138,10 @@ $(document).ready(async function () {
 	try {
 		const data = await ajax('/games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
-		await updateGames(data);
-		updateDeleteGames(data);
+
+		for (const id of data.games) {
+			await appendGame(id);
+		}
 	} catch (error) {
 		updateStatus(`${error.name}: ${error.message}`);
 	}
