@@ -32,7 +32,7 @@ function newApp(emitter, name) {
 		limit: '10mb'
 	}));
 	app.use(function (req, res, next) {
-		if (false === /\.(ico|png|js)$/.test(req.path)) {
+		if (false === /\.(ico|js|svg)$/.test(req.path)) {
 			logger({
 				time: new Date(),
 				ip: req.ip,
