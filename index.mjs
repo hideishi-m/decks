@@ -9,16 +9,15 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-'use strict';
+import debug from 'debug';
+import EventEmitter from 'events';
+import { readFile } from 'fs/promises';
+import process from 'process';
 
-const debug = require('debug');
-const EventEmitter = require('events');
-const process = require('process');
+import { newApp } from './app.mjs';
+import { newServer } from './server.mjs';
 
-const { newApp } = require('./app.cjs');
-const { newServer } = require('./server.cjs');
-
-const packageJson = require('./package.json');
+const packageJson = JSON.parse(await readFile(new URL('./package.json', import.meta.url)));
 const name = packageJson.name;
 const port = packageJson.config.port;
 const timeout = packageJson.config.timeout;

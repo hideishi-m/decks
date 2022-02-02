@@ -5,11 +5,11 @@
   "homepage": "https://github.com/hideishi-m/decks",
   "main": "index.cjs",
   "scripts": {
-    "start": "node index.cjs"
+    "start": "node index.mjs"
   },
   "author": "Hidenori ISHIKAWA",
   "files": [
-    "*.cjs",
+    "*.mjs",
     "public/**/*.html",
     "public/**/*.js",
     "public/**/*.svg"

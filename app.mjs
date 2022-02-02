@@ -9,15 +9,12 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-'use strict';
+import debug from 'debug';
+import express from 'express';
 
-const debug = require('debug');
-const express = require('express');
-const path = require('path');
+import { newGame } from './game.mjs';
 
-const { newGame } = require('./game.cjs');
-
-function newApp(emitter, name) {
+export function newApp(emitter, name) {
 	name = name ? `${name}:app` : 'app';
 
 	const logger = debug(name);
@@ -43,7 +40,7 @@ function newApp(emitter, name) {
 		}
 		next();
 	});
-	app.use('/', express.static(path.join(__dirname, 'public')));
+	app.use('/', express.static(new URL('./public', import.meta.url).pathname));
 
 	app.param('id', function (req, res, next, id) {
 		if (false === /^\d+$/.test(id)) {
@@ -556,5 +553,3 @@ function newApp(emitter, name) {
 
 	return app;
 }
-
-module.exports = { newApp };

@@ -9,19 +9,17 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-'use strict';
+import debug from 'debug';
+import http from 'http';
+import { WebSocketServer } from 'ws';
 
-const debug = require('debug');
-const http = require('http');
-const ws = require('ws');
-
-function newServer(emitter, name) {
+export function newServer(emitter, name) {
 	name = name ? `${name}:server` : 'server';
 
 	const logger = debug(name);
 	const wsMap = new Map();
 	const server = http.createServer();
-	const wsServer = new ws.Server({ server: server });
+	const wsServer = new WebSocketServer({ server: server });
 
 	emitter.on('deck', function (data) {
 		logger({ deck: data });
@@ -79,9 +77,9 @@ function newServer(emitter, name) {
 		logger(`connected from ${ip}`);
 
 		ws.on('message', function (data) {
-			logger({ message: data });
 			try {
 				data = JSON.parse(data) ?? {};
+				logger({ message: data });
 				const id = /^\d+$/.test(data.id) ? data.id : undefined;
 				const pid = /^\d+$/.test(data.pid) ? data.pid : undefined;
 				if (undefined !== id && undefined !== pid) {
@@ -90,7 +88,7 @@ function newServer(emitter, name) {
 					logger({ websockets: [...wsMap.keys()] });
 				}
 			} catch (error) {
-				logger(error);
+				logger({ message: error });
 			}
 		});
 
@@ -109,5 +107,3 @@ function newServer(emitter, name) {
 
 	return server;
 }
-
-module.exports = { newServer };

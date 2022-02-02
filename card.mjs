@@ -9,8 +9,6 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-'use strict';
-
 const suits = [
 	'C', 'D', 'H', 'S'
 ];
@@ -129,7 +127,7 @@ class Cards {
 }
 
 
-function newDrawDeck(deck, jocker, shuffle) {
+export function newDrawDeck(deck, jocker, shuffle) {
 	deck = deck ?? 1;
 	jocker = jocker ?? 2;
 	shuffle = shuffle ?? 10;
@@ -148,11 +146,11 @@ function newDrawDeck(deck, jocker, shuffle) {
 	return cards;
 }
 
-function newDiscardPile() {
+export function newDiscardPile() {
 	return new Cards();
 }
 
-function newHand(deck, draw) {
+export function newHand(deck, draw) {
 	const cards = new Cards();
 	if (deck) {
 		for (let i = 0; i < draw; i++) {
@@ -161,6 +159,3 @@ function newHand(deck, draw) {
 	}
 	return cards;
 }
-
-
-module.exports = { newDrawDeck, newDiscardPile, newHand };
