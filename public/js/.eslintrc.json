@@ -1,0 +1,10 @@
+{
+  "env": {
+    "browser": true,
+    "jquery": true
+  },
+  "globals": {
+    "bootstrap": "readonly",
+    "utils": "readonly"
+  }
+}
