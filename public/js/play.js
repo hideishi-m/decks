@@ -14,19 +14,19 @@ import { ajax, updateStatus, appendLog, updateOptions, removeOption, parseDataVa
 $(document).ready(async function () {
 	let id, pid;
 
-	const gameModal = new bootstrap.Modal(document.getElementById("gameModal"), {
+	const gameModal = new bootstrap.Modal(document.getElementById('gameModal'), {
 		backdrop: 'static',
 		keyboard: false
 	});
-	const playerModal = new bootstrap.Modal(document.getElementById("playerModal"), {
+	const playerModal = new bootstrap.Modal(document.getElementById('playerModal'), {
 		backdrop: 'static',
 		keyboard: false
 	});
-	const handModal = new bootstrap.Modal(document.getElementById("handModal"));
-	const deckModal = new bootstrap.Modal(document.getElementById("deckModal"));
-	const pileModal = new bootstrap.Modal(document.getElementById("pileModal"));
+	const handModal = new bootstrap.Modal(document.getElementById('handModal'));
+	const deckModal = new bootstrap.Modal(document.getElementById('deckModal'));
+	const pileModal = new bootstrap.Modal(document.getElementById('pileModal'));
 
-	const socket = new WebSocket(`ws://${document.location.host}`);
+	const socket = new WebSocket(`${document.location.protocol.replace('http', 'ws')}//${document.location.host}`);
 	socket.addEventListener('message', async function (event) {
 		console.log(event.data);
 		await parseMessage(event.data);
@@ -129,7 +129,7 @@ $(document).ready(async function () {
 			removeOption('#passHandSelect', data.pid);
 			removeOption('#pickSelect', data.pid);
 			pid = data.pid;
-			$("#playerLabel").text(data.player);
+			$('#playerLabel').text(data.player);
 			await updateHand(data.hand);
 
 			socket.send(JSON.stringify({
@@ -160,11 +160,11 @@ $(document).ready(async function () {
 
 				hand = data.hand;
 			}
-			$("#hand").empty();
+			$('#hand').empty();
 			for (let i = 0; i < hand.cards.length; i++) {
-				$("#hand").append(
-					$("<div />", { class: "col" }).append(
-						createCardSvg(hand.cards[i]).attr("data-cid", i)
+				$('#hand').append(
+					$('<div />', { class: 'col' }).append(
+						createCardSvg(hand.cards[i]).data('cid', i)
 					)
 				);
 			}
@@ -210,7 +210,7 @@ $(document).ready(async function () {
 	}
 
 	// #deck
-	$("#deck").on("click", "svg", function () {
+	$('#deck').on('click', 'svg', function () {
 		toggleDeckModal();
 	});
 	async function updateDeck(id) {

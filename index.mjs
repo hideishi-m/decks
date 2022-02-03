@@ -27,7 +27,20 @@ debug.enable(`${name}*`);
 const logger = debug(name);
 const emitter = new EventEmitter();
 const app = newApp(emitter, name);
-const server = newServer(emitter, name);
+
+async function newOptions() {
+	const options = {};
+	const argv = process.argv.slice(2);
+	if (argv[0] && argv[1]) {
+		logger(`Using key ${argv[0]}`);
+		options.key = await readFile(argv[0]);
+		logger(`Using cert ${argv[1]}`);
+		options.cert = await readFile(argv[1]);
+	}
+	return options;
+}
+
+const server = newServer(emitter, name, await newOptions());
 
 function shutdown() {
 	emitter.emit('close');
