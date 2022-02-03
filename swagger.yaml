@@ -1,0 +1,635 @@
+swagger: '2.0'
+info:
+  description: Simple card deck app for playing TOKYO-NIGHTMARE
+  version: 1.0.0
+  title: Simple card deck API
+  # put the contact info for your development or API team
+  contact:
+    email: hideishi.magisystem.net@gmail.com
+
+  license:
+    name: BSD-3-Clause
+    url: https://github.com/hideishi-m/decks/blob/main/LICENSE
+
+# tags are used for organizing operations
+tags:
+- name: admins
+  description: Calls for game administrators
+- name: players
+  description: Calls for game players
+
+paths:
+  /games:
+    get:
+      tags:
+      - admins
+      - players
+      summary: retrieves all games
+      operationId: getGames
+      description: |
+        Retrieves all games available
+      produces:
+      - application/json
+      responses:
+        200:
+          description: games
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Id'
+        404:
+          description: no game available
+    post:
+      tags:
+      - admins
+      summary: create a new game
+      operationId: addGame
+      description: Creates a new game
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - in: body
+        name: gamePlayers
+        description: Players for a new game
+        schema:
+          $ref: '#/definitions/Players'
+      responses:
+        200:
+          description: game created
+        400:
+          description: invalid input, object invalid
+  /games/{id}:
+    get:
+      tags:
+      - admins
+      - players
+      summary: retrieve a game
+      operationId: getGame
+      description: |
+        Retrieves a game for id
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Game'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+    delete:
+      tags:
+      - admins
+      summary: delete all game
+      operationId: deleteGame
+      description: |
+        Deletes a game for id
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Game'
+        400:
+          description: invalid input
+        404:
+          description: no game fof id
+  /games/{id}/deck:
+    get:
+      tags:
+      - players
+      summary: retrieve deck
+      operationId: getDeck
+      description: |
+        Retrieves information for the deck
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Deck'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/deck/discard:
+    put:
+      tags:
+      - players
+      summary: discard to deck
+      operationId: discardDeck
+      description: |
+        Discards the top card of the deck
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Deck'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/deck/recycle:
+    put:
+      tags:
+      - players
+      summary: recycle to deck
+      operationId: recycleDeck
+      description: |
+        Recycles the top card of the pile to the deck
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Deck'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/pile:
+    get:
+      tags:
+      - players
+      summary: retrieve pile
+      operationId: getPile
+      description: |
+        Retrieves information for the pile
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Pile'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/pile/shuffle:
+    put:
+      tags:
+      - players
+      summary: shuffle pile
+      operationId: shufflePile
+      description: |
+        Recycles all cards in the pile to the deck,
+        and shuffle the deck
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Pile'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/players/{pid}:
+    get:
+      tags:
+      - players
+      summary: retrieve hand
+      operationId: getHand
+      description: |
+        Retrieves the hand of the player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Hand'
+        400:
+          description: invalid input
+        404:
+          description: no game for id or pid
+  /games/{id}/players/{pid}/draw:
+    put:
+      tags:
+      - players
+      summary: draw to hand
+      operationId: drawHand
+      description: |
+        Draws a card to the hand of the player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Hand'
+        400:
+          description: invalid input
+        404:
+          description: no game for id or pid
+  /games/{id}/players/{pid}/recycle:
+    put:
+      tags:
+      - players
+      summary: recycle to hand
+      operationId: discardHand
+      description: |
+        Recycles a card from the pile to the hand of the player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Hand'
+        400:
+          description: invalid input
+        404:
+          description: no game for id or pid
+  /games/{id}/players/{pid}/cards/{cid}:
+    get:
+      tags:
+      - players
+      summary: retrieve card
+      operationId: getCard
+      description: |
+        Retrieves the card in the hand of the player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: cid
+        description: Card ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/HandCard'
+        400:
+          description: invalid input
+        404:
+          description: no game for id, pid or cid
+  /games/{id}/players/{pid}/cards/{cid}/discard:
+    put:
+      tags:
+      - players
+      summary: discard card
+      operationId: discardCard
+      description: |
+        Discards the card in the hand of the player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: cid
+        description: Card ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Hand'
+        400:
+          description: invalid input
+        404:
+          description: no game for id, pid or cid
+  /games/{id}/players/{pid}/cards/{cid}/pass/{tid}:
+    put:
+      tags:
+      - players
+      summary: pass card
+      operationId: passCard
+      description: |
+        Passes the card in the hand of the player to other player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: cid
+        description: Card ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: tid
+        description: Target player ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Hand'
+        400:
+          description: invalid input
+        404:
+          description: no game for id, pid or cid
+  /games/{id}/players/{pid}/pick/{tid}:
+    put:
+      tags:
+      - players
+      summary: pick card
+      operationId: pickCard
+      description: |
+        Picks a card randomly from other player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: tid
+        description: Target player ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Hand'
+        400:
+          description: invalid input
+        404:
+          description: no game for id, pid or cid
+definitions:
+  Card:
+    type: object
+    required:
+    - suit
+    - rank
+    - deck
+    properties:
+      suit:
+        type: string
+        enum: [C,D,H,S]
+      rank:
+        type: string
+        enum: [A,'2','3','4','5','6','7','8','9','0',J,Q,K,X]
+      deck:
+        type: string
+        example: '0'
+  Id:
+    type: object
+    required:
+    - id
+    properties:
+      id:
+        type: string
+        example: '1'
+  Players:
+    type: object
+    required:
+    - players
+    properties:
+      players:
+        type: array
+        items:
+          type: string
+          example: pc1
+  Game:
+    type: object
+    required:
+    - id
+    - players
+    properties:
+      id:
+        type: string
+        example: '1'
+      players:
+        type: array
+        items:
+          type: string
+          example: pc1
+  GameCards:
+    type: object
+    required:
+    - length
+    properties:
+      length:
+        type: integer
+        format: int64
+        example: 108
+      card:
+        $ref: '#/definitions/Card'
+  Deck:
+    type: object
+    required:
+    - id
+    - deck
+    properties:
+      id:
+        type: string
+        example: '1'
+      deck:
+        $ref: '#/definitions/GameCards'
+  Pile:
+    type: object
+    required:
+    - id
+    - pile
+    properties:
+      id:
+        type: string
+        example: '1'
+      pile:
+        $ref: '#/definitions/GameCards'
+  Hand:
+    type: object
+    required:
+    - id
+    - pid
+    - player
+    - hand
+    properties:
+      id:
+        type: string
+        example: '1'
+      pid:
+        type: string
+        example: '1'
+      player:
+        type: string
+        example: pc1
+      hand:
+        type: object
+        required:
+        - cards
+        properties:
+          cards:
+            type: array
+            items:
+              $ref: '#/definitions/Card'
+  HandCard:
+    type: object
+    required:
+    - id
+    - pid
+    - player
+    - cid
+    - card
+    properties:
+      id:
+        type: string
+        example: '1'
+      pid:
+        type: string
+        example: '1'
+      player:
+        type: string
+        example: pc1
+      cid:
+        type: string
+        example: '1'
+      card:
+         $ref: '#/definitions/Card'
+# Added by API Auto Mocking Plugin
+host: virtserver.swaggerhub.com
+basePath: /h6623/decks/1.0.0
+schemes:
+ - https
