@@ -42,7 +42,7 @@ response: {
 
 ### 山札をめくる
 
-GET /games/:id/deck/discard
+PUT /games/:id/deck/discard
 
 response: {
   id: "1",
@@ -51,7 +51,7 @@ response: {
 
 ### 捨て札を山札に戻す
 
-GET /games/:id/deck/recycle
+PUT /games/:id/deck/recycle
 
 response: {
   id: "1",
@@ -72,7 +72,7 @@ response: {
 
 ### 捨て札を全て山札に戻す
 
-GET /games/:id/pile/shuffle
+PUT /games/:id/pile/shuffle
 
 response: {
   id: "1",
