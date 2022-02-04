@@ -65,6 +65,6 @@ process.on('SIGTERM', function () {
 
 server.on('request', app);
 
-server.listen(port, function () {
+server.listen(port, '0.0.0.0', function () {
 	logger(`Listening on port ${port}`);
 });

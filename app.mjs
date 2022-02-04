@@ -11,6 +11,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import debug from 'debug';
 import express from 'express';
+import geoip from 'geoip-lite';
 
 import { newGame } from './game.mjs';
 
@@ -29,16 +30,20 @@ export function newApp(emitter, name) {
 		limit: '10mb'
 	}));
 	app.use(function (req, res, next) {
+		const geo = geoip.lookup(req.ip);
 		if (false === /\.(ico|js|svg)$/.test(req.path)) {
 			logger({
 				time: new Date(),
 				ip: req.ip,
+				country: geo.country,
 				method: req.method,
 				path: req.path,
 				body: req.body
 			});
 		}
-		next();
+		if ('JP' === geo.country) {
+			next();
+		}
 	});
 	app.use('/', express.static(new URL('./public', import.meta.url).pathname));
 
