@@ -24,7 +24,7 @@ paths:
       tags:
       - admins
       - players
-      summary: retrieves all games
+      summary: retrieve all games
       operationId: getGames
       description: |
         Retrieves all games available
