@@ -1,3 +1,4 @@
 /node_modules
 decks-*.tgz
 package-lock.json
+/public/spec.html

@@ -5,7 +5,8 @@
   "homepage": "https://github.com/hideishi-m/decks",
   "main": "index.cjs",
   "scripts": {
-    "start": "node index.mjs"
+    "start": "node index.mjs",
+    "redoc": "node node_modules/.bin/redoc-cli bundle swagger.yaml -o public/spec.html"
   },
   "author": "Hidenori ISHIKAWA",
   "files": [
@@ -24,5 +25,8 @@
     "express": "^4.17.2",
     "svg-cards": "^4.0.0",
     "ws": "^8.4.2"
+  },
+  "devDependencies": {
+    "redoc-cli": "^0.13.7"
   }
 }

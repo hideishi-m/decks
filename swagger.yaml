@@ -13,10 +13,10 @@ info:
 
 # tags are used for organizing operations
 tags:
-- name: admins
-  description: Calls for game administrators
 - name: players
   description: Calls for game players
+- name: admins
+  description: Calls for game administrators
 
 paths:
   /games:
