@@ -164,7 +164,7 @@ $(document).ready(async function () {
 			for (let i = 0; i < hand.cards.length; i++) {
 				$('#hand').append(
 					$('<div />', { class: 'col' }).append(
-						createCardSvg(hand.cards[i]).data('cid', i)
+						createCardSvg(hand.cards[i]).attr('data-cid', i)
 					)
 				);
 			}
