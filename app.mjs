@@ -44,6 +44,7 @@ export function newApp(emitter, name) {
 		if ('JP' === geo.country) {
 			next();
 		}
+		res.status(404).end();
 	});
 	app.use('/', express.static(new URL('./public', import.meta.url).pathname));
 
