@@ -74,9 +74,9 @@ $(document).ready(async function () {
 			const ranks = { A: '1', 0: '10', J: 'jack', Q: 'queen', K: 'king', X: 'joker_black' };
 			const suit = suits[card.suit] ? (suits[card.suit] + '_') : '';
 			const rank = ranks[card.rank] ?? card.rank;
-			use = `<use href="/images/svg-cards.svg#${suit}${rank}" x="0" y="0" />`;
+			use = `<use href="./images/svg-cards.svg#${suit}${rank}" x="0" y="0" />`;
 		} else {
-			use = '<use href="/images/svg-cards.svg#back" x="0" y="0" fill="red" />';
+			use = '<use href="./images/svg-cards.svg#back" x="0" y="0" fill="red" />';
 		}
 		return $(`<svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >${use}</svg>`);
 	}
