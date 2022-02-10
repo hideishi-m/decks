@@ -41,10 +41,10 @@ export function newApp(emitter, name) {
 				body: req.body
 			});
 		}
-		if ('JP' === geo.country) {
-			next();
+		if ('JP' !== geo.country) {
+			return res.status(404).end();
 		}
-		res.status(404).end();
+		next();
 	});
 	app.use('/', express.static(new URL('./public', import.meta.url).pathname));
 
