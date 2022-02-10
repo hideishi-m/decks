@@ -9,7 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ajax, updateStatus, appendLog, updateOptions, removeOption, parseDataValue } from '/js/common.js';
+import { ajax, updateStatus, appendLog, updateOptions, removeOption, parseDataValue } from './common.js';
 
 $(document).ready(async function () {
 	let id, pid;
@@ -26,7 +26,7 @@ $(document).ready(async function () {
 	const deckModal = new bootstrap.Modal(document.getElementById('deckModal'));
 	const pileModal = new bootstrap.Modal(document.getElementById('pileModal'));
 
-	const socket = new WebSocket(`${document.location.protocol.replace('http', 'ws')}//${document.location.host}`);
+	const socket = new WebSocket(`${document.location.protocol.replace('http', 'ws')}//${document.location.host}${document.location.pathname.replace(/\/[^/]+$/, '')}`);
 	socket.addEventListener('message', async function (event) {
 		console.log(event.data);
 		await parseMessage(event.data);
@@ -74,9 +74,9 @@ $(document).ready(async function () {
 			const ranks = { A: '1', 0: '10', J: 'jack', Q: 'queen', K: 'king', X: 'joker_black' };
 			const suit = suits[card.suit] ? (suits[card.suit] + '_') : '';
 			const rank = ranks[card.rank] ?? card.rank;
-			use = `<use href="/images/svg-cards.svg#${suit}${rank}" x="0" y="0" />`;
+			use = `<use href="./images/svg-cards.svg#${suit}${rank}" x="0" y="0" />`;
 		} else {
-			use = '<use href="/images/svg-cards.svg#back" x="0" y="0" fill="red" />';
+			use = '<use href="./images/svg-cards.svg#back" x="0" y="0" fill="red" />';
 		}
 		return $(`<svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >${use}</svg>`);
 	}
@@ -94,7 +94,7 @@ $(document).ready(async function () {
 			const params = parseDataValue({
 				id: '#selectGameSelect'
 			});
-			const data = await ajax('/games/' + params.id, { method: 'GET' });
+			const data = await ajax('./games/' + params.id, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			id = data.id;
@@ -123,7 +123,7 @@ $(document).ready(async function () {
 			const params = parseDataValue({
 				pid: '#selectPlayerSelect'
 			});
-			const data = await ajax('/games/' + id + '/players/' + params.pid, { method: 'GET' });
+			const data = await ajax('./games/' + id + '/players/' + params.pid, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			removeOption('#passHandSelect', data.pid);
@@ -155,7 +155,7 @@ $(document).ready(async function () {
 	async function updateHand(hand) {
 		try {
 			if (undefined === hand) {
-				const data = await ajax('/games/' + id + '/players/' + pid, { method: 'GET' });
+				const data = await ajax('./games/' + id + '/players/' + pid, { method: 'GET' });
 				updateStatus(JSON.stringify(data, null, 2));
 
 				hand = data.hand;
@@ -178,7 +178,7 @@ $(document).ready(async function () {
 			const params = parseDataValue({
 				cid: '#handModalCard svg'
 			});
-			const data = await ajax('/games/' + id + '/players/' + pid + '/cards/' + params.cid + '/discard', { method: 'PUT' });
+			const data = await ajax('./games/' + id + '/players/' + pid + '/cards/' + params.cid + '/discard', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateHand(data.hand);
@@ -194,7 +194,7 @@ $(document).ready(async function () {
 				cid: '#handModalCard svg',
 				tid: '#passHandSelect'
 			});
-			const data = await ajax('/games/' + id + '/players/' + pid + '/cards/' + params.cid + '/pass/' + params.tid, { method: 'PUT' });
+			const data = await ajax('./games/' + id + '/players/' + pid + '/cards/' + params.cid + '/pass/' + params.tid, { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateHand(data.hand);
@@ -215,7 +215,7 @@ $(document).ready(async function () {
 	});
 	async function updateDeck(id) {
 		try {
-			const data = await ajax('/games/' + id + '/deck', { method: 'GET' });
+			const data = await ajax('./games/' + id + '/deck', { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			$('#deckLabel').text(data.deck.length);
@@ -229,7 +229,7 @@ $(document).ready(async function () {
 	$('#drawDeck').click(drawDeck);
 	async function drawDeck() {
 		try {
-			const data = await ajax('/games/' + id + '/players/' + pid + '/draw', { method: 'PUT' });
+			const data = await ajax('./games/' + id + '/players/' + pid + '/draw', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateHand(data.hand);
@@ -241,7 +241,7 @@ $(document).ready(async function () {
 	$('#discardDeck').click(discardDeck);
 	async function discardDeck() {
 		try {
-			const data = await ajax('/games/' + id + '/deck/discard', { method: 'PUT' });
+			const data = await ajax('./games/' + id + '/deck/discard', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateDeck(data.id);
@@ -264,7 +264,7 @@ $(document).ready(async function () {
 	});
 	async function updatePile(id) {
 		try {
-			const data = await ajax('/games/' + id + '/pile', { method: 'GET' });
+			const data = await ajax('./games/' + id + '/pile', { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			$('#pileLabel').text(data.pile.length);
@@ -278,7 +278,7 @@ $(document).ready(async function () {
 	$('#recycleHand').click(recycleHand);
 	async function recycleHand() {
 		try {
-			const data = await ajax('/games/' + id + '/players/' + pid + '/recycle', { method: 'PUT' });
+			const data = await ajax('./games/' + id + '/players/' + pid + '/recycle', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateHand(data.hand);
@@ -290,7 +290,7 @@ $(document).ready(async function () {
 	$('#recycleDeck').click(recycleDeck);
 	async function recycleDeck() {
 		try {
-			const data = await ajax('/games/' + id + '/deck/recycle', { method: 'PUT' });
+			const data = await ajax('./games/' + id + '/deck/recycle', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateDeck(data.id);
@@ -302,7 +302,7 @@ $(document).ready(async function () {
 	$('#shufflePile').click(shufflePile);
 	async function shufflePile() {
 		try {
-			const data = await ajax('/games/' + id + '/pile/shuffle', { method: 'PUT' });
+			const data = await ajax('./games/' + id + '/pile/shuffle', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateDeck(data.id);
@@ -319,7 +319,7 @@ $(document).ready(async function () {
 			const params = parseDataValue({
 				tid: '#pickSelect'
 			});
-			const data = await ajax('/games/' + id + '/players/' + pid + '/pick/' + params.tid, { method: 'PUT' });
+			const data = await ajax('./games/' + id + '/players/' + pid + '/pick/' + params.tid, { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateHand(data.hand);
@@ -330,7 +330,7 @@ $(document).ready(async function () {
 
 	// ready
 	try {
-		const data = await ajax('/games', { method: 'GET' });
+		const data = await ajax('./games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
 
 		updateOptions('#selectGameSelect', data.games);

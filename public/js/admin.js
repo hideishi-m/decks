@@ -9,14 +9,14 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ajax, updateStatus, appendOption, removeOption, parseDataValuesEach } from '/js/common.js';
+import { ajax, updateStatus, appendOption, removeOption, parseDataValuesEach } from './common.js';
 
 $(document).ready(async function () {
 
 	// common
 	async function appendGame(id) {
 		try {
-			const data = await ajax('/games/' + id, { method: 'GET' });
+			const data = await ajax('./games/' + id, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			$('#game').append($('<div />', {
@@ -40,7 +40,7 @@ $(document).ready(async function () {
 			const params = parseDataValuesEach({
 				players: 'input[name^=players]'
 			});
-			const data = await ajax('/games', {
+			const data = await ajax('./games', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -74,7 +74,7 @@ $(document).ready(async function () {
 			const params = parseDataValue({
 				id: '#deleteGameSelect'
 			});
-			const data = await ajax('/games/' + params.id, { method: 'DELETE' } );
+			const data = await ajax('./games/' + params.id, { method: 'DELETE' } );
 			updateStatus(JSON.stringify(data, null, 2));
 
 			$(`#game div[data-id='${data.id}']`).each(function () {
@@ -88,7 +88,7 @@ $(document).ready(async function () {
 
 	// ready
 	try {
-		const data = await ajax('/games', { method: 'GET' });
+		const data = await ajax('./games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
 
 		for (const id of data.games) {
