@@ -9,60 +9,59 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import debug from 'debug';
-import EventEmitter from 'events';
 import { readFile } from 'fs/promises';
 import process from 'process';
 
-import { parseArgs } from './args.mjs';
-import { newApp } from './app.mjs';
-import { newServer } from './server.mjs';
-
-const options = await parseArgs();
-const name = options.name ?? 'decks';
-
-debug.enable(`${name}*`);
-
-const logger = debug(name);
-const emitter = new EventEmitter();
-const app = newApp(emitter, name);
-
-async function newServerOpts(options) {
-	const serverOpts = {};
-	if (options.key && options.cert) {
-		logger(`Using key ${options.key}`);
-		serverOpts.key = await readFile(options.key);
-		logger(`Using cert ${options.cert}`);
-		serverOpts.cert = await readFile(options.cert);
+function usage(message) {
+	if (message) {
+		console.log(message);
 	}
-	return serverOpts;
+	console.log(`usage: ${process.argv[1]}
+    [--ip IP]               Listen at IP address (default: '0.0.0.0')
+    [--port PORT]           Listen at PORT (default: 8080)
+    [--timeout TIMEOUT]     Set timeout in ms (default: 3000)
+    [--key SSL_KEY]         Use SSL_KEY for ssl key
+    [--cert SSL_CERT]       Use SSL_CERT for ssl certificate
+`);
+	process.exit(1);
 }
 
-const server = newServer(emitter, name, await newServerOpts(options));
-
-function shutdown() {
-	emitter.emit('close');
-	setTimeout(() => {
-		logger(`Timeout exceeded for ${options.timeout} ms, shutdown`);
-		process.exit(1);
-	}, options.timeout);
-	server.on('close', function () {
-		logger('Shutdown');
-		process.exit(0);
-	});
+async function defaults() {
+	const options = {
+		ip: '0.0.0.0'
+	};
+	const packageJson = JSON.parse(await readFile(new URL('./package.json', import.meta.url)));
+	options.name = packageJson.name;
+	for (const key of ['ip', 'port', 'timeout', 'key', 'cert']) {
+		if (undefined !== packageJson.config[key]) {
+			options[key] = packageJson.config[key];
+		}
+	}
+	return options;
 }
 
-process.on('SIGINT', function () {
-	logger('SIGINT received');
-	shutdown();
-});
-process.on('SIGTERM', function () {
-	logger('SIGTERM received');
-	shutdown();
-});
-
-server.on('request', app);
-
-server.listen(options.port, options.ip, function () {
-	logger(`Listening on ${options.ip}:${options.port}`);
-});
+export async function parseArgs() {
+	const options = await defaults();
+	const args = process.argv.slice(2);
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		let m;
+		if (null !== (m = arg.match(/^--([^=]+)=(.*)$/s))) {
+			options[m[1]] = m[2];
+		} else if (null !== (m = arg.match(/^--no(.+)/))) {
+			options[m[1]] = false;
+		} else if (null !== (m = arg.match(/^--(.+)/))) {
+			const next = args[i + 1];
+			if (undefined !== next && false === /^--(.+)/.test(next)) {
+				options[m[1]] = next;
+				i++;
+			} else {
+				options[m[1]] = true;
+			}
+		} else {
+			usage(`Unknown option: ${arg}`);
+		}
+	}
+	console.log({options});
+	return options;
+}
