@@ -12,8 +12,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { newDrawDeck, newDiscardPile, newHand } from './card.mjs';
 
 class Game {
-	constructor(players, deck, jocker, shuffle, draw) {
-		this.deck = newDrawDeck(deck, jocker, shuffle)
+	constructor(players, deck, joker, shuffle, draw) {
+		this.deck = newDrawDeck(deck, joker, shuffle)
 		this.pile = newDiscardPile();
 		this.hands = [];
 		this.players = [ 'マスター' ];
@@ -156,12 +156,12 @@ class Hand {
 }
 
 
-export function newGame(players, deck, jocker, shuffle, draw) {
+export function newGame(players, deck, joker, shuffle, draw) {
 	players = players ?? [];
 	deck = deck ?? 2;
-	jocker = jocker ?? 1;
+	joker = joker ?? 1;
 	shuffle = shuffle ?? 10;
 	draw = draw ?? 4;
-	const game = new Game(players, deck, jocker, shuffle, draw);
+	const game = new Game(players, deck, joker, shuffle, draw);
 	return game;
 }

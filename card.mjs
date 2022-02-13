@@ -21,8 +21,8 @@ const ranks = [
 const rankStrings = [
 	'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
 ];
-const jockerRank = 'X';
-const jockerRankString = 'ジョーカー';
+const jokerRank = 'X';
+const jokerRankString = 'ジョーカー';
 
 function suitToString(suit) {
 	if (suits.includes(suit)) {
@@ -36,7 +36,7 @@ function rankToString(rank) {
 	if (ranks.includes(rank)) {
 		return rankStrings[ ranks.indexOf(rank) ];
 	} else {
-		return jockerRankString;
+		return jokerRankString;
 	}
 }
 
@@ -127,9 +127,9 @@ class Cards {
 }
 
 
-export function newDrawDeck(deck, jocker, shuffle) {
+export function newDrawDeck(deck, joker, shuffle) {
 	deck = deck ?? 1;
-	jocker = jocker ?? 2;
+	joker = joker ?? 2;
 	shuffle = shuffle ?? 10;
 	const cards = new Cards();
 	for (let i = 0; i < deck; i++) {
@@ -138,8 +138,8 @@ export function newDrawDeck(deck, jocker, shuffle) {
 				cards.push(new Card(suit, rank, i));
 			});
 		});
-		for (let j = 0; j < jocker; j++) {
-			cards.push(new Card(j, jockerRank, i));
+		for (let j = 0; j < joker; j++) {
+			cards.push(new Card(j, jokerRank, i));
 		}
 	}
 	cards.shuffle(shuffle);
