@@ -27,9 +27,7 @@ function usage(message) {
 }
 
 async function defaults() {
-	const options = {
-		ip: '0.0.0.0'
-	};
+	const options = {};
 	const packageJson = JSON.parse(await readFile(new URL('./package.json', import.meta.url)));
 	options.name = packageJson.name;
 	for (const key of ['ip', 'port', 'timeout', 'key', 'cert']) {
