@@ -1,12 +1,12 @@
 module.exports = {
 	"env": {
-		"es2021": true,
+		"es2022": true,
 		"node": true
 	},
 	"extends": "eslint:recommended",
 	"parserOptions": {
 		"requireConfigFile": false,
-		"ecmaVersion": 12
+		"sourceType": "module"
 	},
 	"rules": {
 		"no-unused-vars": ["error", {"args": "none"}],

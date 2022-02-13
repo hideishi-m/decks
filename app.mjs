@@ -15,15 +15,15 @@ import geoip from 'geoip-lite';
 
 import { newGame } from './game.mjs';
 
-export function newApp(emitter, name, proxy) {
+export function newApp(emitter, name, options) {
 	name = name ? `${name}:app` : 'app';
 
 	const logger = debug(name);
 	const games = [];
 	const app = express();
 
-	if (undefined !== proxy) {
-		app.set('trust proxy', proxy);
+	if (undefined !== options.ip) {
+		app.set('trust proxy', options.ip);
 	}
 
 	app.use(express.json({

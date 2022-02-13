@@ -25,7 +25,7 @@ debug.enable(`${name}*`);
 
 const logger = debug(name);
 const emitter = new EventEmitter();
-const app = newApp(emitter, name, '0.0.0.0' === options.ip ? undefined : options.ip );
+const app = newApp(emitter, name, options);
 
 async function newServerOpts(options) {
 	const serverOpts = {};
