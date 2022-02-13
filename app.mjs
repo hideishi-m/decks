@@ -15,16 +15,12 @@ import geoip from 'geoip-lite';
 
 import { newGame } from './game.mjs';
 
-export function newApp(emitter, name, options) {
+export function newApp(emitter, name) {
 	name = name ? `${name}:app` : 'app';
 
 	const logger = debug(name);
 	const games = [];
 	const app = express();
-
-	if (undefined !== options.ip) {
-		app.set('trust proxy', options.ip);
-	}
 
 	app.use(express.json({
 		limit: '10mb'
@@ -34,11 +30,12 @@ export function newApp(emitter, name, options) {
 		limit: '10mb'
 	}));
 	app.use(function (req, res, next) {
-		const geo = geoip.lookup(req.ip);
+		const ip = req.headers['x-forwarded-for'] ?? req.socket.remoteAddress;
+		const geo = geoip.lookup(ip);
 		if (false === /\.(ico|js|svg)$/.test(req.path)) {
 			logger({
 				time: new Date(),
-				ip: req.ip,
+				ip: ip,
 				country: geo.country,
 				method: req.method,
 				path: req.path,

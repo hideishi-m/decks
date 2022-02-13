@@ -75,7 +75,7 @@ export function newServer(emitter, name, options) {
 	});
 
 	wsServer.on('connection', function (ws, req) {
-		const ip = req.socket.remoteAddress;
+		const ip = req.headers['x-forwarded-for'] ?? req.socket.remoteAddress;
 		logger(`connected from ${ip}`);
 
 		ws.on('message', function (data) {

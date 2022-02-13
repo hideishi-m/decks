@@ -25,7 +25,7 @@ debug.enable(`${name}*`);
 
 const logger = debug(name);
 const emitter = new EventEmitter();
-const app = newApp(emitter, name, options);
+const app = newApp(emitter, name);
 
 async function newServerOpts(options) {
 	const serverOpts = {};
