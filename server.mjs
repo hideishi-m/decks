@@ -10,6 +10,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import debug from 'debug';
+import http from 'http';
 import https from 'https';
 import { WebSocketServer } from 'ws';
 
@@ -19,7 +20,7 @@ export function newServer(emitter, name, options) {
 	const logger = debug(name);
 	const wsMap = new Map();
 
-	const server = https.createServer(options);
+	const server = (options.key && options.cert) ? https.createServer(options) : http.createServer(options);
 	const wsServer = new WebSocketServer({ server: server });
 
 	emitter.on('deck', function (data) {
