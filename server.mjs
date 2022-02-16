@@ -12,6 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import debug from 'debug';
 import http from 'http';
 import https from 'https';
+import proxyaddr from 'proxy-addr';
 import { WebSocketServer } from 'ws';
 
 export function newServer(emitter, name, options) {
@@ -75,7 +76,7 @@ export function newServer(emitter, name, options) {
 	});
 
 	wsServer.on('connection', function (ws, req) {
-		const ip = req.headers['x-forwarded-for'] ?? req.socket.remoteAddress;
+		const ip = proxyaddr(req, 'loopback');
 		logger(`connected from ${ip}`);
 
 		ws.on('message', function (data) {

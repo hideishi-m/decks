@@ -17,7 +17,7 @@ function usage(message) {
 		console.log(message);
 	}
 	console.log(`usage: ${process.argv[1]}
-    [--ip IP]               Listen at IP address (default: '0.0.0.0')
+    [--ip IP]               Listen at IP address (default: '127.0.0.1')
     [--port PORT]           Listen at PORT (default: 8080)
     [--timeout TIMEOUT]     Set timeout in ms (default: 3000)
     [--key SSL_KEY]         Use SSL_KEY for ssl key

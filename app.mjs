@@ -11,7 +11,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import debug from 'debug';
 import express from 'express';
-import geoip from 'geoip-lite';
 
 import { newGame } from './game.mjs';
 
@@ -22,6 +21,8 @@ export function newApp(emitter, name) {
 	const games = [];
 	const app = express();
 
+	app.set('trust proxy', 'loopback');
+
 	app.use(express.json({
 		limit: '10mb'
 	}));
@@ -30,20 +31,14 @@ export function newApp(emitter, name) {
 		limit: '10mb'
 	}));
 	app.use(function (req, res, next) {
-		const ip = req.headers['x-forwarded-for'] ?? req.socket.remoteAddress;
-		const geo = geoip.lookup(ip);
 		if (false === /\.(ico|js|svg)$/.test(req.path)) {
 			logger({
 				time: new Date(),
-				ip: ip,
-				country: geo.country,
+				ip: req.ip,
 				method: req.method,
 				path: req.path,
 				body: req.body
 			});
-		}
-		if ('JP' !== geo.country) {
-			return res.status(404).end();
 		}
 		next();
 	});
