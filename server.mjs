@@ -77,7 +77,7 @@ export function newServer(emitter, name, options) {
 	});
 
 	wsServer.on('connection', function (ws, req) {
-		const ip = proxyaddr(req, 'loopback');
+		const ip = proxyaddr(req, 'loopback, uniquelocal');
 		logger(`connected from ${ip}`);
 
 		ws.on('message', function (data) {
