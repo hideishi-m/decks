@@ -14,6 +14,7 @@ import http from 'http';
 import https from 'https';
 import proxyaddr from 'proxy-addr';
 import { WebSocketServer } from 'ws';
+import { ping } from './public/js/common.js';
 
 export function newServer(emitter, name, options) {
 	name = name ? `${name}:server` : 'server';
@@ -80,6 +81,10 @@ export function newServer(emitter, name, options) {
 		logger(`connected from ${ip}`);
 
 		ws.on('message', function (data) {
+			data = data.toString('utf-8');
+			if (ping === data) {
+				return ws.send(ping);
+			}
 			try {
 				data = JSON.parse(data) ?? {};
 				logger({ message: data });

@@ -4,6 +4,7 @@
   "description": "Simple card deck app for playing TOKYO-NIGHTMARE.",
   "homepage": "https://github.com/hideishi-m/decks",
   "main": "index.cjs",
+  "type": "module",
   "scripts": {
     "start": "node index.mjs",
     "redoc": "node node_modules/.bin/redoc-cli bundle swagger.yaml -o public/spec.html"
