@@ -21,7 +21,7 @@ export function newApp(emitter, name) {
 	const games = [];
 	const app = express();
 
-	app.set('trust proxy', 'loopback');
+	app.set('trust proxy', 'loopback, uniquelocal');
 
 	app.use(express.json({
 		limit: '10mb'
