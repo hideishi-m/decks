@@ -12,7 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { ping, timeout, ajax, updateStatus, appendLog, appendOption, updateOptions, removeOption, parseDataValue } from './common.js';
 
 $(document).ready(async function () {
-	let id, pid;
+	let id, pid, socket;
 
 	const gameModal = new bootstrap.Modal(document.getElementById('gameModal'), {
 		backdrop: 'static',
@@ -26,15 +26,16 @@ $(document).ready(async function () {
 	const deckModal = new bootstrap.Modal(document.getElementById('deckModal'));
 	const pileModal = new bootstrap.Modal(document.getElementById('pileModal'));
 
-	const socket = new WebSocket(`${document.location.protocol.replace('http', 'ws')}//${document.location.host}${document.location.pathname.replace(/\/[^/]+$/, '')}`);
-	socket.addEventListener('message', async function (event) {
-		if (ping !== event.data) {
-			console.log(event.data);
-			await parseMessage(event.data);
-		}
-	});
-
-	keepAlive();
+	function createSocket() {
+		const socket = new WebSocket(`${document.location.protocol.replace('http', 'ws')}//${document.location.host}${document.location.pathname.replace(/\/[^/]+$/, '')}`);
+		socket.addEventListener('message', async function (event) {
+			if (ping !== event.data) {
+				console.log(event.data);
+				await parseMessage(event.data);
+			}
+		});
+		return socket;
+	}
 
 	function keepAlive() {
 		if (socket.readyState === socket.OPEN) {
@@ -77,6 +78,9 @@ $(document).ready(async function () {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
 	}
+
+	socket = createSocket();
+	keepAlive();
 
 	function createCardSvg(card) {
 		let use;
