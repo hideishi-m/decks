@@ -81,8 +81,7 @@ export function newServer(emitter, name, options) {
 		logger(`connected from ${ip}`);
 
 		ws.on('message', function (data) {
-			data = data.toString('utf-8');
-			if (ping === data) {
+			if (Buffer.from(ping).equals(data)) {
 				return ws.send(ping);
 			}
 			try {
@@ -96,7 +95,7 @@ export function newServer(emitter, name, options) {
 					logger({ websockets: [...wsMap.keys()] });
 				}
 			} catch (error) {
-				logger({ message: error });
+				logger(error);
 			}
 		});
 
