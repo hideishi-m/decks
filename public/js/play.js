@@ -28,12 +28,8 @@ $(document).ready(async function () {
 
 	function createSocket() {
 		const socket = new WebSocket(`${document.location.protocol.replace('http', 'ws')}//${document.location.host}${document.location.pathname.replace(/\/[^/]+$/, '')}`);
-		socket.addEventListener('message', async function (event) {
-			if (ping !== event.data) {
-				console.log(event.data);
-				await parseMessage(event.data);
-			}
-		});
+		socket.addEventListener('message', onMessage);
+		socket.addEventListener('close', onClose);
 		return socket;
 	}
 
@@ -44,9 +40,19 @@ $(document).ready(async function () {
 		setTimeout(keepAlive, timeout);
 	}
 
-	async function parseMessage(data) {
+	async function onClose(event) {
+		socket.removeEventListener('message', onMessage);
+		socket.removeEventListener('close', onClose);
+		socket = createSocket();
+	}
+
+	async function onMessage(event) {
 		try {
-			data = JSON.parse(data) ?? {};
+			if (ping === event.data) {
+				return;
+			}
+			console.log(event.data);
+			const data = JSON.parse(event.data) ?? {};
 			// hand: id,pid,player,tid
 			if (data.hand) {
 				appendLog(`${data.hand.player} picked a card from you`);
