@@ -23,6 +23,8 @@ export function newApp(emitter, name) {
 
 	app.set('trust proxy', 'loopback, uniquelocal');
 
+	app.disable('x-powered-by');
+	app.disable('etag');
 	app.use(express.json({
 		limit: '10mb'
 	}));
@@ -31,13 +33,24 @@ export function newApp(emitter, name) {
 		limit: '10mb'
 	}));
 	app.use(function (req, res, next) {
-		if (false === /\.(ico|js|svg)$/.test(req.path)) {
+		if (false === /\.(html|ico|js|svg)$/.test(req.path)) {
 			logger({
 				time: new Date(),
 				ip: req.ip,
 				method: req.method,
 				path: req.path,
 				body: req.body
+			});
+			res.set({
+				'Cache-Control': 'no-cache',
+				'Content-Security-Policy': "default-src 'none'",
+				'X-Content-Type-Options': 'nosniff',
+				'X-Frame-Options': 'deny'
+			});
+		} else {
+			res.set({
+				'X-Content-Type-Options': 'nosniff',
+				'X-Frame-Options': 'deny'
 			});
 		}
 		next();
