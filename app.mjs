@@ -55,7 +55,9 @@ export function newApp(emitter, name) {
 		}
 		next();
 	});
-	app.use('/', express.static(new URL('./public', import.meta.url).pathname));
+	app.use('/', express.static(new URL('./public', import.meta.url).pathname, {
+		maxAge: '1d'
+	}));
 
 	app.param('id', function (req, res, next, id) {
 		if (false === /^\d+$/.test(id)) {
