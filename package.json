@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "description": "Simple card deck app for playing TOKYO-NIGHTMARE.",
   "homepage": "https://github.com/hideishi-m/decks",
-  "main": "index.mjs",
+  "module": "index.mjs",
   "type": "module",
+  "exports": {
+    ".": {
+      "import": "./index.mjs"
+    }
+  },
   "scripts": {
     "start": "node index.mjs",
-    "redoc": "node node_modules/.bin/redoc-cli bundle swagger.yaml -o public/spec.html"
+    "redocly": "node node_modules/.bin/redocly build-docs swagger.yaml -o public/spec.html"
   },
   "author": "Hidenori ISHIKAWA",
   "files": [
@@ -30,6 +35,6 @@
     "ws": "^8.4.2"
   },
   "devDependencies": {
-    "redoc-cli": "^0.13.7"
+    "@redocly/cli": "^1.4.0"
   }
 }
