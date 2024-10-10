@@ -160,3 +160,27 @@ response: {
   hand: { cards: [ array of card ] }
 }
 
+
+### タロット
+
+GET /games/:id/tarot
+
+response: {
+  id: "1",
+  tarot: {
+    length: 1,
+    card: card
+  }
+}
+
+### タロットをめくる
+
+PUT /games/:id/tarot/draw
+
+response: {
+  id: "1",
+  tarot: {
+    length: 1,
+    card: card
+  }
+}

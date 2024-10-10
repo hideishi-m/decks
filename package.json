@@ -1,6 +1,6 @@
 {
   "name": "decks",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Simple card deck app for playing TOKYO-NIGHTMARE.",
   "homepage": "https://github.com/hideishi-m/decks",
   "module": "index.mjs",

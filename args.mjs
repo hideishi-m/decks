@@ -44,7 +44,9 @@ export async function parseArgs() {
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
 		let m;
-		if (null !== (m = arg.match(/^--([^=]+)=(.*)$/s))) {
+		if ('-h' === arg || '--help' === arg) {
+			usage();
+		} else if (null !== (m = arg.match(/^--([^=]+)=(.*)$/s))) {
 			options[m[1]] = m[2];
 		} else if (null !== (m = arg.match(/^--no(.+)/))) {
 			options[m[1]] = false;

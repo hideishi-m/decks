@@ -568,5 +568,49 @@ export function newApp(emitter, name) {
 			}
 		});
 
+	app.route('/games/:id/tarot')
+		.get(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				const tarot = game.getTarot();
+				logger(`GET tarot in game ${req.params.id}`);
+				return res.status(200).json({
+					id: req.params.id,
+					tarot: { length: tarot.cards.count() },
+					card: tarot.face()
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
+	app.route('/games/:id/tarot/draw')
+		.put(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				const tarot = game.getTarot();
+				tarot.draw();
+				logger(`DRAW card for tarot in game ${req.params.id}`);
+				emitter.emit('tarot', {
+					id: req.params.id,
+					card: tarot.face()
+				});
+				return res.status(200).json({
+					id: req.params.id,
+					tarot: { length: tarot.cards.count() }
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
 	return app;
 }

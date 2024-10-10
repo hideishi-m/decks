@@ -17,10 +17,19 @@
 
     <div class="border p-2">
       <h2>Game</h2>
-      <div class="row mb-3">
+      <div class="row">
         <div class="col-3">Game:</div>
-        <div id="gameLabel" class="col-9"></div>
+        <div id="gameLabel" class="col-3"></div>
+        <div class="col-3">Tarot:</div>
+        <div id="tarotLabel" class="col-3"></div>
       </div>
+      <div class="row mb-3">
+        <div class="col-3"></div>
+        <div class="col-3"></div>
+        <div id="tarot" class="col-3">
+			<img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.png">
+        </div>
+        <div class="col-3"></div>
       <h2>Hand</h2>
       <div class="row">
         <div class="col-3">Player:</div>
@@ -251,6 +260,38 @@
                 <div class="row mb-3">
                   <div class="col">
                     <button id="shufflePile" type="button" class="btn btn-primary">Shuffle to deck</button>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col">
+                    <button type="button" class="btn btn-secondary">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: tarot -->
+  <div class="modal fade" id="tarotModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5>Tarot</h5>
+        </div>
+        <div class="modal-body">
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col">
+				<img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.png">
+              </div>
+              <div class="col">
+                <div class="row mb-3">
+                  <div class="col">
+                    <button id="drawTarot" type="button" class="btn btn-primary">Draw</button>
                   </div>
                 </div>
                 <div class="row mb-3">

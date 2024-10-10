@@ -9,11 +9,11 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { newDrawDeck, newDiscardPile, newHand } from './card.mjs';
+import { newDrawDeck, newDiscardPile, newHand, newTarotDeck } from './card.mjs';
 
 class Game {
 	constructor(players, deck, joker, shuffle, draw) {
-		this.deck = newDrawDeck(deck, joker, shuffle)
+		this.deck = newDrawDeck(deck, joker, shuffle);
 		this.pile = newDiscardPile();
 		this.hands = [];
 		this.players = [ 'マスター' ];
@@ -23,6 +23,8 @@ class Game {
 		this.players.forEach(() => {
 			this.hands.push(newHand(this.deck, draw));
 		});
+		this.tarotDeck = newTarotDeck(shuffle);
+		this.tarotPile = newDiscardPile();
 	}
 
 	shuffle(shuffle) {
@@ -42,7 +44,8 @@ class Game {
 					player: player,
 					hand: this.hands[index].getStatus()
 				}
-			})
+			}),
+			tarot: { length: this.tarotPile.count() }
 		}
 	}
 
@@ -60,6 +63,10 @@ class Game {
 
 	getPile() {
 		return new Pile(this);
+	}
+
+	getTarot() {
+		return new Tarot(this);
 	}
 }
 
@@ -147,6 +154,29 @@ class Hand {
 		const card = cards.splice(index);
 		if (undefined !== card) {
 			this.cards.push(card);
+		}
+	}
+
+	cards() {
+		return this.cards.from();
+	}
+}
+
+
+class Tarot {
+	constructor(game) {
+		this.game = game;
+		this.cards = this.game.tarotPile;
+	}
+
+	face() {
+		return (this.cards.count() ? this.cards.at(0) : undefined);
+	}
+
+	draw() {
+		const card = this.game.tarotDeck.shift();
+		if (undefined !== card) {
+			this.cards.unshift(card);
 		}
 	}
 

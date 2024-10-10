@@ -76,6 +76,23 @@ export function newServer(emitter, name, options) {
 		}
 	});
 
+	emitter.on('tarot', function (data) {
+		logger({ tarot: data });
+		const id = data.id;
+		const re = new RegExp(`^${id}:\\d+$`);
+		wsMap.forEach(function (value, key) {
+			if (re.test(key)) {
+				if (wsServer.clients.has(value)) {
+					value.send(JSON.stringify({ tarot: data }));
+					logger(`TAROT to ${key}`);
+				} else {
+					wsMap.delete(key);
+					logger(`delete ${key}`);
+				}
+			}
+		});
+	});
+
 	wsServer.on('connection', function (ws, req) {
 		const ip = proxyaddr(req, ['loopback', 'uniquelocal']);
 		logger(`connected from ${ip}`);

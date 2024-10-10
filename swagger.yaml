@@ -497,6 +497,58 @@ paths:
           description: invalid input
         404:
           description: no game for id, pid or cid
+  /games/{id}/tarot:
+    get:
+      tags:
+      - players
+      summary: retrieve tarot
+      operationId: getTarot
+      description: |
+        Retrieves information for the tarot
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Tarot'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/tarot/draw:
+    put:
+      tags:
+      - players
+      summary: draw tarot
+      operationId: drawTarot
+      description: |
+        Draws a tarot card from the tarot
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Tarot'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
 definitions:
   Card:
     type: object
@@ -514,6 +566,18 @@ definitions:
       deck:
         type: string
         example: '0'
+  TarotCard:
+    type: object
+    required:
+    - position
+    - rank
+    properties:
+      position:
+        type: string
+        enum: [U,R]
+      rank:
+        type: string
+        enum: ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','-14','-18','-2','-9','-12','-17']
   Id:
     type: object
     required:
@@ -557,6 +621,17 @@ definitions:
         example: 108
       card:
         $ref: '#/definitions/Card'
+  TarotCards:
+    type: object
+    required:
+    - length
+    properties:
+      length:
+        type: integer
+        format: int64
+        example: 108
+      card:
+        $ref: '#/definitions/TarotCard'
   Deck:
     type: object
     required:
@@ -628,6 +703,17 @@ definitions:
         example: '1'
       card:
          $ref: '#/definitions/Card'
+  Tarot:
+    type: object
+    required:
+    - id
+    - tarot
+    properties:
+      id:
+        type: string
+        example: '1'
+      tarot:
+        $ref: '#/definitions/TarotCards'
 # Added by API Auto Mocking Plugin
 host: virtserver.swaggerhub.com
 basePath: /h6623/decks/1.0.0

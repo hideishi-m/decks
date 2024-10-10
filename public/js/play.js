@@ -25,6 +25,7 @@ $(document).ready(async function () {
 	const handModal = new bootstrap.Modal(document.getElementById('handModal'));
 	const deckModal = new bootstrap.Modal(document.getElementById('deckModal'));
 	const pileModal = new bootstrap.Modal(document.getElementById('pileModal'));
+	const tarotModal = new bootstrap.Modal(document.getElementById('tarotModal'));
 
 	function createSocket() {
 		const socket = new WebSocket(`${document.location.protocol.replace('http', 'ws')}//${document.location.host}${document.location.pathname.replace(/\/[^/]+$/, '')}`);
@@ -80,6 +81,11 @@ $(document).ready(async function () {
 					await updatePile(data.pile.id);
 				}
 			}
+			// tarot: id,tarot
+			else if (data.tarot) {
+				appendLog('tarot was updated');
+				await updateTarot(data.tarot.id);
+			}
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -100,6 +106,24 @@ $(document).ready(async function () {
 			use = '<use href="./images/svg-cards.svg#back" x="0" y="0" fill="red" />';
 		}
 		return $(`<svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >${use}</svg>`);
+	}
+
+	function createTarotCardImg(card) {
+		if (card) {
+			const ranks = {
+				'-14': '22',  // ヒルコ
+				'-18': '23',  // アヤカシ
+				'-2':  '24',  // テツジン
+				'-9':  '25',  // ハンドラー
+				'-12': '26',  // クロガネ
+				'-17': '27'   // エトランゼ
+			}
+			const rank = ranks[card.rank] ?? card.rank.padStart(2, '0');
+			const style = 'R' === card.position ? ' transform: rotate(180deg);' : '';
+			return $(`<img style="max-width: 100%; height: auto;${style}" src="./images/TNM_tarot/${rank}.png">`);
+		} else {
+			return $('<img style="max-width: 100%; height: auto;${style}" src="./images/TNM_tarot/99.png">');
+		}
 	}
 
 	// #gameModal
@@ -125,6 +149,7 @@ $(document).ready(async function () {
 			updateOptions('#pickSelect', data.players);
 			await updateDeck(data.id);
 			await updatePile(data.id);
+			await updateTarot(data.id);
 			togglePlayerModal();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -344,6 +369,44 @@ $(document).ready(async function () {
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateHand(data.hand);
+		} catch (error) {
+			updateStatus(`${error.name}: ${error.message}`);
+		}
+	}
+
+	// #tarotModal
+	$('#tarotModal').on('click', 'button', toggleTarotModal);
+	function toggleTarotModal() {
+		tarotModal.toggle();
+	}
+
+	// #tarot
+	$('#tarot').on('click', 'img', function () {
+		if ('0' === pid) {
+			$('#tarotModalCard').empty().append($(this).clone());
+			toggleTarotModal();
+		}
+	});
+	$('#drawTarot').click(drawTarot);
+	async function drawTarot() {
+		try {
+			const data = await ajax('./games/' + id + '/tarot/draw', { method: 'PUT' });
+			updateStatus(JSON.stringify(data, null, 2));
+
+			await updateTarot(data.id);
+		} catch (error) {
+			updateStatus(`${error.name}: ${error.message}`);
+		}
+	}
+	async function updateTarot(id) {
+		try {
+			const data = await ajax('./games/' + id + '/tarot', { method: 'GET' });
+			updateStatus(JSON.stringify(data, null, 2));
+
+			$('#tarotLabel').text(data.tarot.length);
+			$('#tarot').empty().append(
+				createTarotCardImg(data.card)
+			);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
