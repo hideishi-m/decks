@@ -12,7 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { ping, timeout, ajax, updateStatus, appendLog, appendOption, updateOptions, removeOption, parseDataValue } from './common.js';
 
 $(document).ready(async function () {
-	let id, pid, socket;
+	let id, pid, socket, tarotCards;
 
 	const gameModal = new bootstrap.Modal(document.getElementById('gameModal'), {
 		backdrop: 'static',
@@ -108,21 +108,21 @@ $(document).ready(async function () {
 		return $(`<svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >${use}</svg>`);
 	}
 
+	tarotCards = await ajax('./js/TNM_tarot.json', { method: 'GET' });
+
 	function createTarotCardImg(card) {
 		if (card) {
-			const ranks = {
-				'-14': '22',  // ヒルコ
-				'-18': '23',  // アヤカシ
-				'-2':  '24',  // テツジン
-				'-9':  '25',  // ハンドラー
-				'-12': '26',  // クロガネ
-				'-17': '27'   // エトランゼ
+			const index = Object.keys(tarotCards).indexOf(card.rank);
+			let rank = '99';
+			let title = '';
+			if (-1 !== index) {
+				rank = index.toString().padStart(2, '0');
+				title = ` title="${tarotCards[card.rank]} ` + ('R' === card.position ? '逆位置' : '正位置') + '"';
 			}
-			const rank = ranks[card.rank] ?? card.rank.padStart(2, '0');
 			const style = 'R' === card.position ? ' transform: rotate(180deg);' : '';
-			return $(`<img style="max-width: 100%; height: auto;${style}" src="./images/TNM_tarot/${rank}.png">`);
+			return $(`<img style="max-width: 100%; height: auto;${style}" src="./images/TNM_tarot/${rank}.png"${title}>`);
 		} else {
-			return $('<img style="max-width: 100%; height: auto;${style}" src="./images/TNM_tarot/99.png">');
+			return $('<img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.png">');
 		}
 	}
 
@@ -391,6 +391,17 @@ $(document).ready(async function () {
 	async function drawTarot() {
 		try {
 			const data = await ajax('./games/' + id + '/tarot/draw', { method: 'PUT' });
+			updateStatus(JSON.stringify(data, null, 2));
+
+			await updateTarot(data.id);
+		} catch (error) {
+			updateStatus(`${error.name}: ${error.message}`);
+		}
+	}
+	$('#flipTarot').click(flipTarot);
+	async function flipTarot() {
+		try {
+			const data = await ajax('./games/' + id + '/tarot/flip', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateTarot(data.id);

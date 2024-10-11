@@ -549,6 +549,32 @@ paths:
           description: invalid input
         404:
           description: no game for id
+  /games/{id}/tarot/flip:
+    put:
+      tags:
+      - players
+      summary: flip tarot
+      operationId: flipTarot
+      description: |
+        Flips a tarot card from the tarot
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Tarot'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
 definitions:
   Card:
     type: object

@@ -40,43 +40,6 @@ function rankToString(rank) {
 	}
 }
 
-const tarotPositions = [
-	'U', 'R'
-];
-const tarotPositionStrings = [
-	'正位置', '逆位置'
-]
-const tarotRanks = [
-	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
-	'11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21',
-	'-14', '-18', '-2', '-9', '-12', '-17'
-];
-const tarotRankStrings = [
-	'カブキ', 'バサラ', 'タタラ', 'ミストレス', 'カブト',
-	'カリスマ', 'マネキン', 'カゼ', 'フェイト', 'クロマク',
-	'エグゼク', 'カタナ', 'クグツ', 'カゲ', 'チャクラ',
-	'レッガー', 'カブトワリ', 'ハイランダー', 'マヤカシ', 'トーキー',
-	'イヌ', 'ニューロ',
-	'ヒルコ', 'アヤカシ', 'テツジン', 'ハンドラー', 'クロガネ',
-	'エトランゼ'
-];
-
-function tarotPositionToString(position) {
-	if (tarotPositions.includes(position)) {
-		return tarotPositionStrings[ tarotPositions.indexOf(position) ];
-	} else {
-		return `[${position}]`;
-	}
-}
-
-function tarotRankToString(rank) {
-	if (tarotRanks.includes(rank)) {
-		return tarotRankStrings[ tarotRanks.indexOf(rank) ];
-	} else {
-		return `[${rank}]`;
-	}
-}
-
 
 class Card {
 	constructor(suit, rank, deck) {
@@ -99,26 +62,7 @@ class Card {
 }
 
 
-class TarotCard {
-	constructor(position, rank) {
-		this.position = position;
-		this.rank = rank;
-	}
-
-	getSymbols() {
-		return {
-			position: this.position,
-			rank: this.rank
-		};
-	}
-
-	getName() {
-		return `${tarotPositionToString(this.position)} ${tarotRankToString(this.rank)}`;
-	}
-}
-
-
-class Cards {
+export class Cards {  // exported for tarot.mjs
 	constructor(cards) {
 		this.cards = [];
 		if (cards instanceof Cards) {
@@ -211,28 +155,6 @@ export function newHand(deck, draw) {
 	if (deck) {
 		for (let i = 0; i < draw; i++) {
 			cards.push(deck.shift());
-		}
-	}
-	return cards;
-}
-
-export function newTarotDeck(shuffle) {
-	shuffle = shuffle ?? 10;
-	const cards = new Cards();
-	tarotPositions.forEach(position => {
-		tarotRanks.forEach(rank => {
-			cards.push(new TarotCard(position, rank));
-		});
-	});
-	cards.shuffle(shuffle);
-	const tarotSet = new Set();
-	for (let i = 0; i < cards.count(); i++) {
-		const rank = cards.at(i).rank;
-		if (tarotSet.has(rank)) {
-			cards.splice(i);
-			i--;
-		} else {
-			tarotSet.add(rank);
 		}
 	}
 	return cards;
