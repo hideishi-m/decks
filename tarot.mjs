@@ -41,7 +41,7 @@ function tarotRankToString(rank) {
 }
 
 
-class TarotCard {
+export class TarotCard {
 	constructor(position, rank) {
 		this.position = position;
 		this.rank = rank;
@@ -64,12 +64,15 @@ class TarotCard {
 }
 
 
-export function newTarotDeck(shuffle) {
+export function newTarotDeck(shuffle, trumps) {
 	shuffle = shuffle ?? 10;
+	trumps = trumps ?? [];
 	const cards = new Cards();
 	tarotPositions.forEach(position => {
 		tarotRanks.forEach(rank => {
-			cards.push(new TarotCard(position, rank));
+			if (false === trumps.includes(rank)) {
+				cards.push(new TarotCard(position, rank));
+			}
 		});
 	});
 	cards.shuffle(shuffle);

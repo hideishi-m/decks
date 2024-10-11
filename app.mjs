@@ -196,7 +196,20 @@ export function newApp(emitter, name) {
 						value: req.body.players
 					} });
 				}
-				const id = games.push(newGame(req.body.players)) - 1;
+				let players = req.body.players;
+				if (undefined !== req.body.trumps) {
+					if (false === Array.isArray(req.body.trumps)) {
+						return res.status(400).json({ error: {
+							message: 'invalid value for key',
+							key: 'trumps',
+							value: req.body.trumps
+						} });
+					}
+					players = req.body.players.map((value, i) => {
+						return [value, req.body.trumps[i]];
+					});
+				}
+				const id = games.push(newGame(players)) - 1;
 				logger(`POST game ${id} for players ${req.body.players}`);
 				return res.status(200).json({
 					id: `${id}`
@@ -558,6 +571,56 @@ export function newApp(emitter, name) {
 					pid: req.params.pid,
 					player: player,
 					hand: hand.cards
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
+	app.route('/games/:id/players/:pid/trump')
+		.get(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				const players = game.getPlayers();
+				const player = players[req.params.pid];
+				const trump = game.getTrumpOf(req.params.pid);
+				logger(`GET trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
+				return res.status(200).json({
+					id: req.params.id,
+					pid: req.params.pid,
+					player: player,
+					trump: trump.face()
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
+	app.route('/games/:id/players/:pid/trump/discard')
+		.put(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				const players = game.getPlayers();
+				const player = players[req.params.pid];
+				const trump = game.getTrumpOf(req.params.pid);
+				const tarot = game.getTarot();
+				logger(`DISCARD trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
+				trump.discard(0);
+				emitter.emit('tarot', {
+					id: req.params.id,
+					card: tarot.face()
+				});
+				return res.status(200).json({
+					id: req.params.id,
+					tarot: { length: tarot.cards.count() }
 				});
 			} catch (error) {
 				logger(error);

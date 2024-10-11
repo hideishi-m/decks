@@ -13,6 +13,11 @@ import { ajax, updateStatus, appendOption, removeOption, parseDataValue, parseDa
 
 $(document).ready(async function () {
 
+	const tarotCards = await ajax('./js/TNM_tarot.json', { method: 'GET' });
+	for (const [rank, name] of Object.entries(tarotCards)) {
+		appendOption('select[name^=trumps]', rank, name);
+	}
+
 	// common
 	async function appendGame(id) {
 		try {
@@ -38,8 +43,12 @@ $(document).ready(async function () {
     async function newGame() {
 		try {
 			const params = parseDataValuesEach({
-				players: 'input[name^=players]'
+				players: 'input[name^=players]',
+				trumps: 'select[name^=trumps]',
 			});
+			for (const [i, value] of params.trumps.entries()) {
+				params.trumps[i] = value in tarotCards ? value : undefined;
+			}
 			const data = await ajax('./games', {
 				method: 'POST',
 				headers: {
@@ -47,7 +56,8 @@ $(document).ready(async function () {
 				},
 				cache: 'no-cache',
 				body: JSON.stringify({
-					players: params.players
+					players: params.players,
+					trumps: params.trumps
 				})
 			});
 			updateStatus(JSON.stringify(data, null, 2));

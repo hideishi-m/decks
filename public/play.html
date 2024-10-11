@@ -24,7 +24,9 @@
         <div id="tarotLabel" class="col-3"></div>
       </div>
       <div class="row mb-3">
-        <div class="col-3"></div>
+        <div id="trump" class="col-3">
+          <img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.png">
+        </div>
         <div class="col-3"></div>
         <div id="tarot" class="col-3">
           <img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.png">
@@ -260,6 +262,38 @@
                 <div class="row mb-3">
                   <div class="col">
                     <button id="shufflePile" type="button" class="btn btn-primary">Shuffle to deck</button>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col">
+                    <button type="button" class="btn btn-secondary">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: trump -->
+  <div class="modal fade" id="trumpModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5>Trump</h5>
+        </div>
+        <div class="modal-body">
+          <div class="container-fluid">
+            <div class="row">
+              <div id="trumpModalCard" class="col">
+                <img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.png">
+              </div>
+              <div class="col">
+                <div class="row mb-3">
+                  <div class="col">
+                    <button id="discardTrump" type="button" class="btn btn-primary">Discard</button>
                   </div>
                 </div>
                 <div class="row mb-3">

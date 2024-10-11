@@ -497,6 +497,70 @@ paths:
           description: invalid input
         404:
           description: no game for id, pid or cid
+  /games/{id}/players/{pid}/trump:
+    get:
+      tags:
+      - players
+      summary: retrieve trump
+      operationId: getTrump
+      description: |
+        Retrieves the trump of the player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Tarot'
+        400:
+          description: invalid input
+        404:
+          description: no game for id or pid
+  /games/{id}/players/{pid}/trump/discard:
+    put:
+      tags:
+      - players
+      summary: discard trump
+      operationId: discardTrump
+      description: |
+        Discards the trump of the player
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      - in: path
+        name: pid
+        description: Player ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: games
+          schema:
+            $ref: '#/definitions/Tarot'
+        400:
+          description: invalid input
+        404:
+          description: no game for id or pid
   /games/{id}/tarot:
     get:
       tags:

@@ -25,6 +25,7 @@ $(document).ready(async function () {
 	const handModal = new bootstrap.Modal(document.getElementById('handModal'));
 	const deckModal = new bootstrap.Modal(document.getElementById('deckModal'));
 	const pileModal = new bootstrap.Modal(document.getElementById('pileModal'));
+	const trumpModal = new bootstrap.Modal(document.getElementById('trumpModal'));
 	const tarotModal = new bootstrap.Modal(document.getElementById('tarotModal'));
 
 	function createSocket() {
@@ -177,6 +178,7 @@ $(document).ready(async function () {
 			pid = data.pid;
 			$('#playerLabel').text(data.player);
 			await updateHand(data.hand);
+			await updateTrump();
 
 			socket.send(JSON.stringify({
 				id: id,
@@ -369,6 +371,42 @@ $(document).ready(async function () {
 			updateStatus(JSON.stringify(data, null, 2));
 
 			await updateHand(data.hand);
+		} catch (error) {
+			updateStatus(`${error.name}: ${error.message}`);
+		}
+	}
+
+	// #trumpModal
+	$('#trumpModal').on('click', 'button', toggleTrumpModal);
+	function toggleTrumpModal() {
+		trumpModal.toggle();
+	}
+
+	// #trump
+	$('#trump').on('click', 'img', function () {
+		$('#trumpModalCard').empty().append($(this).clone());
+		toggleTrumpModal();
+	});
+	async function updateTrump() {
+		try {
+			const data = await ajax('./games/' + id + '/players/' + pid + '/trump', { method: 'GET' });
+			updateStatus(JSON.stringify(data, null, 2));
+
+			$('#trump').empty().append(
+				createTarotCardImg(data.trump)
+			);
+		} catch (error) {
+			updateStatus(`${error.name}: ${error.message}`);
+		}
+	}
+	$('#discardTrump').click(discardTrump);
+	async function discardTrump() {
+		try {
+			const data = await ajax('./games/' + id + '/players/' + pid + '/trump/discard', { method: 'PUT' });
+			updateStatus(JSON.stringify(data, null, 2));
+
+			await updateTarot(data.id);
+			await updateTrump();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}

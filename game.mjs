@@ -10,7 +10,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { newDrawDeck, newDiscardPile, newHand } from './card.mjs';
-import { newTarotDeck } from './tarot.mjs';
+import { TarotCard, newTarotDeck } from './tarot.mjs';
 
 class Game {
 	constructor(players, deck, joker, shuffle, draw) {
@@ -18,14 +18,27 @@ class Game {
 		this.pile = newDiscardPile();
 		this.hands = [];
 		this.players = [ 'マスター' ];
+		const trumpCards = [ undefined ];
+		this.tarotDeck = newTarotDeck(shuffle, trumpCards);
+		this.tarotPile = newDiscardPile();
+		this.trumps = [];
 		for (const player of players) {
-			this.players.push(player);
+			if (Array.isArray(player) && 2 === player.length) {
+				this.players.push(player[0]);
+				trumpCards.push(player[1]);
+			} else {
+				this.players.push(player);
+			}
 		}
 		this.players.forEach(() => {
 			this.hands.push(newHand(this.deck, draw));
+			this.trumps.push(newHand());
 		});
-		this.tarotDeck = newTarotDeck(shuffle);
-		this.tarotPile = newDiscardPile();
+		for (let i = 0; i < trumpCards.length; i++) {
+			if (undefined !== trumpCards[i]) {
+				this.trumps[i].unshift(new TarotCard('U', trumpCards[i]));
+			}
+		}
 	}
 
 	shuffle(shuffle) {
@@ -68,6 +81,10 @@ class Game {
 
 	getTarot() {
 		return new Tarot(this);
+	}
+
+	getTrumpOf(player) {
+		return new Trump(this, player);
 	}
 }
 
@@ -184,6 +201,30 @@ class Tarot {
 	flip() {
 		if (this.cards.count()) {
 			this.cards.at(0).flip();
+		}
+	}
+
+	cards() {
+		return this.cards.from();
+	}
+}
+
+
+class Trump {
+	constructor(game, player) {
+		this.game = game;
+		this.player = player;
+		this.cards = this.game.trumps[this.player];
+	}
+
+	face() {
+		return (this.cards.count() ? this.cards.at(0) : undefined);
+	}
+
+	discard(index) {
+		const card = this.cards.splice(index);
+		if (undefined !== card) {
+			this.game.tarotPile.unshift(card);
 		}
 	}
 
