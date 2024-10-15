@@ -12,6 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import debug from 'debug';
 import express from 'express';
 
+import { version } from './args.mjs';
 import { newGame } from './game.mjs';
 
 export function newApp(emitter, name) {
@@ -157,6 +158,13 @@ export function newApp(emitter, name) {
 		}
 		next();
 	});
+
+	app.route('/version')
+		.get(function (req, res) {
+			return res.status(200).json({
+				version: version
+			});
+		})
 
 	app.route('/games')
 		.get(function (req, res) {
@@ -628,11 +636,15 @@ export function newApp(emitter, name) {
 				trump.discard(0);
 				emitter.emit('tarot', {
 					id: req.params.id,
-					card: tarot.face()
+					pid: req.params.pid,
+					player: player,
+					trump: tarot.face()
 				});
 				return res.status(200).json({
 					id: req.params.id,
-					tarot: { length: tarot.cards.count() }
+					pid: req.params.pid,
+					player: player,
+					trump: tarot.face()
 				});
 			} catch (error) {
 				logger(error);
@@ -676,7 +688,8 @@ export function newApp(emitter, name) {
 				});
 				return res.status(200).json({
 					id: req.params.id,
-					tarot: { length: tarot.cards.count() }
+					tarot: { length: tarot.cards.count() },
+					card: tarot.face()
 				});
 			} catch (error) {
 				logger(error);

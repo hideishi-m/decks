@@ -12,6 +12,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { readFile } from 'fs/promises';
 import process from 'process';
 
+const packageJson = JSON.parse(await readFile(new URL('./package.json', import.meta.url)));
+
 function usage(message) {
 	if (message) {
 		console.log(message);
@@ -26,9 +28,8 @@ function usage(message) {
 	process.exit(1);
 }
 
-async function defaults() {
+function defaults() {
 	const options = {};
-	const packageJson = JSON.parse(await readFile(new URL('./package.json', import.meta.url)));
 	options.name = packageJson.name;
 	['ip', 'port', 'timeout', 'key', 'cert'].forEach(key => {
 		if (undefined !== packageJson.config[key]) {
@@ -38,8 +39,8 @@ async function defaults() {
 	return options;
 }
 
-export async function parseArgs() {
-	const options = await defaults();
+export function parseArgs() {
+	const options = defaults();
 	const args = process.argv.slice(2);
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -65,3 +66,5 @@ export async function parseArgs() {
 	console.log({options});
 	return options;
 }
+
+export const version = packageJson['version'];

@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   description: Simple card deck app for playing TOKYO-NIGHTMARE
-  version: 1.0.0
+  version: 1.1.1
   title: Simple card deck API
   # put the contact info for your development or API team
   contact:
@@ -19,6 +19,23 @@ tags:
   description: Calls for game administrators
 
 paths:
+  /version:
+    get:
+      tags:
+      - admins
+      summary: retrieve version
+      operationId: getVersion
+      description: |
+        Retrieves version
+      produces:
+      - application/json
+      responses:
+        200:
+          description: version
+          schema:
+            $ref: '#/definitions/Version'
+        404:
+          description: no game available
   /games:
     get:
       tags:
@@ -32,13 +49,11 @@ paths:
       - application/json
       responses:
         200:
-          description: games
+          description: game IDs
           schema:
             type: array
             items:
               $ref: '#/definitions/Id'
-        404:
-          description: no game available
     post:
       tags:
       - admins
@@ -51,10 +66,10 @@ paths:
       - application/json
       parameters:
       - in: body
-        name: gamePlayers
-        description: Players for a new game
+        name: gamePlayersTrumps
+        description: Players and trumps for a new game
         schema:
-          $ref: '#/definitions/Players'
+          $ref: '#/definitions/PlayersTrumps'
       responses:
         200:
           description: game created
@@ -131,7 +146,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: deck
           schema:
             $ref: '#/definitions/Deck'
         400:
@@ -157,7 +172,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: deck
           schema:
             $ref: '#/definitions/Deck'
         400:
@@ -183,7 +198,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: deck
           schema:
             $ref: '#/definitions/Deck'
         400:
@@ -209,7 +224,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: pile
           schema:
             $ref: '#/definitions/Pile'
         400:
@@ -236,7 +251,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: pile
           schema:
             $ref: '#/definitions/Pile'
         400:
@@ -268,7 +283,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: hand
           schema:
             $ref: '#/definitions/Hand'
         400:
@@ -300,7 +315,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: hand
           schema:
             $ref: '#/definitions/Hand'
         400:
@@ -332,7 +347,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: hand
           schema:
             $ref: '#/definitions/Hand'
         400:
@@ -370,7 +385,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: card in the hand
           schema:
             $ref: '#/definitions/HandCard'
         400:
@@ -408,7 +423,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: hand
           schema:
             $ref: '#/definitions/Hand'
         400:
@@ -452,7 +467,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: hand
           schema:
             $ref: '#/definitions/Hand'
         400:
@@ -490,7 +505,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: hand
           schema:
             $ref: '#/definitions/Hand'
         400:
@@ -522,9 +537,9 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: trump
           schema:
-            $ref: '#/definitions/Tarot'
+            $ref: '#/definitions/Trump'
         400:
           description: invalid input
         404:
@@ -554,9 +569,9 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: trump
           schema:
-            $ref: '#/definitions/Tarot'
+            $ref: '#/definitions/Trump'
         400:
           description: invalid input
         404:
@@ -580,7 +595,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: tarot
           schema:
             $ref: '#/definitions/Tarot'
         400:
@@ -606,7 +621,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: tarot
           schema:
             $ref: '#/definitions/Tarot'
         400:
@@ -632,7 +647,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: tarot
           schema:
             $ref: '#/definitions/Tarot'
         400:
@@ -640,6 +655,12 @@ paths:
         404:
           description: no game for id
 definitions:
+  Version:
+    type: object
+    properties:
+      version:
+        type: string
+        example: '1.0.0'
   Card:
     type: object
     required:
@@ -676,16 +697,22 @@ definitions:
       id:
         type: string
         example: '1'
-  Players:
+  PlayersTrumps:
     type: object
     required:
     - players
+    - trumps
     properties:
       players:
         type: array
         items:
           type: string
           example: pc1
+      trumps:
+        type: array
+        items:
+          type: string
+          example: '0'
   Game:
     type: object
     required:
@@ -738,12 +765,15 @@ definitions:
     required:
     - id
     - pile
+    - card
     properties:
       id:
         type: string
         example: '1'
       pile:
         $ref: '#/definitions/GameCards'
+      card:
+        $ref: '#/definitions/Card'
   Hand:
     type: object
     required:
@@ -793,17 +823,39 @@ definitions:
         example: '1'
       card:
          $ref: '#/definitions/Card'
+  Trump:
+    type: object
+    required:
+    - id
+    - pid
+    - player
+    - trump
+    properties:
+      id:
+        type: string
+        example: '1'
+      pid:
+        type: string
+        example: '1'
+      player:
+        type: string
+        example: pc1
+      card:
+        $ref: '#/definitions/TarotCard'
   Tarot:
     type: object
     required:
     - id
     - tarot
+    - card
     properties:
       id:
         type: string
         example: '1'
       tarot:
         $ref: '#/definitions/TarotCards'
+      card:
+        $ref: '#/definitions/TarotCard'
 # Added by API Auto Mocking Plugin
 host: virtserver.swaggerhub.com
 basePath: /h6623/decks/1.0.0
