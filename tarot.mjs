@@ -41,21 +41,21 @@ function tarotRankToString(rank) {
 }
 
 
-export class TarotCard {
+class TarotCard {
 	constructor(position, rank) {
-		this.position = position;
 		this.rank = rank;
+		this.position = position;
 	}
 
 	getSymbols() {
 		return {
-			position: this.position,
-			rank: this.rank
+			rank: this.rank,
+			position: this.position
 		};
 	}
 
 	getName() {
-		return `${tarotPositionToString(this.position)} ${tarotRankToString(this.rank)}`;
+		return `${tarotRankToString(this.rank)} ${tarotPositionToString(this.position)}`;
 	}
 
 	flip() {
@@ -64,27 +64,41 @@ export class TarotCard {
 }
 
 
+class TarotCards extends Cards {
+	shuffle(n) {
+		n = n ?? 10;
+		for (let x = 0; x < n; x++) {
+			for (let i = this.cards.length - 1; i >= 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[ this.cards[i], this.cards[j] ] = [ this.cards[j], this.cards[i] ];
+				if (0.5 > Math.random()) {
+					this.cards[i].flip();
+				}
+				if (0.5 > Math.random()) {
+					this.cards[j].flip();
+				}
+			}
+		}
+	}
+}
+
+
+export function newTarotCard(rank, position) {
+	rank = tarotRanks.includes(rank) ? rank : '00';
+	position = tarotPositions.includes(position) ? position : 'U';
+	return new TarotCard(position, rank);
+}
+
+
 export function newTarotDeck(shuffle, trumps) {
 	shuffle = shuffle ?? 10;
 	trumps = trumps ?? [];
-	const cards = new Cards();
-	tarotPositions.forEach(position => {
-		tarotRanks.forEach(rank => {
-			if (false === trumps.includes(rank)) {
-				cards.push(new TarotCard(position, rank));
-			}
-		});
+	const cards = new TarotCards();
+	tarotRanks.forEach(rank => {
+		if (false === trumps.includes(rank)) {
+			cards.push(new TarotCard(rank, 'U'));  // default 'U'
+		}
 	});
 	cards.shuffle(shuffle);
-	const tarotSet = new Set();
-	for (let i = 0; i < cards.count(); i++) {
-		const rank = cards.at(i).rank;
-		if (tarotSet.has(rank)) {
-			cards.splice(i);
-			i--;
-		} else {
-			tarotSet.add(rank);
-		}
-	}
 	return cards;
 }

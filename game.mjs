@@ -10,7 +10,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { newDrawDeck, newDiscardPile, newHand } from './card.mjs';
-import { TarotCard, newTarotDeck } from './tarot.mjs';
+import { newTarotCard, newTarotDeck } from './tarot.mjs';
 
 class Game {
 	constructor(players, deck, joker, shuffle, draw) {
@@ -19,9 +19,6 @@ class Game {
 		this.hands = [];
 		this.players = [ 'マスター' ];
 		const trumpCards = [ undefined ];
-		this.tarotDeck = newTarotDeck(shuffle, trumpCards);
-		this.tarotPile = newDiscardPile();
-		this.trumps = [];
 		for (const player of players) {
 			if (Array.isArray(player) && 2 === player.length) {
 				this.players.push(player[0]);
@@ -30,15 +27,18 @@ class Game {
 				this.players.push(player);
 			}
 		}
+		this.trumps = [];
 		this.players.forEach(() => {
 			this.hands.push(newHand(this.deck, draw));
 			this.trumps.push(newHand());
 		});
 		for (let i = 0; i < trumpCards.length; i++) {
 			if (undefined !== trumpCards[i]) {
-				this.trumps[i].unshift(new TarotCard('U', trumpCards[i]));
+				this.trumps[i].unshift(newTarotCard(trumpCards[i], 'U'));
 			}
 		}
+		this.tarotDeck = newTarotDeck(shuffle, trumpCards);
+		this.tarotPile = newDiscardPile();
 	}
 
 	shuffle(shuffle) {
@@ -56,7 +56,8 @@ class Game {
 			players: this.players.map((player, index) => {
 				return {
 					player: player,
-					hand: this.hands[index].getStatus()
+					hand: this.hands[index].getStatus(),
+					trump: this.trumps[index].getStatus()
 				}
 			}),
 			tarot: { length: this.tarotPile.count() }
