@@ -684,7 +684,7 @@ export function newApp(emitter, name) {
 				logger(`DRAW tarot in game ${req.params.id}`);
 				emitter.emit('tarot', {
 					id: req.params.id,
-					card: tarot.face()
+					tarot: tarot.face()
 				});
 				return res.status(200).json({
 					id: req.params.id,
@@ -709,11 +709,12 @@ export function newApp(emitter, name) {
 				logger(`FLIP tarot in game ${req.params.id}`);
 				emitter.emit('tarot', {
 					id: req.params.id,
-					card: tarot.face()
+					tarot: tarot.face()
 				});
 				return res.status(200).json({
 					id: req.params.id,
-					tarot: { length: tarot.cards.count() }
+					tarot: { length: tarot.cards.count() },
+					card: tarot.face()
 				});
 			} catch (error) {
 				logger(error);

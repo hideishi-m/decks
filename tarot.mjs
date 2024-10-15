@@ -42,7 +42,7 @@ function tarotRankToString(rank) {
 
 
 class TarotCard {
-	constructor(position, rank) {
+	constructor(rank, position) {
 		this.rank = rank;
 		this.position = position;
 	}
@@ -79,7 +79,7 @@ class TarotCards extends Cards {
 export function newTarotCard(rank, position) {
 	rank = tarotRanks.includes(rank) ? rank : '00';
 	position = tarotPositions.includes(position) ? position : 'U';
-	return new TarotCard(position, rank);
+	return new TarotCard(rank, position);
 }
 
 
