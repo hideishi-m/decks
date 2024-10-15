@@ -47,13 +47,6 @@ class TarotCard {
 		this.position = position;
 	}
 
-	getSymbols() {
-		return {
-			rank: this.rank,
-			position: this.position
-		};
-	}
-
 	getName() {
 		return `${tarotRankToString(this.rank)} ${tarotPositionToString(this.position)}`;
 	}

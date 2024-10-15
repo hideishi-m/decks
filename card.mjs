@@ -48,14 +48,6 @@ class Card {
 		this.deck = deck;
 	}
 
-	getSymbols() {
-		return {
-			suit: this.suit,
-			rank: this.rank,
-			deck: this.deck
-		};
-	}
-
 	getName() {
 		return `${suitToString(this.suit)} ${rankToString(this.rank)} (${this.deck})`;
 	}

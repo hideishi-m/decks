@@ -196,20 +196,14 @@ export function newApp(emitter, name) {
 						value: req.body.players
 					} });
 				}
-				let players = req.body.players;
-				if (undefined !== req.body.trumps) {
-					if (false === Array.isArray(req.body.trumps)) {
-						return res.status(400).json({ error: {
-							message: 'invalid value for key',
-							key: 'trumps',
-							value: req.body.trumps
-						} });
-					}
-					players = req.body.players.map((value, i) => {
-						return [value, req.body.trumps[i]];
-					});
+				if (false === Array.isArray(req.body.trumps)) {
+					return res.status(400).json({ error: {
+						message: 'invalid value for key',
+						key: 'trumps',
+						value: req.body.trumps
+					} });
 				}
-				const id = games.push(newGame(players)) - 1;
+				const id = games.push(newGame(req.body.players, req.body.trumps)) - 1;
 				logger(`POST game ${id} for players ${req.body.players}`);
 				return res.status(200).json({
 					id: `${id}`
@@ -247,6 +241,24 @@ export function newApp(emitter, name) {
 				logger(`DELETE game ${req.params.id}`);
 				return res.status(200).json({
 					id: req.params.id
+				});
+			} catch (error) {
+				logger(error);
+				return res.status(500).json({ error: {
+					message: `${error.name}: ${error.message}`,
+					error: error
+				} });
+			}
+		});
+
+	app.route('/games/:id/status')
+		.get(function (req, res) {
+			try {
+				const game = games[req.params.id];
+				logger(`GET status in game ${req.params.id}`);
+				return res.status(200).json({
+					id: req.params.id,
+					game: game.getStatus()
 				});
 			} catch (error) {
 				logger(error);
@@ -657,7 +669,7 @@ export function newApp(emitter, name) {
 				const game = games[req.params.id];
 				const tarot = game.getTarot();
 				tarot.draw();
-				logger(`DRAW card for tarot in game ${req.params.id}`);
+				logger(`DRAW tarot in game ${req.params.id}`);
 				emitter.emit('tarot', {
 					id: req.params.id,
 					card: tarot.face()
@@ -681,7 +693,7 @@ export function newApp(emitter, name) {
 				const game = games[req.params.id];
 				const tarot = game.getTarot();
 				tarot.flip();
-				logger(`FLIP card for tarot in game ${req.params.id}`);
+				logger(`FLIP tarot in game ${req.params.id}`);
 				emitter.emit('tarot', {
 					id: req.params.id,
 					card: tarot.face()

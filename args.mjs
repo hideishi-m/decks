@@ -30,11 +30,11 @@ async function defaults() {
 	const options = {};
 	const packageJson = JSON.parse(await readFile(new URL('./package.json', import.meta.url)));
 	options.name = packageJson.name;
-	for (const key of ['ip', 'port', 'timeout', 'key', 'cert']) {
+	['ip', 'port', 'timeout', 'key', 'cert'].forEach(key => {
 		if (undefined !== packageJson.config[key]) {
 			options[key] = packageJson.config[key];
 		}
-	}
+	});
 	return options;
 }
 

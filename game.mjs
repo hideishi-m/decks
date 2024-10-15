@@ -13,32 +13,23 @@ import { newDrawDeck, newDiscardPile, newHand } from './card.mjs';
 import { newTarotCard, newTarotDeck } from './tarot.mjs';
 
 class Game {
-	constructor(players, deck, joker, shuffle, draw) {
+	constructor(players, trumps, deck, joker, shuffle, draw) {
+		players = [ 'マスター', ...players ];
 		this.deck = newDrawDeck(deck, joker, shuffle);
 		this.pile = newDiscardPile();
+		this.tarotDeck = newTarotDeck(shuffle, trumps);
+		this.tarotPile = newDiscardPile();
+		this.players = [];
 		this.hands = [];
-		this.players = [ 'マスター' ];
-		const trumpCards = [ undefined ];
-		for (const player of players) {
-			if (Array.isArray(player) && 2 === player.length) {
-				this.players.push(player[0]);
-				trumpCards.push(player[1]);
-			} else {
-				this.players.push(player);
-			}
-		}
 		this.trumps = [];
-		this.players.forEach(() => {
+		players.forEach((player, index) => {
+			this.players.push(player);
 			this.hands.push(newHand(this.deck, draw));
 			this.trumps.push(newHand());
-		});
-		for (let i = 0; i < trumpCards.length; i++) {
-			if (undefined !== trumpCards[i]) {
-				this.trumps[i].unshift(newTarotCard(trumpCards[i], 'U'));
+			if (0 < index && undefined !== trumps[index - 1]) {
+				this.trumps[index].unshift(newTarotCard(trumps[index - 1], 'U'));
 			}
-		}
-		this.tarotDeck = newTarotDeck(shuffle, trumpCards);
-		this.tarotPile = newDiscardPile();
+		});
 	}
 
 	shuffle(shuffle) {
@@ -235,12 +226,13 @@ class Trump {
 }
 
 
-export function newGame(players, deck, joker, shuffle, draw) {
+export function newGame(players, trumps, deck, joker, shuffle, draw) {
 	players = players ?? [];
+	trumps = trumps ?? [];
 	deck = deck ?? 2;
 	joker = joker ?? 1;
 	shuffle = shuffle ?? 10;
 	draw = draw ?? 4;
-	const game = new Game(players, deck, joker, shuffle, draw);
+	const game = new Game(players, trumps, deck, joker, shuffle, draw);
 	return game;
 }
