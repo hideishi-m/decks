@@ -12,11 +12,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import debug from 'debug';
 import express from 'express';
 
-import { version } from './args.mjs';
 import { newGame } from './game.mjs';
 
-export function newApp(emitter, name) {
+export function newApp(emitter, name, version) {
 	name = name ? `${name}:app` : 'app';
+	version = version ?? '1.0.0';
 
 	const logger = debug(name);
 	const games = [];

@@ -39,6 +39,8 @@ function defaults() {
 	return options;
 }
 
+export const version = packageJson['version'];
+
 export function parseArgs() {
 	const options = defaults();
 	const args = process.argv.slice(2);
@@ -66,5 +68,3 @@ export function parseArgs() {
 	console.log({options});
 	return options;
 }
-
-export const version = packageJson['version'];

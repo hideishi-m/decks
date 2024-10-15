@@ -14,7 +14,7 @@ import EventEmitter from 'events';
 import { readFile } from 'fs/promises';
 import process from 'process';
 
-import { parseArgs } from './args.mjs';
+import { version, parseArgs } from './args.mjs';
 import { newApp } from './app.mjs';
 import { newServer } from './server.mjs';
 
@@ -25,7 +25,7 @@ debug.enable(`${name}*`);
 
 const logger = debug(name);
 const emitter = new EventEmitter();
-const app = newApp(emitter, name);
+const app = newApp(emitter, name, version);
 
 async function newServerOpts(options) {
 	const serverOpts = {};
