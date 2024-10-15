@@ -121,9 +121,9 @@ $(document).ready(async function () {
 				title = ` title="${tarotCards[card.rank]} ` + ('R' === card.position ? '逆位置' : '正位置') + '"';
 			}
 			const style = 'R' === card.position ? ' transform: rotate(180deg);' : '';
-			return $(`<img style="max-width: 100%; height: auto;${style}" src="./images/TNM_tarot/${rank}.png"${title}>`);
+			return $(`<img style="max-width: 100%; height: auto;${style}" src="./images/TNM_tarot/${rank}.webp"${title}>`);
 		} else {
-			return $('<img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.png">');
+			return $('<img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.webp">');
 		}
 	}
 
@@ -402,11 +402,18 @@ $(document).ready(async function () {
 	$('#discardTrump').click(discardTrump);
 	async function discardTrump() {
 		try {
-			const data = await ajax('./games/' + id + '/players/' + pid + '/trump/discard', { method: 'PUT' });
-			updateStatus(JSON.stringify(data, null, 2));
+			if ('0' === pid) {
+				const data = await ajax('./games/' + id + '/tarot/draw', { method: 'PUT' });
+				updateStatus(JSON.stringify(data, null, 2));
 
-			await updateTarot(data.id);
-			await updateTrump();
+				await updateTarot(data.id);
+			} else {
+				const data = await ajax('./games/' + id + '/players/' + pid + '/trump/discard', { method: 'PUT' });
+				updateStatus(JSON.stringify(data, null, 2));
+
+				await updateTarot(data.id);
+				await updateTrump();
+			}
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -420,22 +427,9 @@ $(document).ready(async function () {
 
 	// #tarot
 	$('#tarot').on('click', 'img', function () {
-		if ('0' === pid) {
-			$('#tarotModalCard').empty().append($(this).clone());
-			toggleTarotModal();
-		}
+		$('#tarotModalCard').empty().append($(this).clone());
+		toggleTarotModal();
 	});
-	$('#drawTarot').click(drawTarot);
-	async function drawTarot() {
-		try {
-			const data = await ajax('./games/' + id + '/tarot/draw', { method: 'PUT' });
-			updateStatus(JSON.stringify(data, null, 2));
-
-			await updateTarot(data.id);
-		} catch (error) {
-			updateStatus(`${error.name}: ${error.message}`);
-		}
-	}
 	$('#flipTarot').click(flipTarot);
 	async function flipTarot() {
 		try {
