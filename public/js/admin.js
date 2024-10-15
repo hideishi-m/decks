@@ -23,7 +23,6 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			$('#game').append($('<div />', {
 				class: 'col-3',
 				['data-id']: data.id
@@ -61,7 +60,6 @@ $(document).ready(async function () {
 				})
 			});
 			updateStatus(JSON.stringify(data, null, 2));
-
 			await appendGame(data.id);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -86,7 +84,6 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + params.id, { method: 'DELETE' } );
 			updateStatus(JSON.stringify(data, null, 2));
-
 			$(`#game div[data-id='${data.id}']`).each(function () {
 				$(this).remove();
 			});
@@ -100,7 +97,6 @@ $(document).ready(async function () {
 	try {
 		const data = await ajax('./games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
-
 		for (const id of data.games) {
 			await appendGame(id);
 		}

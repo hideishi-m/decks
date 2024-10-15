@@ -65,10 +65,10 @@ $(document).ready(async function () {
 			else if (data.deck) {
 				if (data.deck.player) {
 					appendLog(`${data.deck.player} drew a card`);
-					await updateDeck(data.deck.id);
+					await updateDeck();
 				} else {
 					appendLog('deck was updated');
-					await updateDeck(data.deck.id);
+					await updateDeck();
 				}
 			}
 			// pile: id,pid,player,pile
@@ -76,16 +76,17 @@ $(document).ready(async function () {
 			else if (data.pile) {
 				if (data.pile.player) {
 					appendLog(`${data.pile.player} discarded a card`);
-					await updatePile(data.pile.id);
+					await updatePile();
 				} else {
 					appendLog('pile was updated');
-					await updatePile(data.pile.id);
+					await updatePile();
 				}
 			}
+			// tarot: id,pid,player,trump
 			// tarot: id,tarot
 			else if (data.tarot) {
 				appendLog('tarot was updated');
-				await updateTarot(data.tarot.id);
+				await updateTarot();
 			}
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -142,15 +143,14 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + params.id, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			id = data.id;
 			$('#gameLabel').text(data.id);
 			updateOptions('#selectPlayerSelect', data.players);
 			updateOptions('#passHandSelect', data.players);
 			updateOptions('#pickSelect', data.players);
-			await updateDeck(data.id);
-			await updatePile(data.id);
-			await updateTarot(data.id);
+			await updateDeck();
+			await updatePile();
+			await updateTarot();
 			togglePlayerModal();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -172,7 +172,6 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + id + '/players/' + params.pid, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			removeOption('#passHandSelect', data.pid);
 			removeOption('#pickSelect', data.pid);
 			pid = data.pid;
@@ -205,7 +204,6 @@ $(document).ready(async function () {
 			if (undefined === hand) {
 				const data = await ajax('./games/' + id + '/players/' + pid, { method: 'GET' });
 				updateStatus(JSON.stringify(data, null, 2));
-
 				hand = data.hand;
 			}
 			$('#hand').empty();
@@ -228,9 +226,8 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + id + '/players/' + pid + '/cards/' + params.cid + '/discard', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			await updateHand(data.hand);
-			await updatePile(data.id);
+			await updatePile();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -244,7 +241,6 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + id + '/players/' + pid + '/cards/' + params.cid + '/pass/' + params.tid, { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			await updateHand(data.hand);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -261,11 +257,10 @@ $(document).ready(async function () {
 	$('#deck').on('click', 'svg', function () {
 		toggleDeckModal();
 	});
-	async function updateDeck(id) {
+	async function updateDeck() {
 		try {
 			const data = await ajax('./games/' + id + '/deck', { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			$('#deckLabel').text(data.deck.length);
 			$('#deck').empty().append(
 				createCardSvg()
@@ -279,9 +274,8 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/players/' + pid + '/draw', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			await updateHand(data.hand);
-			await updateDeck(data.id);
+			await updateDeck();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -291,9 +285,8 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/deck/discard', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
-			await updateDeck(data.id);
-			await updatePile(data.id);
+			await updateDeck();
+			await updatePile();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -310,11 +303,10 @@ $(document).ready(async function () {
 		$('#pileModalCard').empty().append($(this).clone());
 		togglePileModal();
 	});
-	async function updatePile(id) {
+	async function updatePile() {
 		try {
 			const data = await ajax('./games/' + id + '/pile', { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			$('#pileLabel').text(data.pile.length);
 			$('#pile').empty().append(
 				createCardSvg(data.card)
@@ -328,9 +320,8 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/players/' + pid + '/recycle', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			await updateHand(data.hand);
-			await updatePile(data.id);
+			await updatePile();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -340,9 +331,8 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/deck/recycle', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
-			await updateDeck(data.id);
-			await updatePile(data.id);
+			await updateDeck();
+			await updatePile();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -352,9 +342,8 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/pile/shuffle', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
-			await updateDeck(data.id);
-			await updatePile(data.id);
+			await updateDeck();
+			await updatePile();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -369,7 +358,6 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + id + '/players/' + pid + '/pick/' + params.tid, { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			await updateHand(data.hand);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -391,7 +379,6 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/players/' + pid + '/trump', { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			$('#trump').empty().append(
 				createTarotCardImg(data.trump)
 			);
@@ -405,13 +392,11 @@ $(document).ready(async function () {
 			if ('0' === pid) {
 				const data = await ajax('./games/' + id + '/tarot/draw', { method: 'PUT' });
 				updateStatus(JSON.stringify(data, null, 2));
-
-				await updateTarot(data.id);
+				await updateTarot();
 			} else {
 				const data = await ajax('./games/' + id + '/players/' + pid + '/trump/discard', { method: 'PUT' });
 				updateStatus(JSON.stringify(data, null, 2));
-
-				await updateTarot(data.id);
+				await updateTarot();
 				await updateTrump();
 			}
 		} catch (error) {
@@ -435,17 +420,15 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/tarot/flip', { method: 'PUT' });
 			updateStatus(JSON.stringify(data, null, 2));
-
-			await updateTarot(data.id);
+			await updateTarot();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
 	}
-	async function updateTarot(id) {
+	async function updateTarot() {
 		try {
 			const data = await ajax('./games/' + id + '/tarot', { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
-
 			$('#tarotLabel').text(data.tarot.length);
 			$('#tarot').empty().append(
 				createTarotCardImg(data.card)
@@ -459,7 +442,6 @@ $(document).ready(async function () {
 	try {
 		const data = await ajax('./games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
-
 		$('#selectGameSelect').empty();
 		for (const game of data.games) {
 			appendOption('#selectGameSelect', game, game);
