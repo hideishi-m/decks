@@ -85,8 +85,13 @@ $(document).ready(async function () {
 			// tarot: id,pid,player,trump
 			// tarot: id,tarot
 			else if (data.tarot) {
-				appendLog('tarot was updated');
-				await updateTarot();
+				if (data.tarot.player) {
+					appendLog(`${data.tarot.player} discarded a trump`);
+					await updatePile();
+				} else {
+					appendLog('tarot was updated');
+					await updateTarot();
+				}
 			}
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);

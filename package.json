@@ -30,6 +30,7 @@
   "dependencies": {
     "debug": "^4.3.3",
     "express": "^4.17.2",
+    "helmet": "^8.0.0",
     "proxy-addr": "^2.0.7",
     "svg-cards": "^4.0.0",
     "ws": "^8.4.2"

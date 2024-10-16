@@ -11,6 +11,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import debug from 'debug';
 import express from 'express';
+import helmet from 'helmet';
 
 import { newGame } from './game.mjs';
 
@@ -22,8 +23,8 @@ export function newApp(emitter, name, version) {
 	const games = [];
 	const app = express();
 
+	app.use(helmet());
 	app.set('trust proxy', 'loopback, uniquelocal');
-
 	app.disable('x-powered-by');
 	app.disable('etag');
 	app.use(express.json({
@@ -34,7 +35,7 @@ export function newApp(emitter, name, version) {
 		limit: '10mb'
 	}));
 	app.use(function (req, res, next) {
-		if (false === /\.(html|ico|js|svg)$/.test(req.path)) {
+		if (false === /\.(html|ico|js|png|svg|webp)$/.test(req.path)) {
 			logger({
 				time: new Date(),
 				ip: req.ip,
@@ -43,15 +44,7 @@ export function newApp(emitter, name, version) {
 				body: req.body
 			});
 			res.set({
-				'Cache-Control': 'no-cache',
-				'Content-Security-Policy': "default-src 'none'",
-				'X-Content-Type-Options': 'nosniff',
-				'X-Frame-Options': 'deny'
-			});
-		} else {
-			res.set({
-				'X-Content-Type-Options': 'nosniff',
-				'X-Frame-Options': 'deny'
+				'Cache-Control': 'no-cache'
 			});
 		}
 		next();
