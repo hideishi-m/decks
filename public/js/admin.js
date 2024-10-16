@@ -19,14 +19,18 @@ $(document).ready(async function () {
 	}
 
 	// common
-	async function appendGame(id) {
+	async function appendGame(id, token) {
 		try {
-			const data = await ajax('./games/' + id, { method: 'GET' });
+			const data = await ajax('./games/' + id, { method: 'GET' }, token);
 			updateStatus(JSON.stringify(data, null, 2));
 			$('#game').append($('<div />', {
 				class: 'col-3',
 				['data-id']: data.id
-			}).text(data.id));
+			}).append($('<a />', {
+				href: `./play.html?token=${token}`,
+				target: '_blank',
+				rel: 'noopener noreferrer'
+			}).text(data.id)));
 			$('#game').append($('<div />', {
 				class: 'col-9',
 				['data-id']: data.id
@@ -60,7 +64,7 @@ $(document).ready(async function () {
 				})
 			});
 			updateStatus(JSON.stringify(data, null, 2));
-			await appendGame(data.id);
+			await appendGame(data.id, data.token);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}

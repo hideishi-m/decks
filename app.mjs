@@ -9,11 +9,16 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import { randomBytes } from 'node:crypto';
+
 import debug from 'debug';
 import express from 'express';
 import helmet from 'helmet';
+import jwt from 'jsonwebtoken';
 
 import { newGame } from './game.mjs';
+
+const secret = randomBytes(64).toString('hex');
 
 export function newApp(emitter, name, version) {
 	name = name ? `${name}:app` : 'app';
@@ -21,12 +26,65 @@ export function newApp(emitter, name, version) {
 
 	const logger = debug(name);
 	const games = [];
+	const tokens = [];
 	const app = express();
 
-	app.use(helmet());
+	function sliceToken(token, length) {
+		length = length ?? 40;
+		if (length > token.length) {
+			return token;
+		}
+		return token.slice(0, length / 2) + '...' + token.slice(-1 * length / 2);
+	}
+
+	function getToken(headers) {
+		const authorization = headers['authorization'];
+		if (undefined === authorization) {
+			return undefined;
+		}
+		const [bearer, token] = authorization.split(' ') ?? [];
+		if ('Bearer' !== bearer) {
+			return undefined;
+		}
+		return token;
+	}
+
+	function verifyToken(req, res, next) {
+		if (undefined === req.params.id) {
+			return res.status(401).json({ error: {
+				message: 'id is not set',
+				id: req.params.id
+			} });
+		}
+		const token = getToken(req.headers);
+		if (undefined === token) {
+			return res.status(401).json({ error: {
+				message: 'authorization required for id',
+				id: req.params.id
+			} });
+		}
+		try {
+			const decoded = jwt.verify(token, secret);
+			if (req.params.id !== decoded?.id) {
+				return res.status(403).json({ error: {
+					message: 'authorization failed for id',
+					id: req.params.id
+				} });
+			}
+		} catch (error) {
+			logger(error);
+			return res.status(403).json({ error: {
+				message: 'authorization failed for id',
+				id: req.params.id
+			} });
+		}
+		next();
+	}
+
 	app.set('trust proxy', 'loopback, uniquelocal');
 	app.disable('x-powered-by');
 	app.disable('etag');
+	app.use(helmet());
 	app.use(express.json({
 		limit: '10mb'
 	}));
@@ -34,24 +92,23 @@ export function newApp(emitter, name, version) {
 		extended: true,
 		limit: '10mb'
 	}));
-	app.use(function (req, res, next) {
-		if (false === /\.(html|ico|js|png|svg|webp)$/.test(req.path)) {
-			logger({
-				time: new Date(),
-				ip: req.ip,
-				method: req.method,
-				path: req.path,
-				body: req.body
-			});
-			res.set({
-				'Cache-Control': 'no-cache'
-			});
-		}
-		next();
-	});
-	app.use('/', express.static(new URL('./public', import.meta.url).pathname, {
+	app.use(express.static(new URL('./public', import.meta.url).pathname, {
 		maxAge: '1d'
 	}));
+	app.use(function (req, res, next) {
+		logger({
+			time: new Date(),
+			ip: req.ip,
+			method: req.method,
+			path: req.path,
+			body: req.body,
+			token: sliceToken(getToken(req.headers) ?? '')
+		});
+		res.set({
+			'Cache-Control': 'no-cache'
+		});
+		next();
+	});
 
 	app.param('id', function (req, res, next, id) {
 		if (false === /^\d+$/.test(id)) {
@@ -205,9 +262,11 @@ export function newApp(emitter, name, version) {
 					} });
 				}
 				const id = games.push(newGame(req.body.players, req.body.trumps)) - 1;
+				tokens.push(jwt.sign({ id: `${id}` }, secret, { expiresIn: '1d' }));
 				logger(`POST game ${id} for players ${req.body.players}`);
 				return res.status(200).json({
-					id: `${id}`
+					id: `${id}`,
+					token: tokens[id]
 				});
 			} catch (error) {
 				logger(error);
@@ -253,7 +312,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/status')
-		.get(function (req, res) {
+		.get(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				logger(`GET status in game ${req.params.id}`);
@@ -271,7 +330,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/deck')
-		.get(function (req, res) {
+		.get(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const deck = game.getDeck();
@@ -290,7 +349,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/deck/discard')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const deck = game.getDeck();
@@ -318,7 +377,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/deck/recycle')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const deck = game.getDeck();
@@ -346,7 +405,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/pile')
-		.get(function (req, res) {
+		.get(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const pile = game.getPile();
@@ -366,7 +425,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/pile/shuffle')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const pile = game.getPile();
@@ -394,7 +453,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid')
-		.get(function (req, res) {
+		.get(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -417,7 +476,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid/draw')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -446,7 +505,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid/recycle')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -477,7 +536,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid/cards/:cid')
-		.get(function (req, res) {
+		.get(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -502,7 +561,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid/cards/:cid/discard')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -533,7 +592,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid/cards/:cid/pass/:tid')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -564,7 +623,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid/pick/:tid')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -595,7 +654,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid/trump')
-		.get(function (req, res) {
+		.get(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -618,7 +677,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/players/:pid/trump/discard')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const players = game.getPlayers();
@@ -649,7 +708,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/tarot')
-		.get(function (req, res) {
+		.get(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const tarot = game.getTarot();
@@ -669,7 +728,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/tarot/draw')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const tarot = game.getTarot();
@@ -694,7 +753,7 @@ export function newApp(emitter, name, version) {
 		});
 
 	app.route('/games/:id/tarot/flip')
-		.put(function (req, res) {
+		.put(verifyToken, function (req, res) {
 			try {
 				const game = games[req.params.id];
 				const tarot = game.getTarot();
