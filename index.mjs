@@ -13,6 +13,7 @@ import EventEmitter from 'node:events';
 import { readFile } from 'node:fs/promises';
 import process from 'node:process';
 import debug from 'debug';
+import 'dotenv/config';
 
 import { version, parseArgs } from './args.mjs';
 import { newApp } from './app.mjs';
