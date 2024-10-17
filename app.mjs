@@ -20,6 +20,16 @@ import { newGame } from './game.mjs';
 
 const secret = randomBytes(64).toString('hex');
 
+function truncate(str, n) {
+	if ('string' !== typeof str) {
+		return str;
+	}
+	if (str.length <= n) {
+		return str;
+	}
+	return str.slice(0, n / 2) + '...' + str.slice(-1 * n / 2);
+}
+
 export function newApp(emitter, name, version) {
 	name = name ? `${name}:app` : 'app';
 	version = version ?? '1.0.0';
@@ -29,24 +39,30 @@ export function newApp(emitter, name, version) {
 	const tokens = [];
 	const app = express();
 
-	function sliceToken(token, length) {
-		length = length ?? 40;
-		if (length > token.length) {
+	Object.defineProperty(app.request, 'token', {
+		enumerable: true,
+		get() {
+			const authorization = this.get('authorization');
+			if (undefined === authorization) {
+				return null;
+			}
+			const [bearer, token] = authorization.split(' ') ?? [];
+			if ('Bearer' !== bearer) {
+				return null;
+			}
 			return token;
 		}
-		return token.slice(0, length / 2) + '...' + token.slice(-1 * length / 2);
-	}
+	});
 
-	function getToken(headers) {
-		const authorization = headers['authorization'];
-		if (undefined === authorization) {
-			return undefined;
-		}
-		const [bearer, token] = authorization.split(' ') ?? [];
-		if ('Bearer' !== bearer) {
-			return undefined;
-		}
-		return token;
+	app.response._json = app.response.json;
+	app.response.json = function (body) {
+		logger.extend('response')({
+			time: new Date(),
+			route: this.req.route.path,
+			body: body
+		});
+		this.set({ 'Cache-Control': 'no-cache' });
+		return this._json(body);
 	}
 
 	function verifyToken(req, res, next) {
@@ -57,8 +73,7 @@ export function newApp(emitter, name, version) {
 				id: req.params.id
 			} });
 		}
-		const token = getToken(req.headers);
-		if (undefined === token) {
+		if (null === req.token) {
 			res.set('WWW-Authenticate', `Bearer realem="${req.params.id}"`);
 			return res.status(401).json({ error: {
 				message: 'authorization required for id',
@@ -66,7 +81,7 @@ export function newApp(emitter, name, version) {
 			} });
 		}
 		try {
-			const decoded = jwt.verify(token, secret);
+			const decoded = jwt.verify(req.token, secret);
 			if (req.params.id !== decoded?.id) {
 				res.set('WWW-Authenticate', `Bearer realem="${req.params.id}", error="insufficient_scope"`);
 				return res.status(403).json({ error: {
@@ -105,10 +120,9 @@ export function newApp(emitter, name, version) {
 			ip: req.ip,
 			method: req.method,
 			path: req.path,
-			body: req.body,
-			token: sliceToken(getToken(req.headers) ?? '')
+			token: truncate(req.token, 40),
+			body: req.body
 		});
-		res.set({ 'Cache-Control': 'no-cache' });
 		next();
 	});
 
@@ -212,14 +226,14 @@ export function newApp(emitter, name, version) {
 	});
 
 	app.route('/version')
-		.get(function (req, res) {
+		.get(function (req, res, next) {
 			return res.status(200).json({
 				version: version
 			});
 		})
 
 	app.route('/games')
-		.get(function (req, res) {
+		.get(function (req, res, next) {
 			const ids = [];
 			games.forEach((game, index) => {
 				if (undefined !== game) {
@@ -235,549 +249,388 @@ export function newApp(emitter, name, version) {
 				games: ids
 			});
 		})
-		.post(function (req, res) {
-			try {
-				if (undefined === req.body) {
-					return res.status(400).json({ error: {
-						message: 'no body',
-						body: req.body
-					} });
-				}
-				if ( '[object Object]' !== Object.prototype.toString.call(req.body)) {
-					return res.status(400).json({ error: {
-						message: 'invalid format for body',
-						body: req.body
-					} });
-				}
-				if (false === Array.isArray(req.body.players)) {
-					return res.status(400).json({ error: {
-						message: 'invalid value for key',
-						key: 'players',
-						value: req.body.players
-					} });
-				}
-				if (false === Array.isArray(req.body.trumps)) {
-					return res.status(400).json({ error: {
-						message: 'invalid value for key',
-						key: 'trumps',
-						value: req.body.trumps
-					} });
-				}
-				const id = games.push(newGame(req.body.players, req.body.trumps)) - 1;
-				tokens.push(jwt.sign({ id: `${id}` }, secret, { expiresIn: '1d' }));
-				logger(`POST game ${id} for players ${req.body.players}`);
-				return res.status(200).json({
-					id: `${id}`,
-					token: tokens[id]
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
+		.post(function (req, res, next) {
+			if (undefined === req.body) {
+				return res.status(400).json({ error: {
+					message: 'no body',
+					body: req.body
 				} });
 			}
+			if ( '[object Object]' !== Object.prototype.toString.call(req.body)) {
+				return res.status(400).json({ error: {
+					message: 'invalid format for body',
+					body: req.body
+				} });
+			}
+			if (false === Array.isArray(req.body.players)) {
+				return res.status(400).json({ error: {
+					message: 'invalid value for key',
+					key: 'players',
+					value: req.body.players
+				} });
+			}
+			if (false === Array.isArray(req.body.trumps)) {
+				return res.status(400).json({ error: {
+					message: 'invalid value for key',
+					key: 'trumps',
+					value: req.body.trumps
+				} });
+			}
+			const id = games.push(newGame(req.body.players, req.body.trumps)) - 1;
+			tokens.push(jwt.sign({ id: `${id}` }, secret, { expiresIn: '1d' }));
+			logger(`POST game ${id} for players ${req.body.players}`);
+			return res.status(200).json({
+				id: `${id}`,
+				token: tokens[id]
+			});
 		});
 
 	app.route('/games/:id')
-		.get(function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				logger(`GET game ${req.params.id} for players ${players}`);
-				return res.status(200).json({
-					id: req.params.id,
-					players: players
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.get(function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			logger(`GET game ${req.params.id} for players ${players}`);
+			return res.status(200).json({
+				id: req.params.id,
+				players: players
+			});
 		})
-		.delete(function (req, res) {
-			try {
-				delete games[req.params.id];
-				logger(`DELETE game ${req.params.id}`);
-				return res.status(200).json({
-					id: req.params.id
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.delete(function (req, res, next) {
+			delete games[req.params.id];
+			logger(`DELETE game ${req.params.id}`);
+			return res.status(200).json({
+				id: req.params.id
+			});
 		});
 
 	app.route('/games/:id/status')
-		.get(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				logger(`GET status in game ${req.params.id}`);
-				return res.status(200).json({
-					id: req.params.id,
-					game: game.getStatus()
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			logger(`GET status in game ${req.params.id}`);
+			return res.status(200).json({
+				id: req.params.id,
+				game: game.getStatus()
+			});
 		});
 
 	app.route('/games/:id/deck')
-		.get(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const deck = game.getDeck();
-				logger(`GET deck in game ${req.params.id}`);
-				return res.status(200).json({
-					id: req.params.id,
-					deck: { length: deck.cards.count() }
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const deck = game.getDeck();
+			logger(`GET deck in game ${req.params.id}`);
+			return res.status(200).json({
+				id: req.params.id,
+				deck: { length: deck.cards.count() }
+			});
 		});
 
 	app.route('/games/:id/deck/discard')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const deck = game.getDeck();
-				const pile = game.getPile();
-				deck.discard(0);
-				logger(`DISCARD card 0 for deck in game ${req.params.id}`);
-				emitter.emit('deck', {
-					id: req.params.id
-				});
-				emitter.emit('pile', {
-					id: req.params.id,
-					pile: pile.face()
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					deck: { length: deck.cards.count() }
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const deck = game.getDeck();
+			const pile = game.getPile();
+			deck.discard(0);
+			logger(`DISCARD card 0 for deck in game ${req.params.id}`);
+			emitter.emit('deck', {
+				id: req.params.id
+			});
+			emitter.emit('pile', {
+				id: req.params.id,
+				pile: pile.face()
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				deck: { length: deck.cards.count() }
+			});
 		});
 
 	app.route('/games/:id/deck/recycle')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const deck = game.getDeck();
-				const pile = game.getPile();
-				deck.recycle();
-				logger(`RECYCLE for deck in game ${req.params.id}`);
-				emitter.emit('deck', {
-					id: req.params.id
-				});
-				emitter.emit('pile', {
-					id: req.params.id,
-					pile: pile.face()
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					deck: { length: deck.cards.count() }
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const deck = game.getDeck();
+			const pile = game.getPile();
+			deck.recycle();
+			logger(`RECYCLE for deck in game ${req.params.id}`);
+			emitter.emit('deck', {
+				id: req.params.id
+			});
+			emitter.emit('pile', {
+				id: req.params.id,
+				pile: pile.face()
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				deck: { length: deck.cards.count() }
+			});
 		});
 
 	app.route('/games/:id/pile')
-		.get(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const pile = game.getPile();
-				logger(`GET pile in game ${req.params.id}`);
-				return res.status(200).json({
-					id: req.params.id,
-					pile: { length: pile.cards.count() },
-					card: pile.face()
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const pile = game.getPile();
+			logger(`GET pile in game ${req.params.id}`);
+			return res.status(200).json({
+				id: req.params.id,
+				pile: { length: pile.cards.count() },
+				card: pile.face()
+			});
 		});
 
 	app.route('/games/:id/pile/shuffle')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const pile = game.getPile();
-				game.shuffle();
-				logger(`SHUFFLE pile in game ${req.params.id}`);
-				emitter.emit('deck', {
-					id: req.params.id
-				});
-				emitter.emit('pile', {
-					id: req.params.id,
-					pile: pile.face()
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					pile: { length: pile.cards.count() },
-					card: pile.face()
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const pile = game.getPile();
+			game.shuffle();
+			logger(`SHUFFLE pile in game ${req.params.id}`);
+			emitter.emit('deck', {
+				id: req.params.id
+			});
+			emitter.emit('pile', {
+				id: req.params.id,
+				pile: pile.face()
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				pile: { length: pile.cards.count() },
+				card: pile.face()
+			});
 		});
 
 	app.route('/games/:id/players/:pid')
-		.get(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const hand = game.getHandOf(req.params.pid);
-				logger(`GET hand for player ${req.params.pid} ${player} in game ${req.params.id}`);
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					hand: hand.cards
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			logger(`GET hand for player ${req.params.pid} ${player} in game ${req.params.id}`);
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				hand: hand.cards
+			});
 		});
 
 	app.route('/games/:id/players/:pid/draw')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const hand = game.getHandOf(req.params.pid);
-				hand.draw();
-				logger(`DRAW for player ${req.params.pid} ${player} in game ${req.params.id}`);
-				emitter.emit('deck', {
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					hand: hand.cards
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			hand.draw();
+			logger(`DRAW for player ${req.params.pid} ${player} in game ${req.params.id}`);
+			emitter.emit('deck', {
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				hand: hand.cards
+			});
 		});
 
 	app.route('/games/:id/players/:pid/recycle')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const hand = game.getHandOf(req.params.pid);
-				const pile = game.getPile();
-				hand.recycle();
-				logger(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.id}`);
-				emitter.emit('pile', {
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					pile: pile.face()
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					hand: hand.cards
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			const pile = game.getPile();
+			hand.recycle();
+			logger(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.id}`);
+			emitter.emit('pile', {
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				pile: pile.face()
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				hand: hand.cards
+			});
 		});
 
 	app.route('/games/:id/players/:pid/cards/:cid')
-		.get(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const hand = game.getHandOf(req.params.pid);
-				const card = hand.cards.at(req.params.cid);
-				logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.id}`);
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					cid: req.params.cid,
-					card: card
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			const card = hand.cards.at(req.params.cid);
+			logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.id}`);
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				cid: req.params.cid,
+				card: card
+			});
 		});
 
 	app.route('/games/:id/players/:pid/cards/:cid/discard')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const hand = game.getHandOf(req.params.pid);
-				const card = hand.cards.at(req.params.cid);
-				hand.discard(req.params.cid);
-				logger(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.id}`);
-				emitter.emit('pile', {
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					pile: card
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					hand: hand.cards
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			const card = hand.cards.at(req.params.cid);
+			hand.discard(req.params.cid);
+			logger(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.id}`);
+			emitter.emit('pile', {
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				pile: card
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				hand: hand.cards
+			});
 		});
 
 	app.route('/games/:id/players/:pid/cards/:cid/pass/:tid')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const hand = game.getHandOf(req.params.pid);
-				const to = players[req.params.tid];
-				hand.passTo(req.params.cid, req.params.tid);
-				logger(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${to} in game ${req.params.id}`);
-				emitter.emit('hand', {
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					tid: req.params.tid
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					hand: hand.cards
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			const to = players[req.params.tid];
+			hand.passTo(req.params.cid, req.params.tid);
+			logger(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${to} in game ${req.params.id}`);
+			emitter.emit('hand', {
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				tid: req.params.tid
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				hand: hand.cards
+			});
 		});
 
 	app.route('/games/:id/players/:pid/pick/:tid')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const hand = game.getHandOf(req.params.pid);
-				const to = players[req.params.tid];
-				hand.pickFrom(req.params.tid);
-				logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${to} in game ${req.params.id}`);
-				emitter.emit('hand', {
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					tid: req.params.tid
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					hand: hand.cards
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const hand = game.getHandOf(req.params.pid);
+			const to = players[req.params.tid];
+			hand.pickFrom(req.params.tid);
+			logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${to} in game ${req.params.id}`);
+			emitter.emit('hand', {
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				tid: req.params.tid
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				hand: hand.cards
+			});
 		});
 
 	app.route('/games/:id/players/:pid/trump')
-		.get(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const trump = game.getTrumpOf(req.params.pid);
-				logger(`GET trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					trump: trump.face()
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const trump = game.getTrumpOf(req.params.pid);
+			logger(`GET trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				trump: trump.face()
+			});
 		});
 
 	app.route('/games/:id/players/:pid/trump/discard')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const players = game.getPlayers();
-				const player = players[req.params.pid];
-				const trump = game.getTrumpOf(req.params.pid);
-				const tarot = game.getTarot();
-				logger(`DISCARD trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
-				trump.discard(0);
-				emitter.emit('tarot', {
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					trump: tarot.face()
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					pid: req.params.pid,
-					player: player,
-					trump: tarot.face()
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const players = game.getPlayers();
+			const player = players[req.params.pid];
+			const trump = game.getTrumpOf(req.params.pid);
+			const tarot = game.getTarot();
+			logger(`DISCARD trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
+			trump.discard(0);
+			emitter.emit('tarot', {
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				trump: tarot.face()
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				pid: req.params.pid,
+				player: player,
+				trump: tarot.face()
+			});
 		});
 
 	app.route('/games/:id/tarot')
-		.get(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const tarot = game.getTarot();
-				logger(`GET tarot in game ${req.params.id}`);
-				return res.status(200).json({
-					id: req.params.id,
-					tarot: { length: tarot.cards.count() },
-					card: tarot.face()
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const tarot = game.getTarot();
+			logger(`GET tarot in game ${req.params.id}`);
+			return res.status(200).json({
+				id: req.params.id,
+				tarot: { length: tarot.cards.count() },
+				card: tarot.face()
+			});
 		});
 
 	app.route('/games/:id/tarot/draw')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const tarot = game.getTarot();
-				tarot.draw();
-				logger(`DRAW tarot in game ${req.params.id}`);
-				emitter.emit('tarot', {
-					id: req.params.id,
-					tarot: tarot.face()
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					tarot: { length: tarot.cards.count() },
-					card: tarot.face()
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const tarot = game.getTarot();
+			tarot.draw();
+			logger(`DRAW tarot in game ${req.params.id}`);
+			emitter.emit('tarot', {
+				id: req.params.id,
+				tarot: tarot.face()
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				tarot: { length: tarot.cards.count() },
+				card: tarot.face()
+			});
 		});
 
 	app.route('/games/:id/tarot/flip')
-		.put(verifyToken, function (req, res) {
-			try {
-				const game = games[req.params.id];
-				const tarot = game.getTarot();
-				tarot.flip();
-				logger(`FLIP tarot in game ${req.params.id}`);
-				emitter.emit('tarot', {
-					id: req.params.id,
-					tarot: tarot.face()
-				});
-				return res.status(200).json({
-					id: req.params.id,
-					tarot: { length: tarot.cards.count() },
-					card: tarot.face()
-				});
-			} catch (error) {
-				logger.extend('error')(error);
-				return res.status(500).json({ error: {
-					message: `${error.name}: ${error.message}`,
-					error: error
-				} });
-			}
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const tarot = game.getTarot();
+			tarot.flip();
+			logger(`FLIP tarot in game ${req.params.id}`);
+			emitter.emit('tarot', {
+				id: req.params.id,
+				tarot: tarot.face()
+			});
+			return res.status(200).json({
+				id: req.params.id,
+				tarot: { length: tarot.cards.count() },
+				card: tarot.face()
+			});
 		});
+
+	app.use(function (err, req, res, next) {
+		logger.extend('error')(err);
+		return res.status(500).json({ error: {
+			message: `${err.name}: ${err.message}`
+		} });
+	});
 
 	return app;
 }

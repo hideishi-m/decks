@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "start": "node index.mjs",
+    "start": "NODE_ENV=production DEBUG_DEPTH=null node index.mjs",
     "redocly": "node node_modules/.bin/redocly build-docs swagger.yaml -o public/spec.html"
   },
   "author": "Hidenori ISHIKAWA",
