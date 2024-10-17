@@ -55,7 +55,8 @@ export function newApp(emitter, name, version) {
 	app.response.statusJson = function (code, body) {
 		logger.extend('response')({
 			time: new Date(),
-			route: this.req.route.path,
+			route: this.req.route?.path,
+			status: code,
 			body: body
 		});
 		this.set('Cache-Control', 'no-cache');
@@ -109,8 +110,11 @@ export function newApp(emitter, name, version) {
 		limit: '10mb'
 	}));
 	app.use(serveStatic(fileURLToPath(new URL('./public', import.meta.url)), {
-		maxAge: '1d'
+		index: false,
+		maxAge: '1d',
+		redirect: false
 	}));
+
 	app.use(function (req, res, next) {
 		logger.extend('request')({
 			time: new Date(),
@@ -621,6 +625,12 @@ export function newApp(emitter, name, version) {
 				card: tarot.face()
 			});
 		});
+
+	app.use(function (req, res, next) {
+		return res.statusJson(404, { error: {
+			message: `Cannot ${req.method} ${req.path}`
+		} });
+	});
 
 	app.use(function (err, req, res, next) {
 		logger.extend('error')(err);
