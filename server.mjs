@@ -27,7 +27,7 @@ export function newServer(emitter, name, options) {
 	const wsServer = new WebSocketServer({ server: server });
 
 	emitter.on('deck', function (data) {
-		logger.extend('deck')({ deck: data });
+		logger.extend('emitter')({ deck: data });
 		const id = data.id;
 		const pid = data.pid;
 		const re = new RegExp(`^${id}:(\\d+)$`);
@@ -48,7 +48,7 @@ export function newServer(emitter, name, options) {
 	});
 
 	emitter.on('pile', function (data) {
-		logger.extend('pile')({ pile: data });
+		logger.extend('emitter')({ pile: data });
 		const id = data.id;
 		const pid = data.pid;
 		const re = new RegExp(`^${id}:(\\d+)$`);
@@ -69,7 +69,7 @@ export function newServer(emitter, name, options) {
 	});
 
 	emitter.on('hand', function (data) {
-		logger.extend('hand')({ hand: data });
+		logger.extend('emitter')({ hand: data });
 		const id = data.id;
 		const tid = data.tid;
 		const key = `${id}:${tid}`;
@@ -86,7 +86,7 @@ export function newServer(emitter, name, options) {
 	});
 
 	emitter.on('tarot', function (data) {
-		logger.extend('tarot')({ tarot: data });
+		logger.extend('emitter')({ tarot: data });
 		const id = data.id;
 		const pid = data.pid;
 		const re = new RegExp(`^${id}:(\\d+)$`);
