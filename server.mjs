@@ -27,14 +27,18 @@ export function newServer(emitter, name, options) {
 	const wsServer = new WebSocketServer({ server: server });
 
 	emitter.on('deck', function (data) {
-		logger({ deck: data });
+		logger.extend('deck')({ deck: data });
 		const id = data.id;
-		const re = new RegExp(`^${id}:\\d+$`);
+		const pid = data.pid;
+		const re = new RegExp(`^${id}:(\\d+)$`);
 		wsMap.forEach(function (value, key) {
-			if (re.test(key)) {
+			const match = re.exec(key);
+			if (null !== match) {
 				if (wsServer.clients.has(value)) {
-					value.send(JSON.stringify({ deck: data }));
-					logger(`CARD to ${key}`);
+					if (pid !== match[1]) {
+						value.send(JSON.stringify({ deck: data }));
+						logger(`DECK to ${key}`);
+					}
 				} else {
 					wsMap.delete(key);
 					logger(`delete ${key}`);
@@ -44,14 +48,18 @@ export function newServer(emitter, name, options) {
 	});
 
 	emitter.on('pile', function (data) {
-		logger({ pile: data });
+		logger.extend('pile')({ pile: data });
 		const id = data.id;
-		const re = new RegExp(`^${id}:\\d+$`);
+		const pid = data.pid;
+		const re = new RegExp(`^${id}:(\\d+)$`);
 		wsMap.forEach(function (value, key) {
-			if (re.test(key)) {
+			const match = re.exec(key);
+			if (null !== match) {
 				if (wsServer.clients.has(value)) {
-					value.send(JSON.stringify({ pile: data }));
-					logger(`CARD to ${key}`);
+					if (pid !== match[1]) {
+						value.send(JSON.stringify({ pile: data }));
+						logger(`PILE to ${key}`);
+					}
 				} else {
 					wsMap.delete(key);
 					logger(`delete ${key}`);
@@ -61,7 +69,7 @@ export function newServer(emitter, name, options) {
 	});
 
 	emitter.on('hand', function (data) {
-		logger({ hand: data });
+		logger.extend('hand')({ hand: data });
 		const id = data.id;
 		const tid = data.tid;
 		const key = `${id}:${tid}`;
@@ -69,7 +77,7 @@ export function newServer(emitter, name, options) {
 		if (undefined !== value) {
 			if (wsServer.clients.has(value)) {
 				value.send(JSON.stringify({ hand: data }));
-				logger(`CARD to ${key}`);
+				logger(`HAND to ${key}`);
 			} else {
 				wsMap.delete(key);
 				logger(`delete ${key}`);
@@ -78,14 +86,18 @@ export function newServer(emitter, name, options) {
 	});
 
 	emitter.on('tarot', function (data) {
-		logger({ tarot: data });
+		logger.extend('tarot')({ tarot: data });
 		const id = data.id;
-		const re = new RegExp(`^${id}:\\d+$`);
+		const pid = data.pid;
+		const re = new RegExp(`^${id}:(\\d+)$`);
 		wsMap.forEach(function (value, key) {
-			if (re.test(key)) {
+			const match = re.exec(key);
+			if (null !== match) {
 				if (wsServer.clients.has(value)) {
-					value.send(JSON.stringify({ tarot: data }));
-					logger(`TAROT to ${key}`);
+					if (pid !== match[1]) {
+						value.send(JSON.stringify({ tarot: data }));
+						logger(`TAROT to ${key}`);
+					}
 				} else {
 					wsMap.delete(key);
 					logger(`delete ${key}`);
@@ -104,16 +116,16 @@ export function newServer(emitter, name, options) {
 			}
 			try {
 				data = JSON.parse(data) ?? {};
-				logger({ message: data });
+				logger.extend('ws')({ message: data });
 				const id = /^\d+$/.test(data.id) ? data.id : undefined;
 				const pid = /^\d+$/.test(data.pid) ? data.pid : undefined;
 				if (undefined !== id && undefined !== pid) {
 					wsMap.set(`${id}:${pid}`, ws);
 					logger(`welcome player ${pid} for game ${id}`);
-					logger({ websockets: [...wsMap.keys()] });
+					logger.extend('ws')({ websockets: [...wsMap.keys()] });
 				}
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 			}
 		});
 
