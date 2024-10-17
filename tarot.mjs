@@ -10,7 +10,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { Cards } from './card.mjs';
-import { tarotRanks, tarotPositions } from './public/js/TNM_tarot.js';
+import { defaultPosition, cardPositions } from './public/js/attr.js';
+import { tarotRanks } from './public/js/TNM_tarot.js';
 
 
 class TarotCard {
@@ -20,11 +21,11 @@ class TarotCard {
 	}
 
 	getName() {
-		return `${tarotRanks.get(this.rank)} ${tarotPositions.get(this.position)}`;
+		return `${tarotRanks.get(this.rank)} ${cardPositions.get(this.position)}`;
 	}
 
 	flip() {
-		this.position = tarotPositions.flip(this.position);
+		this.position = cardPositions.flip(this.position);
 	}
 }
 
@@ -49,8 +50,6 @@ class TarotCards extends Cards {
 
 
 export function newTarotCard(rank, position) {
-	rank = tarotRanks.from(rank);
-	position = tarotPositions.from(position);
 	return new TarotCard(rank, position);
 }
 
@@ -58,10 +57,8 @@ export function newTarotDeck(shuffle, trumps) {
 	shuffle = shuffle ?? 10;
 	trumps = trumps ?? [];
 	const cards = new TarotCards();
-	tarotRanks.keys().forEach((rank) => {
-		if (false === trumps.includes(rank)) {
-			cards.push(new TarotCard(rank, tarotPositions.default));
-		}
+	tarotRanks.keys(trumps).forEach((rank) => {
+		cards.push(new TarotCard(rank, defaultPosition));
 	});
 	cards.shuffle(shuffle);
 	return cards;

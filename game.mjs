@@ -26,7 +26,7 @@ class Game {
 			this.players.push(player);
 			this.hands.push(newHand(this.deck, draw));
 			this.trumps.push(newHand());
-			if (0 < index && undefined !== trumps[index - 1]) {
+			if (0 < index && null !== trumps[index - 1]) {
 				this.trumps[index].unshift(newTarotCard(trumps[index - 1], 'U'));
 			}
 		});

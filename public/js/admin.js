@@ -10,11 +10,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { ajax, updateStatus, appendOption, removeOption, parseDataValue, parseDataValuesEach } from './common.js';
+import { tarotRanks } from './TNM_tarot.js';
 
 $(document).ready(async function () {
 
-	const tarotCards = await ajax('./js/TNM_tarot.json', { method: 'GET' });
-	for (const [rank, name] of Object.entries(tarotCards)) {
+	for (const [rank, name] of tarotRanks.entries()) {
 		appendOption('select[name^=trumps]', rank, name);
 	}
 
@@ -54,7 +54,7 @@ $(document).ready(async function () {
 				trumps: 'select[name^=trumps]',
 			});
 			for (const [i, value] of params.trumps.entries()) {
-				params.trumps[i] = value in tarotCards ? value : undefined;
+				params.trumps[i] = tarotRanks.has(value) ? value : null;
 			}
 			const data = await ajax('./games', {
 				method: 'POST',

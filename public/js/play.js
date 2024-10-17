@@ -10,8 +10,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { ping, timeout, ajax, updateStatus, appendLog, appendOption, updateOptions, removeOption, parseDataValue } from './common.js';
-import { getCardSvgId } from './card.js';
-import { tarotRanks, tarotPositions } from './TNM_tarot.js';
+import { cardSuits, cardRanks, cardPositions } from './attr.js';
+import { tarotRanks } from './TNM_tarot.js';
 
 $(document).ready(async function () {
 	let id, pid, socket;
@@ -69,7 +69,9 @@ $(document).ready(async function () {
 			else if (data.deck) {
 				if (data.deck.player) {
 					appendLog(`${data.deck.player} drew a card`);
-					await updateDeck();
+					if (pid !== data.deck.pid) {
+						await updateDeck();
+					}
 				} else {
 					appendLog('deck was updated');
 					await updateDeck();
@@ -80,7 +82,9 @@ $(document).ready(async function () {
 			else if (data.pile) {
 				if (data.pile.player) {
 					appendLog(`${data.pile.player} discarded a card`);
-					await updatePile();
+					if (pid !== data.pile.pid) {
+						await updatePile();
+					}
 				} else {
 					appendLog('pile was updated');
 					await updatePile();
@@ -91,7 +95,9 @@ $(document).ready(async function () {
 			else if (data.tarot) {
 				if (data.tarot.player) {
 					appendLog(`${data.tarot.player} discarded a trump`);
-					await updateTarot();
+					if (pid !== data.tarot.pid) {
+						await updateTarot();
+					}
 				} else {
 					appendLog('tarot was updated');
 					await updateTarot();
@@ -108,7 +114,8 @@ $(document).ready(async function () {
 	function createCardSvg(card) {
 		let use;
 		if (card) {
-			use = `<use href="./images/svg-cards.svg#${getCardSvgId(card.suit, card.rank)}" x="0" y="0" />`;
+			const id = cardSuits.get(card.suit, 1) + (cardSuits.has(card.suit) ? '_' : '') + cardRanks.get(card.rank, 1);
+			use = `<use href="./images/svg-cards.svg#${id}" x="0" y="0" />`;
 		} else {
 			use = '<use href="./images/svg-cards.svg#back" x="0" y="0" fill="red" />';
 		}
@@ -117,11 +124,10 @@ $(document).ready(async function () {
 
 	function createTarotCardImg(card) {
 		if (card) {
-			const rank = tarotRanks.from(card.rank);
-			const position = tarotPositions.from(card.position);
-			const title = ` title="${tarotRanks.get(rank)} ${tarotPositions.get(position)}"`;
-			const style = tarotPositions.reversed(card.position) ? ' transform: rotate(180deg);' : '';
-			return $(`<img style="max-width: 100%; height: auto;${style}" src="./images/TNM_tarot/${tarotRanks.get(rank, 'image')}.webp"${title}>`);
+			const style = cardPositions.get(card.position, 1)
+			const img = tarotRanks.get(card.rank, 1);
+			const title = tarotRanks.get(card.rank) + (tarotRanks.has(card.rank) ? ' ' : '') + cardPositions.get(card.position);
+			return $(`<img style="max-width: 100%; height: auto; ${style}" src="./images/TNM_tarot/${img}.webp"> title="${title}"`);
 		} else {
 			return $('<img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.webp">');
 		}
