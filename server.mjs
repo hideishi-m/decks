@@ -31,7 +31,7 @@ export function newServer(emitter, name, options) {
 		const id = data.id;
 		const pid = data.pid;
 		const re = new RegExp(`^${id}:(\\d+)$`);
-		wsMap.forEach(function (value, key) {
+		wsMap.forEach((value, key) => {
 			const match = re.exec(key);
 			if (null !== match) {
 				if (wsServer.clients.has(value)) {
@@ -52,7 +52,7 @@ export function newServer(emitter, name, options) {
 		const id = data.id;
 		const pid = data.pid;
 		const re = new RegExp(`^${id}:(\\d+)$`);
-		wsMap.forEach(function (value, key) {
+		wsMap.forEach((value, key) => {
 			const match = re.exec(key);
 			if (null !== match) {
 				if (wsServer.clients.has(value)) {
@@ -90,7 +90,7 @@ export function newServer(emitter, name, options) {
 		const id = data.id;
 		const pid = data.pid;
 		const re = new RegExp(`^${id}:(\\d+)$`);
-		wsMap.forEach(function (value, key) {
+		wsMap.forEach((value, key) => {
 			const match = re.exec(key);
 			if (null !== match) {
 				if (wsServer.clients.has(value)) {
@@ -135,7 +135,7 @@ export function newServer(emitter, name, options) {
 	});
 
 	emitter.on('close', function () {
-		wsServer.clients.forEach(ws => {
+		wsServer.clients.forEach((ws) => {
 			ws.terminate();
 		});
 		wsServer.close();

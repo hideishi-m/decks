@@ -42,7 +42,7 @@ const server = newServer(emitter, name, await newServerOpts(options));
 
 function shutdown() {
 	emitter.emit('close');
-	setTimeout(() => {
+	setTimeout(function () {
 		logger(`Timeout exceeded for ${options.timeout} ms, shutdown`);
 		process.exit(1);
 	}, options.timeout);

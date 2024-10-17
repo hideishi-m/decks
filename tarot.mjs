@@ -87,7 +87,7 @@ export function newTarotDeck(shuffle, trumps) {
 	shuffle = shuffle ?? 10;
 	trumps = trumps ?? [];
 	const cards = new TarotCards();
-	tarotRanks.forEach(rank => {
+	tarotRanks.forEach((rank) => {
 		if (false === trumps.includes(rank)) {
 			cards.push(new TarotCard(rank, 'U'));  // default 'U'
 		}

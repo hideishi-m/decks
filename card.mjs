@@ -63,7 +63,7 @@ export class Cards {  // exported for tarot.mjs
 	}
 
 	every(cb) {
-		this.cards.forEach(card => {
+		this.cards.forEach((card) => {
 			cb(card);
 		});
 	}
@@ -113,7 +113,7 @@ export class Cards {  // exported for tarot.mjs
 	getStatus() {
 		return {
 			length: this.count(),
-			cards: this.cards.map(card => card.getName())
+			cards: this.cards.map((card) => card.getName())
 		};
 	}
 }
@@ -125,8 +125,8 @@ export function newDrawDeck(deck, joker, shuffle) {
 	shuffle = shuffle ?? 10;
 	const cards = new Cards();
 	for (let i = 0; i < deck; i++) {
-		suits.forEach(suit => {
-			ranks.forEach(rank => {
+		suits.forEach((suit) => {
+			ranks.forEach((rank) => {
 				cards.push(new Card(suit, rank, i));
 			});
 		});

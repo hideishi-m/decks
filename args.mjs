@@ -31,7 +31,7 @@ function usage(message) {
 function defaults() {
 	const options = {};
 	options.name = packageJson.name;
-	['ip', 'port', 'timeout', 'key', 'cert'].forEach(key => {
+	['ip', 'port', 'timeout', 'key', 'cert'].forEach((key) => {
 		if (undefined !== packageJson.config[key]) {
 			options[key] = packageJson.config[key];
 		}
