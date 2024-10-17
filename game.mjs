@@ -230,7 +230,7 @@ export function newGame(players, trumps, deck, joker, shuffle, draw) {
 	players = players ?? [];
 	trumps = trumps ?? [];
 	deck = deck ?? 2;
-	joker = joker ?? 1;
+	joker = joker ?? 2;
 	shuffle = shuffle ?? 10;
 	draw = draw ?? 4;
 	const game = new Game(players, trumps, deck, joker, shuffle, draw);

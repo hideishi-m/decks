@@ -21,7 +21,11 @@ $(document).ready(async function () {
 	// common
 	async function appendGame(id, token) {
 		try {
-			const data = await ajax('./games/' + id, { method: 'GET' }, token);
+			token = token ?? '';
+			const data = await ajax('./games/' + id, {
+				method: 'GET',
+				headers: { "Authorization": `Bearer ${token}` }
+			});
 			updateStatus(JSON.stringify(data, null, 2));
 			$('#game').append($('<div />', {
 				class: 'col-3',

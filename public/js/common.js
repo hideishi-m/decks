@@ -13,11 +13,7 @@ export const ping = '';
 
 export const timeout = 10000;
 
-export async function ajax(url, args, token) {
-	if (undefined !== token) {
-		args.headers = args.headers ?? {};
-		args.headers.Authorization = `Bearer ${token}`;
-	}
+export async function ajax(url, args) {
 	const response = await fetch(url, args);
 	if (false === response.ok) {
 		throw new Error(`${response.status} ${response.statusText}`);

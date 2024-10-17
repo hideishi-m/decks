@@ -9,36 +9,8 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { readFile } from 'node:fs/promises';
-
 import { Cards } from './card.mjs';
-
-const tarotJson = './public/js/TNM_tarot.json';
-const tarotPositions = [
-	'U', 'R'
-];
-const tarotPositionStrings = [
-	'正位置', '逆位置'
-]
-const tarotCards = JSON.parse(await readFile(new URL(tarotJson, import.meta.url)));
-const tarotRanks = Object.keys(tarotCards);
-const tarotRankStrings = Object.values(tarotCards);
-
-function tarotPositionToString(position) {
-	if (tarotPositions.includes(position)) {
-		return tarotPositionStrings[ tarotPositions.indexOf(position) ];
-	} else {
-		return `[${position}]`;
-	}
-}
-
-function tarotRankToString(rank) {
-	if (tarotRanks.includes(rank)) {
-		return tarotRankStrings[ tarotRanks.indexOf(rank) ];
-	} else {
-		return `[${rank}]`;
-	}
-}
+import { tarotRanks, tarotPositions } from './public/js/TNM_tarot.js';
 
 
 class TarotCard {
@@ -48,11 +20,11 @@ class TarotCard {
 	}
 
 	getName() {
-		return `${tarotRankToString(this.rank)} ${tarotPositionToString(this.position)}`;
+		return `${tarotRanks.get(this.rank)} ${tarotPositions.get(this.position)}`;
 	}
 
 	flip() {
-		this.position = 'U' === this.position ? 'R' : 'U';
+		this.position = tarotPositions.flip(this.position);
 	}
 }
 
@@ -77,19 +49,18 @@ class TarotCards extends Cards {
 
 
 export function newTarotCard(rank, position) {
-	rank = tarotRanks.includes(rank) ? rank : '00';
-	position = tarotPositions.includes(position) ? position : 'U';
+	rank = tarotRanks.from(rank);
+	position = tarotPositions.from(position);
 	return new TarotCard(rank, position);
 }
-
 
 export function newTarotDeck(shuffle, trumps) {
 	shuffle = shuffle ?? 10;
 	trumps = trumps ?? [];
 	const cards = new TarotCards();
-	tarotRanks.forEach((rank) => {
+	tarotRanks.keys().forEach((rank) => {
 		if (false === trumps.includes(rank)) {
-			cards.push(new TarotCard(rank, 'U'));  // default 'U'
+			cards.push(new TarotCard(rank, tarotPositions.default));
 		}
 	});
 	cards.shuffle(shuffle);

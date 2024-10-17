@@ -9,36 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-const suits = [
-	'C', 'D', 'H', 'S'
-];
-const suitStrings = [
-	'クラブ', 'ダイヤ', 'ハート', 'スペード'
-];
-const ranks = [
-	'A', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K'
-];
-const rankStrings = [
-	'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
-];
-const jokerRank = 'X';
-const jokerRankString = 'ジョーカー';
-
-function suitToString(suit) {
-	if (suits.includes(suit)) {
-		return suitStrings[ suits.indexOf(suit) ];
-	} else {
-		return `[${suit}]`;
-	}
-}
-
-function rankToString(rank) {
-	if (ranks.includes(rank)) {
-		return rankStrings[ ranks.indexOf(rank) ];
-	} else {
-		return jokerRankString;
-	}
-}
+import { cardSuits, cardRanks, jokerRank } from './public/js/card.js';
 
 
 class Card {
@@ -49,7 +20,7 @@ class Card {
 	}
 
 	getName() {
-		return `${suitToString(this.suit)} ${rankToString(this.rank)} (${this.deck})`;
+		return `${cardSuits.get(this.suit)} ${cardRanks.get(this.rank)} (${this.deck})`;
 	}
 }
 
@@ -125,14 +96,14 @@ export function newDrawDeck(deck, joker, shuffle) {
 	shuffle = shuffle ?? 10;
 	const cards = new Cards();
 	for (let i = 0; i < deck; i++) {
-		suits.forEach((suit) => {
-			ranks.forEach((rank) => {
+		cardSuits.keys().forEach((suit) => {
+			cardRanks.keys().forEach((rank) => {
 				cards.push(new Card(suit, rank, i));
 			});
 		});
-		for (let j = 0; j < joker; j++) {
-			cards.push(new Card(j, jokerRank, i));
-		}
+	}
+	for (let i = 0; i < joker; i++) {
+		cards.push(new Card(cardSuits.default, jokerRank, i));
 	}
 	cards.shuffle(shuffle);
 	return cards;
