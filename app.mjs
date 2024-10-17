@@ -10,11 +10,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { randomBytes } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 import debug from 'debug';
 import express from 'express';
 import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
+import serveStatic from 'serve-static';
 
 import { newGame } from './game.mjs';
 
@@ -106,7 +108,7 @@ export function newApp(emitter, name, version) {
 		extended: true,
 		limit: '10mb'
 	}));
-	app.use(express.static(new URL('./public', import.meta.url).pathname, {
+	app.use(serveStatic(fileURLToPath(new URL('./public', import.meta.url)), {
 		maxAge: '1d'
 	}));
 	app.use(function (req, res, next) {
