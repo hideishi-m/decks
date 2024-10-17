@@ -51,13 +51,15 @@ export function newApp(emitter, name, version) {
 
 	function verifyToken(req, res, next) {
 		if (undefined === req.params.id) {
-			return res.status(401).json({ error: {
+			res.set('WWW-Authenticate', 'Bearer error="invalid_request"');
+			return res.status(400).json({ error: {
 				message: 'id is not set',
 				id: req.params.id
 			} });
 		}
 		const token = getToken(req.headers);
 		if (undefined === token) {
+			res.set('WWW-Authenticate', `Bearer realem="${req.params.id}"`);
 			return res.status(401).json({ error: {
 				message: 'authorization required for id',
 				id: req.params.id
@@ -66,14 +68,16 @@ export function newApp(emitter, name, version) {
 		try {
 			const decoded = jwt.verify(token, secret);
 			if (req.params.id !== decoded?.id) {
+				res.set('WWW-Authenticate', `Bearer realem="${req.params.id}", error="insufficient_scope"`);
 				return res.status(403).json({ error: {
 					message: 'authorization failed for id',
 					id: req.params.id
 				} });
 			}
 		} catch (error) {
-			logger(error);
-			return res.status(403).json({ error: {
+			logger.extend('error')(error);
+			res.set('WWW-Authenticate', `Bearer realem="${req.params.id}", error="invalid_token", error_description="${error.message}"`);
+			return res.status(401).json({ error: {
 				message: 'authorization failed for id',
 				id: req.params.id
 			} });
@@ -96,7 +100,7 @@ export function newApp(emitter, name, version) {
 		maxAge: '1d'
 	}));
 	app.use(function (req, res, next) {
-		logger({
+		logger.extend('request')({
 			time: new Date(),
 			ip: req.ip,
 			method: req.method,
@@ -104,9 +108,7 @@ export function newApp(emitter, name, version) {
 			body: req.body,
 			token: sliceToken(getToken(req.headers) ?? '')
 		});
-		res.set({
-			'Cache-Control': 'no-cache'
-		});
+		res.set({ 'Cache-Control': 'no-cache' });
 		next();
 	});
 
@@ -269,7 +271,7 @@ export function newApp(emitter, name, version) {
 					token: tokens[id]
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -288,7 +290,7 @@ export function newApp(emitter, name, version) {
 					players: players
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -303,7 +305,7 @@ export function newApp(emitter, name, version) {
 					id: req.params.id
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -321,7 +323,7 @@ export function newApp(emitter, name, version) {
 					game: game.getStatus()
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -340,7 +342,7 @@ export function newApp(emitter, name, version) {
 					deck: { length: deck.cards.count() }
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -368,7 +370,7 @@ export function newApp(emitter, name, version) {
 					deck: { length: deck.cards.count() }
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -396,7 +398,7 @@ export function newApp(emitter, name, version) {
 					deck: { length: deck.cards.count() }
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -416,7 +418,7 @@ export function newApp(emitter, name, version) {
 					card: pile.face()
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -444,7 +446,7 @@ export function newApp(emitter, name, version) {
 					card: pile.face()
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -467,7 +469,7 @@ export function newApp(emitter, name, version) {
 					hand: hand.cards
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -496,7 +498,7 @@ export function newApp(emitter, name, version) {
 					hand: hand.cards
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -527,7 +529,7 @@ export function newApp(emitter, name, version) {
 					hand: hand.cards
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -552,7 +554,7 @@ export function newApp(emitter, name, version) {
 					card: card
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -583,7 +585,7 @@ export function newApp(emitter, name, version) {
 					hand: hand.cards
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -614,7 +616,7 @@ export function newApp(emitter, name, version) {
 					hand: hand.cards
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -645,7 +647,7 @@ export function newApp(emitter, name, version) {
 					hand: hand.cards
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -668,7 +670,7 @@ export function newApp(emitter, name, version) {
 					trump: trump.face()
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -699,7 +701,7 @@ export function newApp(emitter, name, version) {
 					trump: tarot.face()
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -719,7 +721,7 @@ export function newApp(emitter, name, version) {
 					card: tarot.face()
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -744,7 +746,7 @@ export function newApp(emitter, name, version) {
 					card: tarot.face()
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
@@ -769,7 +771,7 @@ export function newApp(emitter, name, version) {
 					card: tarot.face()
 				});
 			} catch (error) {
-				logger(error);
+				logger.extend('error')(error);
 				return res.status(500).json({ error: {
 					message: `${error.name}: ${error.message}`,
 					error: error
