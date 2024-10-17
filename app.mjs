@@ -39,52 +39,47 @@ export function newApp(emitter, name, version) {
 	const tokens = [];
 	const app = express();
 
-	Object.defineProperty(app.request, 'token', {
-		enumerable: true,
-		get() {
-			const authorization = this.get('authorization');
-			if (undefined === authorization) {
-				return null;
-			}
-			const [bearer, token] = authorization.split(' ') ?? [];
-			if ('Bearer' !== bearer) {
-				return null;
-			}
-			return token;
+	app.request.token = function () {
+		const authorization = this.get('authorization');
+		if (undefined === authorization) {
+			return null;
 		}
-	});
-
-	app.response._json = app.response.json;
-	app.response.json = function (body) {
+		const [bearer, token] = authorization.split(' ') ?? [];
+		if ('Bearer' !== bearer) {
+			return null;
+		}
+		return token;
+	};
+	app.response.statusJson = function (code, body) {
 		logger.extend('response')({
 			time: new Date(),
 			route: this.req.route.path,
 			body: body
 		});
-		this.set({ 'Cache-Control': 'no-cache' });
-		return this._json(body);
-	}
+		this.set('Cache-Control', 'no-cache');
+		return this.status(code).json(body);
+	};
 
 	function verifyToken(req, res, next) {
 		if (undefined === req.params.id) {
 			res.set('WWW-Authenticate', 'Bearer error="invalid_request"');
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'id is not set',
 				id: req.params.id
 			} });
 		}
-		if (null === req.token) {
+		if (null === req.token()) {
 			res.set('WWW-Authenticate', `Bearer realem="${req.params.id}"`);
-			return res.status(401).json({ error: {
+			return res.statusJson(401, { error: {
 				message: 'authorization required for id',
 				id: req.params.id
 			} });
 		}
 		try {
-			const decoded = jwt.verify(req.token, secret);
+			const decoded = jwt.verify(req.token(), secret);
 			if (req.params.id !== decoded?.id) {
 				res.set('WWW-Authenticate', `Bearer realem="${req.params.id}", error="insufficient_scope"`);
-				return res.status(403).json({ error: {
+				return res.statusJson(403, { error: {
 					message: 'authorization failed for id',
 					id: req.params.id
 				} });
@@ -92,7 +87,7 @@ export function newApp(emitter, name, version) {
 		} catch (error) {
 			logger.extend('error')(error);
 			res.set('WWW-Authenticate', `Bearer realem="${req.params.id}", error="invalid_token", error_description="${error.message}"`);
-			return res.status(401).json({ error: {
+			return res.statusJson(401, { error: {
 				message: 'authorization failed for id',
 				id: req.params.id
 			} });
@@ -120,7 +115,7 @@ export function newApp(emitter, name, version) {
 			ip: req.ip,
 			method: req.method,
 			path: req.path,
-			token: truncate(req.token, 40),
+			token: truncate(req.token(), 40),
 			body: req.body
 		});
 		next();
@@ -128,20 +123,20 @@ export function newApp(emitter, name, version) {
 
 	app.param('id', function (req, res, next, id) {
 		if (false === /^\d+$/.test(id)) {
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'invalid format for id',
 				id: id
 			} });
 		}
 		if (0 > parseInt(id)) {
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'invalid value for id',
 				id: id
 			} });
 		}
 		const game = games[id];
 		if (undefined === game) {
-			return res.status(404).json({ error: {
+			return res.statusJson(404, { error: {
 				message: 'game not found for id',
 				id: id
 			} });
@@ -150,13 +145,13 @@ export function newApp(emitter, name, version) {
 	});
 	app.param('pid', function (req, res, next, pid) {
 		if (false === /^\d+$/.test(pid)) {
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'invalid format for pid',
 				pid: pid
 			} });
 		}
 		if (0 > parseInt(pid)) {
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'invalid value for pid',
 				pid: pid
 			} });
@@ -165,7 +160,7 @@ export function newApp(emitter, name, version) {
 		const players = game.getPlayers();
 		const player = players[pid];
 		if (undefined === player) {
-			return res.status(404).json({ error: {
+			return res.statusJson(404, { error: {
 				message: 'player not found for pid',
 				id: req.params.id,
 				pid: pid
@@ -175,13 +170,13 @@ export function newApp(emitter, name, version) {
 	});
 	app.param('cid', function (req, res, next, cid) {
 		if (false === /^\d+$/.test(cid)) {
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'invalid format for cid',
 				cid: cid
 			} });
 		}
 		if (0 > parseInt(cid)) {
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'invalid value for cid',
 				cid: cid
 			} });
@@ -190,7 +185,7 @@ export function newApp(emitter, name, version) {
 		const hand = game.getHandOf(req.params.pid);
 		const card = hand.cards.at(cid);
 		if (undefined === card) {
-			return res.status(404).json({ error: {
+			return res.statusJson(404, { error: {
 				message: 'card not found for cid',
 				id: req.params.id,
 				pid: req.params.pid,
@@ -201,13 +196,13 @@ export function newApp(emitter, name, version) {
 	});
 	app.param('tid', function (req, res, next, tid) {
 		if (false === /^\d+$/.test(tid)) {
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'invalid format for tid',
 				tid: tid
 			} });
 		}
 		if (0 > parseInt(tid)) {
-			return res.status(400).json({ error: {
+			return res.statusJson(400, { error: {
 				message: 'invalid value for tid',
 				tid: tid
 			} });
@@ -216,7 +211,7 @@ export function newApp(emitter, name, version) {
 		const players = game.getPlayers();
 		const player = players[tid];
 		if (undefined === player) {
-			return res.status(404).json({ error: {
+			return res.statusJson(404, { error: {
 				message: 'player not found for tid',
 				id: req.params.id,
 				tid: tid
@@ -227,7 +222,7 @@ export function newApp(emitter, name, version) {
 
 	app.route('/version')
 		.get(function (req, res, next) {
-			return res.status(200).json({
+			return res.statusJson(200, {
 				version: version
 			});
 		})
@@ -241,36 +236,36 @@ export function newApp(emitter, name, version) {
 				}
 			});
 			if (0 === ids.length) {
-				return res.status(404).json({ error: {
+				return res.statusJson(404, { error: {
 					message: 'game not found'
 				} });
 			}
-			return res.status(200).json({
+			return res.statusJson(200, {
 				games: ids
 			});
 		})
 		.post(function (req, res, next) {
 			if (undefined === req.body) {
-				return res.status(400).json({ error: {
+				return res.statusJson(400, { error: {
 					message: 'no body',
 					body: req.body
 				} });
 			}
 			if ( '[object Object]' !== Object.prototype.toString.call(req.body)) {
-				return res.status(400).json({ error: {
+				return res.statusJson(400, { error: {
 					message: 'invalid format for body',
 					body: req.body
 				} });
 			}
 			if (false === Array.isArray(req.body.players)) {
-				return res.status(400).json({ error: {
+				return res.statusJson(400, { error: {
 					message: 'invalid value for key',
 					key: 'players',
 					value: req.body.players
 				} });
 			}
 			if (false === Array.isArray(req.body.trumps)) {
-				return res.status(400).json({ error: {
+				return res.statusJson(400, { error: {
 					message: 'invalid value for key',
 					key: 'trumps',
 					value: req.body.trumps
@@ -279,7 +274,7 @@ export function newApp(emitter, name, version) {
 			const id = games.push(newGame(req.body.players, req.body.trumps)) - 1;
 			tokens.push(jwt.sign({ id: `${id}` }, secret, { expiresIn: '1d' }));
 			logger(`POST game ${id} for players ${req.body.players}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: `${id}`,
 				token: tokens[id]
 			});
@@ -290,7 +285,7 @@ export function newApp(emitter, name, version) {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
 			logger(`GET game ${req.params.id} for players ${players}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				players: players
 			});
@@ -298,7 +293,7 @@ export function newApp(emitter, name, version) {
 		.delete(function (req, res, next) {
 			delete games[req.params.id];
 			logger(`DELETE game ${req.params.id}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id
 			});
 		});
@@ -307,7 +302,7 @@ export function newApp(emitter, name, version) {
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.id];
 			logger(`GET status in game ${req.params.id}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				game: game.getStatus()
 			});
@@ -318,7 +313,7 @@ export function newApp(emitter, name, version) {
 			const game = games[req.params.id];
 			const deck = game.getDeck();
 			logger(`GET deck in game ${req.params.id}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				deck: { length: deck.cards.count() }
 			});
@@ -338,7 +333,7 @@ export function newApp(emitter, name, version) {
 				id: req.params.id,
 				pile: pile.face()
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				deck: { length: deck.cards.count() }
 			});
@@ -358,7 +353,7 @@ export function newApp(emitter, name, version) {
 				id: req.params.id,
 				pile: pile.face()
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				deck: { length: deck.cards.count() }
 			});
@@ -369,7 +364,7 @@ export function newApp(emitter, name, version) {
 			const game = games[req.params.id];
 			const pile = game.getPile();
 			logger(`GET pile in game ${req.params.id}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pile: { length: pile.cards.count() },
 				card: pile.face()
@@ -389,7 +384,7 @@ export function newApp(emitter, name, version) {
 				id: req.params.id,
 				pile: pile.face()
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pile: { length: pile.cards.count() },
 				card: pile.face()
@@ -403,7 +398,7 @@ export function newApp(emitter, name, version) {
 			const player = players[req.params.pid];
 			const hand = game.getHandOf(req.params.pid);
 			logger(`GET hand for player ${req.params.pid} ${player} in game ${req.params.id}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -424,7 +419,7 @@ export function newApp(emitter, name, version) {
 				pid: req.params.pid,
 				player: player
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -447,7 +442,7 @@ export function newApp(emitter, name, version) {
 				player: player,
 				pile: pile.face()
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -463,7 +458,7 @@ export function newApp(emitter, name, version) {
 			const hand = game.getHandOf(req.params.pid);
 			const card = hand.cards.at(req.params.cid);
 			logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.id}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -487,7 +482,7 @@ export function newApp(emitter, name, version) {
 				player: player,
 				pile: card
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -510,7 +505,7 @@ export function newApp(emitter, name, version) {
 				player: player,
 				tid: req.params.tid
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -533,7 +528,7 @@ export function newApp(emitter, name, version) {
 				player: player,
 				tid: req.params.tid
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -548,7 +543,7 @@ export function newApp(emitter, name, version) {
 			const player = players[req.params.pid];
 			const trump = game.getTrumpOf(req.params.pid);
 			logger(`GET trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -571,7 +566,7 @@ export function newApp(emitter, name, version) {
 				player: player,
 				trump: tarot.face()
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
@@ -584,7 +579,7 @@ export function newApp(emitter, name, version) {
 			const game = games[req.params.id];
 			const tarot = game.getTarot();
 			logger(`GET tarot in game ${req.params.id}`);
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				tarot: { length: tarot.cards.count() },
 				card: tarot.face()
@@ -601,7 +596,7 @@ export function newApp(emitter, name, version) {
 				id: req.params.id,
 				tarot: tarot.face()
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				tarot: { length: tarot.cards.count() },
 				card: tarot.face()
@@ -618,7 +613,7 @@ export function newApp(emitter, name, version) {
 				id: req.params.id,
 				tarot: tarot.face()
 			});
-			return res.status(200).json({
+			return res.statusJson(200, {
 				id: req.params.id,
 				tarot: { length: tarot.cards.count() },
 				card: tarot.face()
@@ -627,7 +622,7 @@ export function newApp(emitter, name, version) {
 
 	app.use(function (err, req, res, next) {
 		logger.extend('error')(err);
-		return res.status(500).json({ error: {
+		return res.statusJson(500, { error: {
 			message: `${err.name}: ${err.message}`
 		} });
 	});
