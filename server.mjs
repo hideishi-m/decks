@@ -30,16 +30,12 @@ export function newServer(emitter, name, options) {
 	emitter.on('deck', function (data) {
 		logger.extend('emitter')({ deck: data });
 		const id = data.id;
-		const pid = data.pid;
-		const re = new RegExp(`^${id}:(\\d+)$`);
+		const re = new RegExp(`^${id}:\\d+$`);
 		wsMap.forEach((value, key) => {
-			const match = re.exec(key);
-			if (null !== match) {
+			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
-					if (pid !== match[1]) {
-						value.send(JSON.stringify({ deck: data }));
-						logger(`DECK to ${key}`);
-					}
+					value.send(JSON.stringify({ deck: data }));
+					logger(`DECK to ${key}`);
 				} else {
 					wsMap.delete(key);
 					logger(`delete ${key}`);
@@ -51,16 +47,12 @@ export function newServer(emitter, name, options) {
 	emitter.on('pile', function (data) {
 		logger.extend('emitter')({ pile: data });
 		const id = data.id;
-		const pid = data.pid;
-		const re = new RegExp(`^${id}:(\\d+)$`);
+		const re = new RegExp(`^${id}:\\d+$`);
 		wsMap.forEach((value, key) => {
-			const match = re.exec(key);
-			if (null !== match) {
+			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
-					if (pid !== match[1]) {
-						value.send(JSON.stringify({ pile: data }));
-						logger(`PILE to ${key}`);
-					}
+					value.send(JSON.stringify({ pile: data }));
+					logger(`PILE to ${key}`);
 				} else {
 					wsMap.delete(key);
 					logger(`delete ${key}`);
@@ -89,16 +81,12 @@ export function newServer(emitter, name, options) {
 	emitter.on('tarot', function (data) {
 		logger.extend('emitter')({ tarot: data });
 		const id = data.id;
-		const pid = data.pid;
-		const re = new RegExp(`^${id}:(\\d+)$`);
+		const re = new RegExp(`^${id}:\\d+$`);
 		wsMap.forEach((value, key) => {
-			const match = re.exec(key);
-			if (null !== match) {
+			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
-					if (pid !== match[1]) {
-						value.send(JSON.stringify({ tarot: data }));
-						logger(`TAROT to ${key}`);
-					}
+					value.send(JSON.stringify({ tarot: data }));
+					logger(`TAROT to ${key}`);
 				} else {
 					wsMap.delete(key);
 					logger(`delete ${key}`);
