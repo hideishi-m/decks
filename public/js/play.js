@@ -89,7 +89,7 @@ $(document).ready(async function () {
 			else if (data.tarot) {
 				if (data.tarot.player) {
 					appendLog(`${data.tarot.player} discarded a trump`);
-					await updatePile();
+					await updateTarot();
 				} else {
 					appendLog('tarot was updated');
 					await updateTarot();
