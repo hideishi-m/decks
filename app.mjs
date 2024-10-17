@@ -22,16 +22,6 @@ import { newGame } from './game.mjs';
 
 const secret = randomBytes(64).toString('hex');
 
-function truncate(str, n) {
-	if ('string' !== typeof str) {
-		return str;
-	}
-	if (str.length <= n) {
-		return str;
-	}
-	return str.slice(0, n / 2) + '...' + str.slice(-1 * n / 2);
-}
-
 export function newApp(emitter, name, version) {
 	name = name ? `${name}:app` : 'app';
 	version = version ?? '1.0.0';
@@ -121,7 +111,7 @@ export function newApp(emitter, name, version) {
 			ip: req.ip,
 			method: req.method,
 			path: req.path,
-			token: truncate(req.token(), 40),
+			token: req.token(),
 			body: req.body
 		});
 		next();
