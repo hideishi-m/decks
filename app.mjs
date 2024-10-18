@@ -260,14 +260,14 @@ export function createApp(emitter, name, version) {
 					value: req.body.players
 				} });
 			}
-			if (false === Array.isArray(req.body.trumps)) {
+			if (false === Array.isArray(req.body.tarots)) {
 				return res.statusJson(400, { error: {
 					message: 'invalid value for key',
-					key: 'trumps',
-					value: req.body.trumps
+					key: 'tarots',
+					value: req.body.tarots
 				} });
 			}
-			const id = games.push(createGame(req.body.players, req.body.trumps)) - 1;
+			const id = games.push(createGame(req.body.players, req.body.tarots)) - 1;
 			tokens.push(jwt.sign({ id: `${id}` }, secret, { expiresIn: '1d' }));
 			logger(`POST game ${id} for players ${req.body.players}`);
 			return res.statusJson(200, {

@@ -15,7 +15,7 @@ import { tarotRanks } from './TNM_tarot.js';
 $(document).ready(async function () {
 
 	for (const [rank, name] of tarotRanks.entries()) {
-		appendOption('select[name^=trumps]', rank, name);
+		appendOption('select[name^=tarots]', rank, name);
 	}
 
 	// common
@@ -51,10 +51,10 @@ $(document).ready(async function () {
 		try {
 			const params = parseDataValuesEach({
 				players: 'input[name^=players]',
-				trumps: 'select[name^=trumps]',
+				tarots: 'select[name^=tarots]',
 			});
-			for (const [i, value] of params.trumps.entries()) {
-				params.trumps[i] = tarotRanks.has(value) ? value : null;
+			for (const [i, value] of params.tarots.entries()) {
+				params.tarots[i] = tarotRanks.has(value) ? value : null;
 			}
 			const data = await ajax('./games', {
 				method: 'POST',
@@ -64,7 +64,7 @@ $(document).ready(async function () {
 				cache: 'no-cache',
 				body: JSON.stringify({
 					players: params.players,
-					trumps: params.trumps
+					tarots: params.tarots
 				})
 			});
 			updateStatus(JSON.stringify(data, null, 2));
