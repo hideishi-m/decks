@@ -76,8 +76,8 @@ $(document).ready(async function () {
 					await updateDeck();
 				}
 			}
-			// pile: id,pid,player,card
-			// pile: id,card
+			// pile: id,pid,player
+			// pile: id
 			else if (data.pile) {
 				if (data.pile.player) {
 					appendLog(`${data.pile.player} discarded a card`);
@@ -89,8 +89,8 @@ $(document).ready(async function () {
 					await updatePile();
 				}
 			}
-			// tarot: id,pid,player,card
-			// tarot: id,card
+			// tarot: id,pid,player
+			// tarot: id
 			else if (data.tarot) {
 				if (data.tarot.player) {
 					appendLog(`${data.tarot.player} discarded a tarot card`);
@@ -220,7 +220,7 @@ $(document).ready(async function () {
 			for (let i = 0; i < hand.length; i++) {
 				$('#hand').append(
 					$('<div />', { class: 'col-3' }).append(
-						createCardSvg(hand[i]).attr('data-cid', i)
+						createCardSvg(hand.cards[i]).attr('data-cid', i)
 					)
 				);
 			}
@@ -337,7 +337,7 @@ $(document).ready(async function () {
 			updateStatus(JSON.stringify(data, null, 2));
 			$('#pileLabel').text(data.pile.length);
 			$('#pile').empty().append(
-				createCardSvg(data.card)
+				createCardSvg(data.pile.card)
 			);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -435,7 +435,7 @@ $(document).ready(async function () {
 				updateStatus(JSON.stringify(data, null, 2));
 				$('#tarotHandLabel').text(data.hand.length);
 				$('#tarotHand').empty().append(
-					createTarotCardImg(data.hand[0])
+					createTarotCardImg(data.hand.cards[0])
 				);
 			}
 		} catch (error) {
@@ -498,7 +498,7 @@ $(document).ready(async function () {
 			updateStatus(JSON.stringify(data, null, 2));
 			$('#tarotPileLabel').text(data.pile.length);
 			$('#tarotPile').empty().append(
-				createTarotCardImg(data.card)
+				createTarotCardImg(data.pile.card)
 			);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);

@@ -704,7 +704,7 @@ definitions:
     properties:
       suit:
         type: string
-        enum: [C,D,H,S]
+        enum: [C,D,H,S,X]
       rank:
         type: string
         enum: [A,'2','3','4','5','6','7','8','9','0',J,Q,K,X]
@@ -771,30 +771,35 @@ definitions:
         type: string
         example: '1'
       deck:
-        $ref: '#/definitions/Cards'
-  Cards:
-    type: object
-    required:
-    - length
-    properties:
-      length:
-        type: integer
-        format: int64
-        example: 108
+        type: object
+        required:
+        - length
+        properties:
+          length:
+            type: integer
+            format: int64
+            example: 108
   Pile:
     type: object
     required:
     - id
     - pile
-    - card
     properties:
       id:
         type: string
         example: '1'
       pile:
-        $ref: '#/definitions/Cards'
-      card:
-        $ref: '#/definitions/Card'
+        type: object
+        required:
+        - length
+        - card
+        properties:
+          length:
+            type: integer
+            format: int64
+            example: 108
+          card:
+            $ref: '#/definitions/Card'
   Hand:
     type: object
     required:
@@ -813,9 +818,19 @@ definitions:
         type: string
         example: pc1
       hand:
-        type: array
-        items:
-          $ref: '#/definitions/Card'
+        type: object
+        required:
+        - length
+        - cards
+        properties:
+          length:
+            type: integer
+            format: int64
+            example: 108
+          cards:
+            type: array
+            items:
+              $ref: '#/definitions/Card'
   HandCard:
     type: object
     required:
@@ -844,15 +859,22 @@ definitions:
     required:
     - id
     - pile
-    - card
     properties:
       id:
         type: string
         example: '1'
       pile:
-        $ref: '#/definitions/Cards'
-      card:
-        $ref: '#/definitions/TarotCard'
+        type: object
+        required:
+        - length
+        - card
+        properties:
+          length:
+            type: integer
+            format: int64
+            example: 108
+          card:
+            $ref: '#/definitions/TarotCard'
   TarotHand:
     type: object
     required:
@@ -871,9 +893,19 @@ definitions:
         type: string
         example: pc1
       hand:
-        type: array
-        items:
-          $ref: '#/definitions/TarotCard'
+        type: object
+        required:
+        - length
+        - cards
+        properties:
+          length:
+            type: integer
+            format: int64
+            example: 108
+          cards:
+            type: array
+            items:
+              $ref: '#/definitions/TarotCard'
 # Added by API Auto Mocking Plugin
 host: virtserver.swaggerhub.com
 basePath: /h6623/decks/1.0.0
