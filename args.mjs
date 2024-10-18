@@ -11,8 +11,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import { readFile } from 'node:fs/promises';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
-const packageJson = JSON.parse(await readFile(new URL('./package.json', import.meta.url)));
+const packageJson = JSON.parse(await readFile(fileURLToPath(new URL('./package.json', import.meta.url))));
 
 function usage(message) {
 	if (message) {
