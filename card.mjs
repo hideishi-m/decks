@@ -42,60 +42,27 @@ class TarotCard {
 }
 
 
-class Cards {
-	constructor(cards) {
-		this.cards = [];
-		if (cards instanceof Cards) {
-			this.cards = cards.from();
-		}
-	}
-
-	every(cb) {
-		this.cards.forEach((card) => {
-			cb(card);
-		});
-	}
-
-	from() {
-		return this.cards;
-	}
-
+class Cards extends Array {
 	count() {
-		return this.cards.length;
-	}
-
-	shift() {
-		return this.cards.shift();
-	}
-
-	unshift(card) {
-		return this.cards.unshift(card);
-	}
-
-	pop() {
-		return this.cards.pop();
-	}
-
-	push(card) {
-		return this.cards.push(card);
+		return this.length;
 	}
 
 	splice(index) {
-		return this.cards.splice(index, 1)[0];
-	}
-
-	at(index) {
-		return this.cards[index];
+		return super.splice(index, 1)[0];
 	}
 
 	shuffle(n) {
 		n = n ?? 10;
 		for (let x = 0; x < n; x++) {
-			for (let i = this.cards.length - 1; i >= 0; i--) {
+			for (let i = this.length - 1; i >= 0; i--) {
 				const j = Math.floor(Math.random() * (i + 1));
-				[ this.cards[i], this.cards[j] ] = [ this.cards[j], this.cards[i] ];
+				[ this[i], this[j] ] = [ this[j], this[i] ];
 			}
 		}
+	}
+
+	names() {
+		return this.map((item) => item.name);
 	}
 }
 
@@ -104,16 +71,22 @@ class TarotCards extends Cards {
 	shuffle(n) {
 		n = n ?? 10;
 		for (let x = 0; x < n; x++) {
-			for (let i = this.cards.length - 1; i >= 0; i--) {
+			for (let i = this.length - 1; i >= 0; i--) {
 				const j = Math.floor(Math.random() * (i + 1));
-				[ this.cards[i], this.cards[j] ] = [ this.cards[j], this.cards[i] ];
+				[ this[i], this[j] ] = [ this[j], this[i] ];
 				if (0.5 > Math.random()) {
-					this.cards[i].flip();
+					this[i].flip();
 				}
 				if (0.5 > Math.random()) {
-					this.cards[j].flip();
+					this[j].flip();
 				}
 			}
+		}
+	}
+
+	flip(index) {
+		if (undefined !== this.at(index)) {
+			this.at(index).flip();
 		}
 	}
 }
@@ -143,6 +116,7 @@ export function createDiscardPile() {
 }
 
 export function createHand(deck, draw) {
+	draw = draw ?? 0;
 	const cards = new Cards();
 	if (deck) {
 		for (let i = 0; i < draw; i++) {
@@ -152,26 +126,22 @@ export function createHand(deck, draw) {
 	return cards;
 }
 
-export function createTarotDeck(shuffle, trumps) {
+export function createTarotDeck(shuffle, tarots) {
 	shuffle = shuffle ?? 10;
-	trumps = trumps ? [ ...trumps ] : [];
-	const cards = new TarotCards();
-	tarotRanks.keys(trumps).forEach((rank) => {
-		cards.push(new TarotCard(rank));
+	tarots = tarots ? [ ...tarots ] : [];
+	const tarotCards = new TarotCards();
+	tarotRanks.keys(tarots).forEach((rank) => {
+		tarotCards.push(new TarotCard(rank));
 	});
-	cards.shuffle(shuffle);
-	return cards;
+	tarotCards.shuffle(shuffle);
+	return tarotCards;
 }
 
-export function createTrumpHand(trumps) {
-	trumps = trumps ? [ ...trumps ] : [];
-	console.log({trumps});
-	const cards = new TarotCards();
-	trumps.forEach((rank) => {
-		console.log(tarotRanks.has(rank));
-		if (tarotRanks.has(rank)) {
-			cards.push(new TarotCard(rank));
-		}
+export function createTarotHand(tarots) {
+	tarots = tarots ? [ ...tarots ] : [];
+	const tarotCards = new TarotCards();
+	tarots.filter((rank) => tarotRanks.has(rank)).forEach((rank) => {
+		tarotCards.push(new TarotCard(rank));
 	});
-	return cards;
+	return tarotCards;
 }

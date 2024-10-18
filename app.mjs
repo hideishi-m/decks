@@ -179,7 +179,7 @@ export function createApp(emitter, name, version) {
 		}
 		const game = games[req.params.id];
 		const hand = game.getHandOf(req.params.pid);
-		const card = hand.cards.at(cid);
+		const card = hand.at(cid);
 		if (undefined === card) {
 			return res.statusJson(404, { error: {
 				message: 'card not found for cid',
@@ -311,7 +311,7 @@ export function createApp(emitter, name, version) {
 			logger(`GET deck in game ${req.params.id}`);
 			return res.statusJson(200, {
 				id: req.params.id,
-				deck: { length: deck.cards.count() }
+				deck: { length: deck.count() }
 			});
 		});
 
@@ -331,7 +331,7 @@ export function createApp(emitter, name, version) {
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
-				deck: { length: deck.cards.count() }
+				deck: { length: deck.count() }
 			});
 		});
 
@@ -351,7 +351,7 @@ export function createApp(emitter, name, version) {
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
-				deck: { length: deck.cards.count() }
+				deck: { length: deck.count() }
 			});
 		});
 
@@ -362,7 +362,7 @@ export function createApp(emitter, name, version) {
 			logger(`GET pile in game ${req.params.id}`);
 			return res.statusJson(200, {
 				id: req.params.id,
-				pile: { length: pile.cards.count() },
+				pile: { length: pile.count() },
 				card: pile.face()
 			});
 		});
@@ -382,7 +382,7 @@ export function createApp(emitter, name, version) {
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
-				pile: { length: pile.cards.count() },
+				pile: { length: pile.count() },
 				card: pile.face()
 			});
 		});
@@ -398,7 +398,7 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.cards
+				hand: hand.cards()
 			});
 		});
 
@@ -419,7 +419,7 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.cards
+				hand: hand.cards()
 			});
 		});
 
@@ -442,7 +442,7 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.cards
+				hand: hand.cards()
 			});
 		});
 
@@ -452,7 +452,7 @@ export function createApp(emitter, name, version) {
 			const players = game.getPlayers();
 			const player = players[req.params.pid];
 			const hand = game.getHandOf(req.params.pid);
-			const card = hand.cards.at(req.params.cid);
+			const card = hand.at(req.params.cid);
 			logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.id}`);
 			return res.statusJson(200, {
 				id: req.params.id,
@@ -469,7 +469,7 @@ export function createApp(emitter, name, version) {
 			const players = game.getPlayers();
 			const player = players[req.params.pid];
 			const hand = game.getHandOf(req.params.pid);
-			const card = hand.cards.at(req.params.cid);
+			const card = hand.at(req.params.cid);
 			hand.discard(req.params.cid);
 			logger(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.id}`);
 			emitter.emit('pile', {
@@ -482,7 +482,7 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.cards
+				hand: hand.cards()
 			});
 		});
 
@@ -492,9 +492,9 @@ export function createApp(emitter, name, version) {
 			const players = game.getPlayers();
 			const player = players[req.params.pid];
 			const hand = game.getHandOf(req.params.pid);
-			const to = players[req.params.tid];
+			const playerTo = players[req.params.tid];
 			hand.passTo(req.params.cid, req.params.tid);
-			logger(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${to} in game ${req.params.id}`);
+			logger(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${playerTo} in game ${req.params.id}`);
 			emitter.emit('hand', {
 				id: req.params.id,
 				pid: req.params.pid,
@@ -505,7 +505,7 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.cards
+				hand: hand.cards()
 			});
 		});
 
@@ -515,9 +515,9 @@ export function createApp(emitter, name, version) {
 			const players = game.getPlayers();
 			const player = players[req.params.pid];
 			const hand = game.getHandOf(req.params.pid);
-			const to = players[req.params.tid];
+			const playerTo = players[req.params.tid];
 			hand.pickFrom(req.params.tid);
-			logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${to} in game ${req.params.id}`);
+			logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${playerTo} in game ${req.params.id}`);
 			emitter.emit('hand', {
 				id: req.params.id,
 				pid: req.params.pid,
@@ -528,7 +528,7 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.cards
+				hand: hand.cards()
 			});
 		});
 
@@ -537,13 +537,13 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
 			const player = players[req.params.pid];
-			const trump = game.getTrumpOf(req.params.pid);
+			const hand = game.getTarotHandOf(req.params.pid);
 			logger(`GET trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
 			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				trump: trump.face()
+				trump: hand.face()
 			});
 		});
 
@@ -552,67 +552,67 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
 			const player = players[req.params.pid];
-			const trump = game.getTrumpOf(req.params.pid);
-			const tarot = game.getTarot();
+			const hand = game.getTarotHandOf(req.params.pid);
+			const card = hand.at(0);
 			logger(`DISCARD trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
-			trump.discard(0);
+			hand.discard(0);
 			emitter.emit('tarot', {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				trump: tarot.face()
+				trump: card
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				trump: tarot.face()
+				trump: card
 			});
 		});
 
 	app.route('/games/:id/tarot')
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.id];
-			const tarot = game.getTarot();
+			const pile = game.getTarotPile();
 			logger(`GET tarot in game ${req.params.id}`);
 			return res.statusJson(200, {
 				id: req.params.id,
-				tarot: { length: tarot.cards.count() },
-				card: tarot.face()
+				tarot: { length: pile.count() },
+				card: pile.face()
 			});
 		});
 
 	app.route('/games/:id/tarot/draw')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.id];
-			const tarot = game.getTarot();
-			tarot.draw();
+			const deck = game.getTarotDeck();
+			const pile = game.getTarotPile();
+			deck.discard(0);
 			logger(`DRAW tarot in game ${req.params.id}`);
 			emitter.emit('tarot', {
 				id: req.params.id,
-				tarot: tarot.face()
+				tarot: pile.face()
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
-				tarot: { length: tarot.cards.count() },
-				card: tarot.face()
+				card: pile.face()
 			});
 		});
 
 	app.route('/games/:id/tarot/flip')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.id];
-			const tarot = game.getTarot();
-			tarot.flip();
+			const pile = game.getTarotPile();
+			pile.flip();
 			logger(`FLIP tarot in game ${req.params.id}`);
 			emitter.emit('tarot', {
 				id: req.params.id,
-				tarot: tarot.face()
+				tarot: pile.face()
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
-				tarot: { length: tarot.cards.count() },
-				card: tarot.face()
+				tarot: { length: pile.count() },
+				card: pile.face()
 			});
 		});
 

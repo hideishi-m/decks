@@ -57,7 +57,6 @@ $(document).ready(async function () {
 			if (ping === event.data) {
 				return;
 			}
-			console.log(event.data);
 			const data = JSON.parse(event.data) ?? {};
 			// hand: id,pid,player,tid
 			if (data.hand) {
@@ -218,10 +217,10 @@ $(document).ready(async function () {
 				hand = data.hand;
 			}
 			$('#hand').empty();
-			for (let i = 0; i < hand.cards.length; i++) {
+			for (let i = 0; i < hand.length; i++) {
 				$('#hand').append(
 					$('<div />', { class: 'col-3' }).append(
-						createCardSvg(hand.cards[i]).attr('data-cid', i)
+						createCardSvg(hand[i]).attr('data-cid', i)
 					)
 				);
 			}
