@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   description: Simple card deck app for playing TOKYO-NIGHTMARE
-  version: 1.1.1
+  version: 1.4.0
   title: Simple card deck API
   # put the contact info for your development or API team
   contact:
@@ -51,9 +51,15 @@ paths:
         200:
           description: game IDs
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/Id'
+            type: object
+            required:
+            - games
+            properties:
+              games:
+                type: array
+                items:
+                  type: string
+                  example: '1'
     post:
       tags:
       - admins
@@ -66,13 +72,15 @@ paths:
       - application/json
       parameters:
       - in: body
-        name: gamePlayersTrumps
-        description: Players and trumps for a new game
+        name: gameAttributes
+        description: attributes for a new game
         schema:
-          $ref: '#/definitions/PlayersTrumps'
+          $ref: '#/definitions/GameAttributes'
       responses:
         200:
-          description: game created
+          description: game ID
+          schema:
+            $ref: '#/definitions/Id'
         400:
           description: invalid input, object invalid
   /games/{id}:
@@ -95,7 +103,7 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: game
           schema:
             $ref: '#/definitions/Game'
         400:
@@ -120,9 +128,9 @@ paths:
         format: int64
       responses:
         200:
-          description: games
+          description: game ID
           schema:
-            $ref: '#/definitions/Game'
+            $ref: '#/definitions/Id'
         400:
           description: invalid input
         404:
@@ -157,7 +165,7 @@ paths:
     put:
       tags:
       - players
-      summary: discard to deck
+      summary: discard deck
       operationId: discardDeck
       description: |
         Discards the top card of the deck
@@ -265,7 +273,7 @@ paths:
       summary: retrieve hand
       operationId: getHand
       description: |
-        Retrieves the hand of the player
+        Retrieves information for the hand of the player
       produces:
       - application/json
       parameters:
@@ -327,7 +335,7 @@ paths:
       tags:
       - players
       summary: recycle to hand
-      operationId: discardHand
+      operationId: recycleHand
       description: |
         Recycles a card from the pile to the hand of the player
       produces:
@@ -512,14 +520,118 @@ paths:
           description: invalid input
         404:
           description: no game for id, pid or cid
-  /games/{id}/players/{pid}/trump:
+  /games/{id}/tarot/deck:
     get:
       tags:
       - players
-      summary: retrieve trump
-      operationId: getTrump
+      summary: retrieve tarot deck
+      operationId: getTarotDeck
       description: |
-        Retrieves the trump of the player
+        Retrieves information for the tarot deck
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: tarot deck
+          schema:
+            $ref: '#/definitions/Deck'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/tarot/deck/discard:
+    put:
+      tags:
+      - players
+      summary: discard tarot deck
+      operationId: discardTarotDeck
+      description: |
+        Discards the top tarot card of the tarot deck
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: tarot deck
+          schema:
+            $ref: '#/definitions/Deck'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/tarot/pile:
+    get:
+      tags:
+      - players
+      summary: retrieve tarot pile
+      operationId: getTarotPile
+      description: |
+        Retrieves information for the tarot pile
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: tarot pile
+          schema:
+            $ref: '#/definitions/TarotPile'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/tarot/pile/flip:
+    put:
+      tags:
+      - players
+      summary: flip tarot pile
+      operationId: flipTarotPile
+      description: |
+        Flips a tarot card from the tarot pile
+      produces:
+      - application/json
+      parameters:
+      - in: path
+        name: id
+        description: Game ID
+        required: true
+        type: integer
+        format: int64
+      responses:
+        200:
+          description: tarot pile
+          schema:
+            $ref: '#/definitions/TarotPile'
+        400:
+          description: invalid input
+        404:
+          description: no game for id
+  /games/{id}/tarot/players/{pid}:
+    get:
+      tags:
+      - players
+      summary: retrieve tarot hand
+      operationId: getTarotHand
+      description: |
+        Retrieves information for the tarot hand of the player
       produces:
       - application/json
       parameters:
@@ -539,19 +651,19 @@ paths:
         200:
           description: trump
           schema:
-            $ref: '#/definitions/Trump'
+            $ref: '#/definitions/TarotHand'
         400:
           description: invalid input
         404:
           description: no game for id or pid
-  /games/{id}/players/{pid}/trump/discard:
+  /games/{id}/tarot/players/{pid}/discard:
     put:
       tags:
       - players
-      summary: discard trump
-      operationId: discardTrump
+      summary: discard tarot hand
+      operationId: discardTarotHand
       description: |
-        Discards the trump of the player
+        Discards the top tarot card in the tarot hand of the player
       produces:
       - application/json
       parameters:
@@ -571,89 +683,11 @@ paths:
         200:
           description: trump
           schema:
-            $ref: '#/definitions/Trump'
+            $ref: '#/definitions/TarotHand'
         400:
           description: invalid input
         404:
           description: no game for id or pid
-  /games/{id}/tarot:
-    get:
-      tags:
-      - players
-      summary: retrieve tarot
-      operationId: getTarot
-      description: |
-        Retrieves information for the tarot
-      produces:
-      - application/json
-      parameters:
-      - in: path
-        name: id
-        description: Game ID
-        required: true
-        type: integer
-        format: int64
-      responses:
-        200:
-          description: tarot
-          schema:
-            $ref: '#/definitions/Tarot'
-        400:
-          description: invalid input
-        404:
-          description: no game for id
-  /games/{id}/tarot/draw:
-    put:
-      tags:
-      - players
-      summary: draw tarot
-      operationId: drawTarot
-      description: |
-        Draws a tarot card from the tarot
-      produces:
-      - application/json
-      parameters:
-      - in: path
-        name: id
-        description: Game ID
-        required: true
-        type: integer
-        format: int64
-      responses:
-        200:
-          description: tarot
-          schema:
-            $ref: '#/definitions/Tarot'
-        400:
-          description: invalid input
-        404:
-          description: no game for id
-  /games/{id}/tarot/flip:
-    put:
-      tags:
-      - players
-      summary: flip tarot
-      operationId: flipTarot
-      description: |
-        Flips a tarot card from the tarot
-      produces:
-      - application/json
-      parameters:
-      - in: path
-        name: id
-        description: Game ID
-        required: true
-        type: integer
-        format: int64
-      responses:
-        200:
-          description: tarot
-          schema:
-            $ref: '#/definitions/Tarot'
-        400:
-          description: invalid input
-        404:
-          description: no game for id
 definitions:
   Version:
     type: object
@@ -697,18 +731,18 @@ definitions:
       id:
         type: string
         example: '1'
-  PlayersTrumps:
+  GameAttributes:
     type: object
     required:
     - players
-    - trumps
+    - tarots
     properties:
       players:
         type: array
         items:
           type: string
           example: pc1
-      trumps:
+      tarots:
         type: array
         items:
           type: string
@@ -727,28 +761,6 @@ definitions:
         items:
           type: string
           example: pc1
-  GameCards:
-    type: object
-    required:
-    - length
-    properties:
-      length:
-        type: integer
-        format: int64
-        example: 108
-      card:
-        $ref: '#/definitions/Card'
-  TarotCards:
-    type: object
-    required:
-    - length
-    properties:
-      length:
-        type: integer
-        format: int64
-        example: 108
-      card:
-        $ref: '#/definitions/TarotCard'
   Deck:
     type: object
     required:
@@ -759,7 +771,16 @@ definitions:
         type: string
         example: '1'
       deck:
-        $ref: '#/definitions/GameCards'
+        $ref: '#/definitions/Cards'
+  Cards:
+    type: object
+    required:
+    - length
+    properties:
+      length:
+        type: integer
+        format: int64
+        example: 108
   Pile:
     type: object
     required:
@@ -771,7 +792,7 @@ definitions:
         type: string
         example: '1'
       pile:
-        $ref: '#/definitions/GameCards'
+        $ref: '#/definitions/Cards'
       card:
         $ref: '#/definitions/Card'
   Hand:
@@ -792,14 +813,9 @@ definitions:
         type: string
         example: pc1
       hand:
-        type: object
-        required:
-        - cards
-        properties:
-          cards:
-            type: array
-            items:
-              $ref: '#/definitions/Card'
+        type: array
+        items:
+          $ref: '#/definitions/Card'
   HandCard:
     type: object
     required:
@@ -823,13 +839,27 @@ definitions:
         example: '1'
       card:
          $ref: '#/definitions/Card'
-  Trump:
+  TarotPile:
+    type: object
+    required:
+    - id
+    - pile
+    - card
+    properties:
+      id:
+        type: string
+        example: '1'
+      pile:
+        $ref: '#/definitions/Cards'
+      card:
+        $ref: '#/definitions/TarotCard'
+  TarotHand:
     type: object
     required:
     - id
     - pid
     - player
-    - trump
+    - hand
     properties:
       id:
         type: string
@@ -840,22 +870,10 @@ definitions:
       player:
         type: string
         example: pc1
-      card:
-        $ref: '#/definitions/TarotCard'
-  Tarot:
-    type: object
-    required:
-    - id
-    - tarot
-    - card
-    properties:
-      id:
-        type: string
-        example: '1'
-      tarot:
-        $ref: '#/definitions/TarotCards'
-      card:
-        $ref: '#/definitions/TarotCard'
+      hand:
+        type: array
+        items:
+          $ref: '#/definitions/TarotCard'
 # Added by API Auto Mocking Plugin
 host: virtserver.swaggerhub.com
 basePath: /h6623/decks/1.0.0
