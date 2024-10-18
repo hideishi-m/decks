@@ -327,7 +327,7 @@ export function createApp(emitter, name, version) {
 			});
 			emitter.emit('pile', {
 				id: req.params.id,
-				pile: pile.face()
+				card: pile.face()
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
@@ -347,7 +347,7 @@ export function createApp(emitter, name, version) {
 			});
 			emitter.emit('pile', {
 				id: req.params.id,
-				pile: pile.face()
+				card: pile.face()
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
@@ -378,7 +378,7 @@ export function createApp(emitter, name, version) {
 			});
 			emitter.emit('pile', {
 				id: req.params.id,
-				pile: pile.face()
+				card: pile.face()
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
@@ -436,7 +436,7 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				pile: pile.face()
+				card: pile.face()
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
@@ -476,7 +476,7 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				pile: card
+				card: card
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
@@ -532,87 +532,97 @@ export function createApp(emitter, name, version) {
 			});
 		});
 
-	app.route('/games/:id/players/:pid/trump')
+	app.route('/games/:id/tarot/deck')
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const deck = game.getTarotDeck();
+			logger(`GET tarot deck in game ${req.params.id}`);
+			return res.statusJson(200, {
+				id: req.params.id,
+				deck: { length: deck.count() }
+			});
+		});
+
+	app.route('/games/:id/tarot/deck/discard')
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const deck = game.getTarotDeck();
+			const pile = game.getTarotPile();
+			deck.discard(0);
+			logger(`DISCARD card 0 for tarot in game ${req.params.id}`);
+			emitter.emit('tarot', {
+				id: req.params.id,
+				card: pile.face()
+			});
+			return res.statusJson(200, {
+				id: req.params.id,
+				deck: { length: deck.count() }
+			});
+		});
+
+	app.route('/games/:id/tarot/pile')
+		.get(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const pile = game.getTarotPile();
+			logger(`GET tarot pile in game ${req.params.id}`);
+			return res.statusJson(200, {
+				id: req.params.id,
+				pile: { length: pile.count() },
+				card: pile.face()
+			});
+		});
+
+	app.route('/games/:id/tarot/pile/flip')
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.id];
+			const pile = game.getTarotPile();
+			pile.flip();
+			logger(`FLIP tarot pile in game ${req.params.id}`);
+			emitter.emit('tarot', {
+				id: req.params.id,
+				card: pile.face()
+			});
+			return res.statusJson(200, {
+				id: req.params.id,
+				pile: { length: pile.count() }
+			});
+		});
+
+	app.route('/games/:id/tarot/players/:pid')
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
 			const player = players[req.params.pid];
 			const hand = game.getTarotHandOf(req.params.pid);
-			logger(`GET trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
+			logger(`GET tarot for player ${req.params.pid} ${player} in game ${req.params.id}`);
 			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				trump: hand.face()
+				hand: hand.cards()
 			});
 		});
 
-	app.route('/games/:id/players/:pid/trump/discard')
+	app.route('/games/:id/tarot/players/:pid/discard')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.id];
 			const players = game.getPlayers();
 			const player = players[req.params.pid];
 			const hand = game.getTarotHandOf(req.params.pid);
 			const card = hand.at(0);
-			logger(`DISCARD trump for player ${req.params.pid} ${player} in game ${req.params.id}`);
+			logger(`DISCARD card 0 for tarot for player ${req.params.pid} ${player} in game ${req.params.id}`);
 			hand.discard(0);
 			emitter.emit('tarot', {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				trump: card
+				card: card
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				trump: card
-			});
-		});
-
-	app.route('/games/:id/tarot')
-		.get(verifyToken, function (req, res, next) {
-			const game = games[req.params.id];
-			const pile = game.getTarotPile();
-			logger(`GET tarot in game ${req.params.id}`);
-			return res.statusJson(200, {
-				id: req.params.id,
-				tarot: { length: pile.count() },
-				card: pile.face()
-			});
-		});
-
-	app.route('/games/:id/tarot/draw')
-		.put(verifyToken, function (req, res, next) {
-			const game = games[req.params.id];
-			const deck = game.getTarotDeck();
-			const pile = game.getTarotPile();
-			deck.discard(0);
-			logger(`DRAW tarot in game ${req.params.id}`);
-			emitter.emit('tarot', {
-				id: req.params.id,
-				tarot: pile.face()
-			});
-			return res.statusJson(200, {
-				id: req.params.id,
-				card: pile.face()
-			});
-		});
-
-	app.route('/games/:id/tarot/flip')
-		.put(verifyToken, function (req, res, next) {
-			const game = games[req.params.id];
-			const pile = game.getTarotPile();
-			pile.flip();
-			logger(`FLIP tarot in game ${req.params.id}`);
-			emitter.emit('tarot', {
-				id: req.params.id,
-				tarot: pile.face()
-			});
-			return res.statusJson(200, {
-				id: req.params.id,
-				tarot: { length: pile.count() },
-				card: pile.face()
+				hand: hand.cards()
 			});
 		});
 

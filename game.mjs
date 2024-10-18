@@ -25,7 +25,7 @@ class Game {
 			this.players.push(player);
 			this.hands.push(createHand(this.deck, draw));
 			if (0 === index) {
-				this.tarotHands.push(this.tarotDeck);
+				this.tarotHands.push(createTarotHand());
 			} else {
 				this.tarotHands.push(createTarotHand([tarots[index - 1]]));
 			}
