@@ -21,11 +21,8 @@ export class Attributes extends Map {
 	}
 
 	keys(excludes) {
-		if (excludes) {
-			return [ ...super.keys() ].filter((key) => false === excludes.includes(key));
-		} else {
-			return [ ...super.keys() ];
-		}
+		excludes = excludes ? [ ...excludes ] : [];
+		return [ ...super.keys() ].filter((key) => false === excludes.includes(key));
 	}
 
 	values(index) {

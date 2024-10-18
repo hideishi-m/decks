@@ -9,8 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { createDrawDeck, createDiscardPile, createHand } from './card.mjs';
-import { createTarotCard, createTarotDeck } from './tarot.mjs';
+import { createDrawDeck, createDiscardPile, createHand, createTarotDeck, createTrumpHand } from './card.mjs';
 
 class Game {
 	constructor(players, trumps, deck, joker, shuffle, draw) {
@@ -25,9 +24,10 @@ class Game {
 		players.forEach((player, index) => {
 			this.players.push(player);
 			this.hands.push(createHand(this.deck, draw));
-			this.trumps.push(createHand());
-			if (0 < index && null !== trumps[index - 1]) {
-				this.trumps[index].unshift(createTarotCard(trumps[index - 1], 'U'));
+			if (0 === index) {
+				this.trumps.push(this.tarotDeck);
+			} else {
+				this.trumps.push(createTrumpHand([trumps[index - 1]]));
 			}
 		});
 	}
@@ -47,8 +47,8 @@ class Game {
 			players: this.players.map((player, index) => {
 				return {
 					player: player,
-					hand: this.hands[index].getStatus(),
-					trump: this.trumps[index].getStatus()
+					hand: this.hands[index].cards.map((card) => card.name),
+					trump: this.trumps[index].cards.map((card) => card.name)
 				}
 			}),
 			tarot: { length: this.tarotPile.count() }
