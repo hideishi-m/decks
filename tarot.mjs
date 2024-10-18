@@ -49,11 +49,11 @@ class TarotCards extends Cards {
 }
 
 
-export function newTarotCard(rank, position) {
+export function createTarotCard(rank, position) {
 	return new TarotCard(rank, position);
 }
 
-export function newTarotDeck(shuffle, trumps) {
+export function createTarotDeck(shuffle, trumps) {
 	shuffle = shuffle ?? 10;
 	trumps = trumps ?? [];
 	const cards = new TarotCards();

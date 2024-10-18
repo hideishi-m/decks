@@ -17,8 +17,8 @@ import 'dotenv/config';
 import debug from 'debug';
 
 import { version, parseArgs } from './args.mjs';
-import { newApp } from './app.mjs';
-import { newServer } from './server.mjs';
+import { createApp } from './app.mjs';
+import { createServer } from './server.mjs';
 
 const options = await parseArgs();
 const name = options.name ?? 'decks';
@@ -27,9 +27,9 @@ debug.enable(`${name}*`);
 
 const logger = debug(name);
 const emitter = new EventEmitter();
-const app = newApp(emitter, name, version);
+const app = createApp(emitter, name, version);
 
-async function newServerOpts(options) {
+async function createServerOpts(options) {
 	const serverOpts = {};
 	if (options.key && options.cert) {
 		logger(`Using key ${options.key}`);
@@ -40,7 +40,7 @@ async function newServerOpts(options) {
 	return serverOpts;
 }
 
-const server = newServer(emitter, name, await newServerOpts(options));
+const server = createServer(emitter, name, await createServerOpts(options));
 
 function shutdown() {
 	emitter.emit('close');

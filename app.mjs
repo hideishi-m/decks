@@ -18,11 +18,11 @@ import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
 import serveStatic from 'serve-static';
 
-import { newGame } from './game.mjs';
+import { createGame } from './game.mjs';
 
 const secret = randomBytes(64).toString('hex');
 
-export function newApp(emitter, name, version) {
+export function createApp(emitter, name, version) {
 	name = name ? `${name}:app` : 'app';
 	version = version ?? '1.0.0';
 
@@ -267,7 +267,7 @@ export function newApp(emitter, name, version) {
 					value: req.body.trumps
 				} });
 			}
-			const id = games.push(newGame(req.body.players, req.body.trumps)) - 1;
+			const id = games.push(createGame(req.body.players, req.body.trumps)) - 1;
 			tokens.push(jwt.sign({ id: `${id}` }, secret, { expiresIn: '1d' }));
 			logger(`POST game ${id} for players ${req.body.players}`);
 			return res.statusJson(200, {

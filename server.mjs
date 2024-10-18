@@ -18,7 +18,7 @@ import { WebSocketServer } from 'ws';
 
 import { ping } from './public/js/common.js';
 
-export function newServer(emitter, name, options) {
+export function createServer(emitter, name, options) {
 	name = name ? `${name}:server` : 'server';
 
 	const logger = debug(name);

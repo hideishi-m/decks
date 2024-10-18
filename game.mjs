@@ -9,25 +9,25 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { newDrawDeck, newDiscardPile, newHand } from './card.mjs';
-import { newTarotCard, newTarotDeck } from './tarot.mjs';
+import { createDrawDeck, createDiscardPile, createHand } from './card.mjs';
+import { createTarotCard, createTarotDeck } from './tarot.mjs';
 
 class Game {
 	constructor(players, trumps, deck, joker, shuffle, draw) {
 		players = [ 'マスター', ...players ];
-		this.deck = newDrawDeck(deck, joker, shuffle);
-		this.pile = newDiscardPile();
-		this.tarotDeck = newTarotDeck(shuffle, trumps);
-		this.tarotPile = newDiscardPile();
+		this.deck = createDrawDeck(deck, joker, shuffle);
+		this.pile = createDiscardPile();
+		this.tarotDeck = createTarotDeck(shuffle, trumps);
+		this.tarotPile = createDiscardPile();
 		this.players = [];
 		this.hands = [];
 		this.trumps = [];
 		players.forEach((player, index) => {
 			this.players.push(player);
-			this.hands.push(newHand(this.deck, draw));
-			this.trumps.push(newHand());
+			this.hands.push(createHand(this.deck, draw));
+			this.trumps.push(createHand());
 			if (0 < index && null !== trumps[index - 1]) {
-				this.trumps[index].unshift(newTarotCard(trumps[index - 1], 'U'));
+				this.trumps[index].unshift(createTarotCard(trumps[index - 1], 'U'));
 			}
 		});
 	}
@@ -226,7 +226,7 @@ class Trump {
 }
 
 
-export function newGame(players, trumps, deck, joker, shuffle, draw) {
+export function createGame(players, trumps, deck, joker, shuffle, draw) {
 	players = players ?? [];
 	trumps = trumps ?? [];
 	deck = deck ?? 2;

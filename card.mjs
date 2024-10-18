@@ -90,7 +90,7 @@ export class Cards {  // exported for tarot.mjs
 }
 
 
-export function newDrawDeck(deck, joker, shuffle) {
+export function createDrawDeck(deck, joker, shuffle) {
 	deck = deck ?? 1;
 	joker = joker ?? 2;
 	shuffle = shuffle ?? 10;
@@ -109,11 +109,11 @@ export function newDrawDeck(deck, joker, shuffle) {
 	return cards;
 }
 
-export function newDiscardPile() {
+export function createDiscardPile() {
 	return new Cards();
 }
 
-export function newHand(deck, draw) {
+export function createHand(deck, draw) {
 	const cards = new Cards();
 	if (deck) {
 		for (let i = 0; i < draw; i++) {
