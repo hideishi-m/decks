@@ -584,7 +584,8 @@ export function createApp(emitter, name, version) {
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
-				pile: { length: pile.count() }
+				pile: { length: pile.count() },
+				card: pile.face()
 			});
 		});
 
