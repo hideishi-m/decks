@@ -144,6 +144,10 @@ class Hand {
 		return this.hand;
 	}
 
+	count() {
+		return this.hand.length;
+	}
+
 	draw() {
 		const card = this.deck.shift();
 		if (undefined !== card) {

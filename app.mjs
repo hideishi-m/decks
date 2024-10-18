@@ -506,7 +506,8 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				tid: req.params.tid
+				tid: req.params.tid,
+				playerTo: playerTo
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
@@ -532,7 +533,8 @@ export function createApp(emitter, name, version) {
 				id: req.params.id,
 				pid: req.params.pid,
 				player: player,
-				tid: req.params.tid
+				tid: req.params.tid,
+				playerTo: playerTo
 			});
 			return res.statusJson(200, {
 				id: req.params.id,
