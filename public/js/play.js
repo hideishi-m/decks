@@ -14,9 +14,24 @@ import { cardSuits, cardRanks, cardPositions } from './attr.js';
 import { tarotRanks } from './TNM_tarot.js';
 
 $(document).ready(async function () {
-	let id, pid, socket;
+	let id, pid, socket, token;
 
-	const token = (new URLSearchParams(document.location.search))?.get('token');
+	async function getToken(id, pid) {
+		const data = await ajax('./token', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			cache: 'no-cache',
+			body: JSON.stringify({
+				id: `${id}`,
+				pid: `${pid}`
+			})
+		});
+		console.log(`{"id":"${id}","pid":"${pid}"}`);
+		updateStatus(JSON.stringify(data, null, 2));
+		return data.token;
+	}
 
 	const gameModal = new bootstrap.Modal(document.getElementById('gameModal'), {
 		backdrop: 'static',
@@ -152,9 +167,6 @@ $(document).ready(async function () {
 			updateOptions('#selectPlayerSelect', data.players);
 			updateOptions('#passHandSelect', data.players);
 			updateOptions('#pickSelect', data.players);
-			await updateDeck();
-			await updatePile();
-			await updateTarotPile();
 			togglePlayerModal();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -174,16 +186,20 @@ $(document).ready(async function () {
 			const params = parseDataValue({
 				pid: '#selectPlayerSelect'
 			});
+			token = await getToken(id, params.pid);
 			const data = await ajax('./games/' + id + '/players/' + params.pid, {
 				method: 'GET',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			removeOption('#passHandSelect', data.pid);
 			removeOption('#pickSelect', data.pid);
 			pid = data.pid;
 			$('#playerLabel').text(data.player);
+			await updateDeck();
+			await updatePile();
 			await updateHand(data.hand);
+			await updateTarotPile();
 			await updateTarotHand();
 
 			socket.send(JSON.stringify({
@@ -211,7 +227,7 @@ $(document).ready(async function () {
 			if (undefined === hand) {
 				const data = await ajax('./games/' + id + '/players/' + pid, {
 					method: 'GET',
-					headers: { "Authorization": `Bearer ${token}` }
+					headers: { 'Authorization': `Bearer ${token}` }
 				});
 				updateStatus(JSON.stringify(data, null, 2));
 				hand = data.hand;
@@ -236,7 +252,7 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + id + '/players/' + pid + '/cards/' + params.cid + '/discard', {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateHand(data.hand);
@@ -254,7 +270,7 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + id + '/players/' + pid + '/cards/' + params.cid + '/pass/' + params.tid, {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateHand(data.hand);
@@ -278,7 +294,7 @@ $(document).ready(async function () {
 			if (undefined === deck) {
 				const data = await ajax('./games/' + id + '/deck', {
 					method: 'GET',
-					headers: { "Authorization": `Bearer ${token}` }
+					headers: { 'Authorization': `Bearer ${token}` }
 				});
 				updateStatus(JSON.stringify(data, null, 2));
 				deck = data.deck;
@@ -296,7 +312,7 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/players/' + pid + '/draw', {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateHand(data.hand);
@@ -310,7 +326,7 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/deck/discard', {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateDeck(data.deck);
@@ -336,7 +352,7 @@ $(document).ready(async function () {
 			if (undefined === pile) {
 				const data = await ajax('./games/' + id + '/pile', {
 					method: 'GET',
-					headers: { "Authorization": `Bearer ${token}` }
+					headers: { 'Authorization': `Bearer ${token}` }
 				});
 				updateStatus(JSON.stringify(data, null, 2));
 				pile = data.pile;
@@ -354,7 +370,7 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/players/' + pid + '/recycle', {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateHand(data.hand);
@@ -368,7 +384,7 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/deck/recycle', {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateDeck(data.deck);
@@ -382,7 +398,7 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/pile/shuffle', {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateDeck(data.deck);
@@ -401,7 +417,7 @@ $(document).ready(async function () {
 			});
 			const data = await ajax('./games/' + id + '/players/' + pid + '/pick/' + params.tid, {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateHand(data.hand);
@@ -426,7 +442,7 @@ $(document).ready(async function () {
 			if ('0' === pid) {
 				const data = await ajax('./games/' + id + '/tarot/deck', {
 					method: 'GET',
-					headers: { "Authorization": `Bearer ${token}` }
+					headers: { 'Authorization': `Bearer ${token}` }
 				});
 				updateStatus(JSON.stringify(data, null, 2));
 				$('#tarotHandLabel').text(data.deck.length);
@@ -437,7 +453,7 @@ $(document).ready(async function () {
 				if (undefined === hand) {
 					const data = await ajax('./games/' + id + '/tarot/players/' + pid, {
 						method: 'GET',
-						headers: { "Authorization": `Bearer ${token}` }
+						headers: { 'Authorization': `Bearer ${token}` }
 					});
 					updateStatus(JSON.stringify(data, null, 2));
 					hand = data.hand;
@@ -457,7 +473,7 @@ $(document).ready(async function () {
 			if ('0' === pid) {
 				const data = await ajax('./games/' + id + '/tarot/deck/discard', {
 					method: 'PUT',
-					headers: { "Authorization": `Bearer ${token}` }
+					headers: { 'Authorization': `Bearer ${token}` }
 				});
 				updateStatus(JSON.stringify(data, null, 2));
 				await updateTarotHand();
@@ -465,7 +481,7 @@ $(document).ready(async function () {
 			} else {
 				const data = await ajax('./games/' + id + '/tarot/players/' + pid + '/discard', {
 					method: 'PUT',
-					headers: { "Authorization": `Bearer ${token}` }
+					headers: { 'Authorization': `Bearer ${token}` }
 				});
 				updateStatus(JSON.stringify(data, null, 2));
 				await updateTarotHand(data.hand);
@@ -492,7 +508,7 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/tarot/pile/flip', {
 				method: 'PUT',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await updateTarotPile();
@@ -504,7 +520,7 @@ $(document).ready(async function () {
 		try {
 			const data = await ajax('./games/' + id + '/tarot/pile', {
 				method: 'GET',
-				headers: { "Authorization": `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			$('#tarotPileLabel').text(data.pile.length);

@@ -28,7 +28,6 @@ export function createApp(emitter, name, version) {
 
 	const logger = debug(name);
 	const games = [];
-	const tokens = [];
 	const app = express();
 
 	app.request.token = function () {
@@ -40,7 +39,7 @@ export function createApp(emitter, name, version) {
 		if ('Bearer' !== bearer) {
 			return null;
 		}
-		return token;
+		return token ?? null;
 	};
 	app.response.statusJson = function (code, body) {
 		logger.extend('response')({
@@ -54,37 +53,42 @@ export function createApp(emitter, name, version) {
 	};
 
 	function verifyToken(req, res, next) {
-		if (undefined === req.params.id) {
-			res.set('WWW-Authenticate', 'Bearer error="invalid_request"');
-			return res.statusJson(400, { error: {
-				message: 'id is not set',
-				id: req.params.id
-			} });
-		}
+		let decoded;
+
 		if (null === req.token()) {
-			res.set('WWW-Authenticate', `Bearer realem="${req.params.id}"`);
-			return res.statusJson(401, { error: {
-				message: 'authorization required for id',
-				id: req.params.id
-			} });
+			res.set('WWW-Authenticate', `Bearer realem="/games"`);
+			return res.statusJson(401, { error: { message: 'authorization required' } });
 		}
 		try {
-			const decoded = jwt.verify(req.token(), secret);
+			decoded = jwt.verify(req.token(), secret);
+		} catch (error) {
+			logger.extend('error')(error);
+			res.set('WWW-Authenticate', `Bearer realem="/games", error="invalid_token", error_description="${error.message}"`);
+			return res.statusJson(401, { error: { message: 'authorization failed' } });
+		}
+
+		// req.params.id
+		if (undefined !== req.params.id) {
 			if (req.params.id !== decoded?.id) {
-				res.set('WWW-Authenticate', `Bearer realem="${req.params.id}", error="insufficient_scope"`);
+				res.set('WWW-Authenticate', `Bearer realem="id: ${req.params.id}", error="insufficient_scope"`);
 				return res.statusJson(403, { error: {
-					message: 'authorization failed for id',
+					message: `authorization failed for id`,
 					id: req.params.id
 				} });
 			}
-		} catch (error) {
-			logger.extend('error')(error);
-			res.set('WWW-Authenticate', `Bearer realem="${req.params.id}", error="invalid_token", error_description="${error.message}"`);
-			return res.statusJson(401, { error: {
-				message: 'authorization failed for id',
-				id: req.params.id
-			} });
 		}
+
+		// req.params.pid
+		if (undefined !== req.params.pid) {
+			if (req.params.pid !== decoded?.pid) {
+				res.set('WWW-Authenticate', `Bearer realem="pid: ${req.params.pid}", error="insufficient_scope"`);
+				return res.statusJson(403, { error: {
+					message: `authorization failed for pid`,
+					pid: req.params.pid
+				} });
+			}
+		}
+
 		next();
 	}
 
@@ -223,6 +227,56 @@ export function createApp(emitter, name, version) {
 			});
 		})
 
+	app.route('/token')
+		.post(function (req, res, next) {
+			if (undefined === req.body) {
+				return res.statusJson(400, { error: {
+					message: 'no body',
+					body: req.body
+				} });
+			}
+			if ( '[object Object]' !== Object.prototype.toString.call(req.body)) {
+				return res.statusJson(400, { error: {
+					message: 'invalid format for body',
+					body: req.body
+				} });
+			}
+			if (false === /^\d+$/.test(req.body.id)) {
+				return res.statusJson(400, { error: {
+					message: 'invalid format for id',
+					id: req.body.id
+				} });
+			}
+			if (0 > parseInt(req.body.id)) {
+				return res.statusJson(400, { error: {
+					message: 'invalid value for id',
+					id: req.body.id
+				} });
+			}
+			if (false === /^\d+$/.test(req.body.pid)) {
+				return res.statusJson(400, { error: {
+					message: 'invalid format for pid',
+					pid: req.body.pid
+				} });
+			}
+			if (0 > parseInt(req.body.pid)) {
+				return res.statusJson(400, { error: {
+					message: 'invalid value for pid',
+					pid: req.body.pid
+				} });
+			}
+			const token = jwt.sign({
+				id: `${req.body.id}`,
+				pid: `${req.body.pid}`
+			}, secret, { expiresIn: '1d' });
+			logger(`POST token for player ${req.body.pid} in game ${req.body.id}`);
+			return res.statusJson(200, {
+				id: req.body.id,
+				pid: req.body.pid,
+				token: token
+			});
+		});
+
 	app.route('/games')
 		.get(function (req, res, next) {
 			const ids = [];
@@ -240,7 +294,7 @@ export function createApp(emitter, name, version) {
 				games: ids
 			});
 		})
-		.post(function (req, res, next) {
+		.post(verifyToken, function (req, res, next) {
 			if (undefined === req.body) {
 				return res.statusJson(400, { error: {
 					message: 'no body',
@@ -268,11 +322,9 @@ export function createApp(emitter, name, version) {
 				} });
 			}
 			const id = games.push(createGame(req.body.players, req.body.tarots)) - 1;
-			tokens.push(jwt.sign({ id: `${id}` }, secret, { expiresIn: '1d' }));
 			logger(`POST game ${id} for players ${req.body.players}`);
 			return res.statusJson(200, {
-				id: `${id}`,
-				token: tokens[id]
+				id: `${id}`
 			});
 		});
 
@@ -286,7 +338,7 @@ export function createApp(emitter, name, version) {
 				players: players
 			});
 		})
-		.delete(function (req, res, next) {
+		.delete(verifyToken, function (req, res, next) {
 			delete games[req.params.id];
 			logger(`DELETE game ${req.params.id}`);
 			return res.statusJson(200, {
