@@ -29,8 +29,8 @@ export function createServer(emitter, name, options) {
 
 	emitter.on('deck', function (data) {
 		logger.extend('emitter')({ deck: data });
-		const id = data.id;
-		const re = new RegExp(`^${id}:\\d+$`);
+		const gid = data.gid;
+		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
@@ -46,8 +46,8 @@ export function createServer(emitter, name, options) {
 
 	emitter.on('pile', function (data) {
 		logger.extend('emitter')({ pile: data });
-		const id = data.id;
-		const re = new RegExp(`^${id}:\\d+$`);
+		const gid = data.gid;
+		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
@@ -63,9 +63,9 @@ export function createServer(emitter, name, options) {
 
 	emitter.on('hand', function (data) {
 		logger.extend('emitter')({ hand: data });
-		const id = data.id;
+		const gid = data.gid;
 		const tid = data.tid;
-		const key = `${id}:${tid}`;
+		const key = `${gid}:${tid}`;
 		const value = wsMap.get(key);
 		if (undefined !== value) {
 			if (wsServer.clients.has(value)) {
@@ -80,8 +80,8 @@ export function createServer(emitter, name, options) {
 
 	emitter.on('tarot', function (data) {
 		logger.extend('emitter')({ tarot: data });
-		const id = data.id;
-		const re = new RegExp(`^${id}:\\d+$`);
+		const gid = data.gid;
+		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
@@ -106,11 +106,11 @@ export function createServer(emitter, name, options) {
 			try {
 				data = JSON.parse(data) ?? {};
 				logger.extend('ws')({ message: data });
-				const id = /^\d+$/.test(data.id) ? data.id : undefined;
+				const gid = /^\d+$/.test(data.gid) ? data.gid : undefined;
 				const pid = /^\d+$/.test(data.pid) ? data.pid : undefined;
-				if (undefined !== id && undefined !== pid) {
-					wsMap.set(`${id}:${pid}`, ws);
-					logger(`welcome player ${pid} for game ${id}`);
+				if (undefined !== gid && undefined !== pid) {
+					wsMap.set(`${gid}:${pid}`, ws);
+					logger(`welcome player ${pid} for game ${gid}`);
 					logger.extend('ws')({ websockets: [...wsMap.keys()] });
 				}
 			} catch (error) {

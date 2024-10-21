@@ -19,8 +19,9 @@ $(document).ready(async function () {
 		appendOption('select[name^=tarots]', rank, name);
 	}
 
-	async function getToken(id) {
-		id = id ?? 0;
+	async function getToken(gid) {
+		gid = gid ?? 0;
+		const pid = 0;
 		const data = await ajax('./token', {
 			method: 'POST',
 			headers: {
@@ -28,37 +29,33 @@ $(document).ready(async function () {
 			},
 			cache: 'no-cache',
 			body: JSON.stringify({
-				id: `${id}`,
-				pid: '0'
+				gid: `${gid}`,
+				pid: `${pid}`
 			})
 		});
-		console.log(`{"id":"${id}"}`);
+		console.log(`{"gid":"${gid}","pid":"${pid}"}`);
 		updateStatus(JSON.stringify(data, null, 2));
 		return data.token;
 	}
 
 	// common
-	async function appendGame(id) {
+	async function appendGame(gid) {
 		try {
-			token = await getToken(id);
-			const data = await ajax('./games/' + id, {
-				method: 'GET',
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
+			const data = await ajax('./games/' + gid, { method: 'GET' });
 			updateStatus(JSON.stringify(data, null, 2));
 			$('#game').append($('<div />', {
 				class: 'col-3',
-				['data-id']: data.id
+				['data-gid']: data.gid
 			}).append($('<a />', {
 				href: './play.html',
 				target: '_blank',
 				rel: 'noopener noreferrer'
-			}).text(data.id)));
+			}).text(data.gid)));
 			$('#game').append($('<div />', {
 				class: 'col-9',
-				['data-id']: data.id
+				['data-gid']: data.gid
 			}).text(data.players));
-			appendOption('#deleteGameSelect', data.id, data.id);
+			appendOption('#deleteGameSelect', data.gid, data.gid);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -89,7 +86,7 @@ $(document).ready(async function () {
 				})
 			});
 			updateStatus(JSON.stringify(data, null, 2));
-			await appendGame(data.id);
+			await appendGame(data.gid);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -109,18 +106,18 @@ $(document).ready(async function () {
     async function deleteGame() {
 		try {
 			const params = parseDataValue({
-				id: '#deleteGameSelect'
+				gid: '#deleteGameSelect'
 			});
-			token = await getToken(params.id);
-			const data = await ajax('./games/' + params.id, {
+			token = await getToken(params.gid);
+			const data = await ajax('./games/' + params.gid, {
 				method: 'DELETE',
 				headers: { 'Authorization': `Bearer ${token}` }
 			} );
 			updateStatus(JSON.stringify(data, null, 2));
-			$(`#game div[data-id='${data.id}']`).each(function () {
+			$(`#game div[data-gid='${data.gid}']`).each(function () {
 				$(this).remove();
 			});
-			removeOption('#deleteGameSelect', data.id);
+			removeOption('#deleteGameSelect', data.gid);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -128,14 +125,10 @@ $(document).ready(async function () {
 
 	// ready
 	try {
-		token = token ?? await getToken();
-		const data = await ajax('./games', {
-			method: 'GET',
-			headers: { 'Authorization': `Bearer ${token}` }
-		});
+		const data = await ajax('./games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
-		for (const id of data.games) {
-			await appendGame(id);
+		for (const gid of data.games) {
+			await appendGame(gid);
 		}
 	} catch (error) {
 		updateStatus(`${error.name}: ${error.message}`);
