@@ -16,9 +16,17 @@ import debug from 'debug';
 import express from 'express';
 import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
-import serveStatic from 'serve-static';
 
 import { createGame } from './game.mjs';
+
+
+class AppError extends Error {
+	constructor(code = 500, message, options) {
+		super(message, options);
+		this.code = code;
+	}
+}
+
 
 const secret = randomBytes(64).toString('hex');
 
@@ -52,40 +60,83 @@ export function createApp(emitter, name, version) {
 		return this.status(code).json(body);
 	};
 
+	function validateKeyValue(req, res, next, value, key) {
+		if (false === /^\d+$/.test(value)) {
+			throw new AppError(400, `invalid format for ${key}`, { cause: { [key]: value } });
+		}
+		if (0 > parseInt(value)) {
+			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
+		}
+		next();
+	}
+
+	function validateGame(req, res, next, value, key) {
+		const game = games[value];
+		if (undefined === game) {
+			throw new AppError(404, `game not found for ${key}`, { cause: { [key]: value } });
+		}
+		next();
+	}
+
+	function validatePlayer(req, res, next, value, key) {
+		const game = games[req.params.gid];
+		const player = game.getPlayer(value);
+		if (undefined === player) {
+			throw new AppError(404, `player not found for ${key}`, { cause: {
+				gid: req.params.gid,
+				[key]: value
+			} });
+		}
+		next();
+	}
+
+	function validateCard(req, res, next, value, key) {
+		const game = games[req.params.gid];
+		const hand = game.getHandOfPlayer(req.params.pid);
+		const card = hand.at(value);
+		if (undefined === card) {
+			throw new AppError(404, 'card not found for cid', { cause: {
+				gid: req.params.gid,
+				pid: req.params.pid,
+				[key]: value
+			} });
+		}
+		next();
+	}
+
+	function validateArray(req, res, next, value, key) {
+		if (false === Array.isArray(value)) {
+			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
+		}
+		next();
+	}
+
 	function verifyToken(req, res, next) {
-		let decoded;
-
-		if (null === req.token()) {
-			res.set('WWW-Authenticate', `Bearer realem="/games"`);
-			return res.statusJson(401, { error: { message: 'authorization required' } });
-		}
-		try {
-			decoded = jwt.verify(req.token(), secret);
-		} catch (error) {
-			logger.extend('error')(error);
-			res.set('WWW-Authenticate', `Bearer realem="/games", error="invalid_token", error_description="${error.message}"`);
-			return res.statusJson(401, { error: { message: 'authorization failed' } });
-		}
-
-		// req.params.gid
-		if (undefined !== req.params.gid) {
-			if (req.params.gid !== decoded?.gid) {
-				res.set('WWW-Authenticate', `Bearer realem="id: ${req.params.gid}", error="insufficient_scope"`);
-				return res.statusJson(403, { error: {
-					message: `authorization failed for gid`,
-					gid: req.params.gid
-				} });
+		if (undefined === req.decoded) {
+			if (null === req.token()) {
+				res.set('WWW-Authenticate', `Bearer realem="/games"`);
+				throw new AppError(401, 'authorization required');
+			}
+			try {
+				req.decoded = jwt.verify(req.token(), secret);
+			} catch (error) {
+				logger.extend('error')(error);
+				res.set('WWW-Authenticate', `Bearer realem="/games", error="invalid_token", error_description="${error.message}"`);
+				throw new AppError(401, 'authorization failed', { cause: `${error.name}: ${error.message}` });
 			}
 		}
 
-		// req.params.pid
+		if (undefined !== req.params.gid) {
+			if (req.params.gid !== req.decoded.gid) {
+				res.set('WWW-Authenticate', `Bearer realem="id: ${req.params.gid}", error="insufficient_scope"`);
+				throw new AppError(403, 'authorization failed for gid', { cause: { gid: req.params.gid } });
+			}
+		}
+
 		if (undefined !== req.params.pid) {
-			if (req.params.pid !== decoded?.pid) {
+			if (req.params.pid !== req.decoded.pid) {
 				res.set('WWW-Authenticate', `Bearer realem="pid: ${req.params.pid}", error="insufficient_scope"`);
-				return res.statusJson(403, { error: {
-					message: `authorization failed for pid`,
-					pid: req.params.pid
-				} });
+				throw new AppError(403, 'authorization failed for pid', { cause: { pid: req.params.pid } });
 			}
 		}
 
@@ -99,11 +150,7 @@ export function createApp(emitter, name, version) {
 	app.use(express.json({
 		limit: '10mb'
 	}));
-	app.use(express.urlencoded({
-		extended: true,
-		limit: '10mb'
-	}));
-	app.use(serveStatic(fileURLToPath(new URL('./public', import.meta.url)), {
+	app.use(express.static(fileURLToPath(new URL('./public', import.meta.url)), {
 		index: false,
 		maxAge: '1d',
 		redirect: false
@@ -121,102 +168,17 @@ export function createApp(emitter, name, version) {
 		next();
 	});
 
-	app.param('gid', function (req, res, next, gid) {
-		if (false === /^\d+$/.test(gid)) {
-			return res.statusJson(400, { error: {
-				message: 'invalid format for gid',
-				gid: gid
-			} });
-		}
-		if (0 > parseInt(gid)) {
-			return res.statusJson(400, { error: {
-				message: 'invalid value for gid',
-				gid: gid
-			} });
-		}
-		const game = games[gid];
-		if (undefined === game) {
-			return res.statusJson(404, { error: {
-				message: 'game not found for gid',
-				gid: gid
-			} });
-		}
-		next();
-	});
-	app.param('pid', function (req, res, next, pid) {
-		if (false === /^\d+$/.test(pid)) {
-			return res.statusJson(400, { error: {
-				message: 'invalid format for pid',
-				pid: pid
-			} });
-		}
-		if (0 > parseInt(pid)) {
-			return res.statusJson(400, { error: {
-				message: 'invalid value for pid',
-				pid: pid
-			} });
-		}
-		const game = games[req.params.gid];
-		const player = game.getPlayer(pid);
-		if (undefined === player) {
-			return res.statusJson(404, { error: {
-				message: 'player not found for pid',
-				gid: req.params.gid,
-				pid: pid
-			} });
-		}
-		next();
-	});
-	app.param('cid', function (req, res, next, cid) {
-		if (false === /^\d+$/.test(cid)) {
-			return res.statusJson(400, { error: {
-				message: 'invalid format for cid',
-				cid: cid
-			} });
-		}
-		if (0 > parseInt(cid)) {
-			return res.statusJson(400, { error: {
-				message: 'invalid value for cid',
-				cid: cid
-			} });
-		}
-		const game = games[req.params.gid];
-		const hand = game.getHandOfPlayer(req.params.pid);
-		const card = hand.at(cid);
-		if (undefined === card) {
-			return res.statusJson(404, { error: {
-				message: 'card not found for cid',
-				gid: req.params.gid,
-				pid: req.params.pid,
-				cid: cid
-			} });
-		}
-		next();
-	});
-	app.param('tid', function (req, res, next, tid) {
-		if (false === /^\d+$/.test(tid)) {
-			return res.statusJson(400, { error: {
-				message: 'invalid format for tid',
-				tid: tid
-			} });
-		}
-		if (0 > parseInt(tid)) {
-			return res.statusJson(400, { error: {
-				message: 'invalid value for tid',
-				tid: tid
-			} });
-		}
-		const game = games[req.params.gid];
-		const player = game.getPlayer(tid);
-		if (undefined === player) {
-			return res.statusJson(404, { error: {
-				message: 'player not found for tid',
-				gid: req.params.gid,
-				tid: tid
-			} });
-		}
-		next();
-	});
+	app.param('gid', validateKeyValue);
+	app.param('gid', validateGame);
+
+	app.param('pid', validateKeyValue);
+	app.param('pid', validatePlayer);
+
+	app.param('cid', validateKeyValue);
+	app.param('cid', validateCard);
+
+	app.param('tid', validateKeyValue);
+	app.param('tid', validatePlayer);
 
 	app.route('/version')
 		.get(function (req, res, next) {
@@ -227,42 +189,10 @@ export function createApp(emitter, name, version) {
 
 	app.route('/token')
 		.post(function (req, res, next) {
-			if (undefined === req.body) {
-				return res.statusJson(400, { error: {
-					message: 'no body',
-					body: req.body
-				} });
-			}
-			if ( '[object Object]' !== Object.prototype.toString.call(req.body)) {
-				return res.statusJson(400, { error: {
-					message: 'invalid format for body',
-					body: req.body
-				} });
-			}
-			if (false === /^\d+$/.test(req.body.gid)) {
-				return res.statusJson(400, { error: {
-					message: 'invalid format for gid',
-					gid: req.body.gid
-				} });
-			}
-			if (0 > parseInt(req.body.gid)) {
-				return res.statusJson(400, { error: {
-					message: 'invalid value for gid',
-					gid: req.body.gid
-				} });
-			}
-			if (false === /^\d+$/.test(req.body.pid)) {
-				return res.statusJson(400, { error: {
-					message: 'invalid format for pid',
-					pid: req.body.pid
-				} });
-			}
-			if (0 > parseInt(req.body.pid)) {
-				return res.statusJson(400, { error: {
-					message: 'invalid value for pid',
-					pid: req.body.pid
-				} });
-			}
+			validateKeyValue(req, res, next, req.body.gid, 'gid');
+		}, function (req, res, next) {
+			validateKeyValue(req, res, next, req.body.pid, 'pid');
+		}, function (req, res, next) {
 			const token = jwt.sign({
 				gid: `${req.body.gid}`,
 				pid: `${req.body.pid}`
@@ -280,45 +210,18 @@ export function createApp(emitter, name, version) {
 			const gids = [];
 			games.forEach((game, index) => {
 				if (undefined !== game) {
-					gids.push(`${index}`);
+					gids.push({ gid: `${index}` });
 				}
 			});
-			if (0 === gids.length) {
-				return res.statusJson(404, { error: {
-					message: 'game not found'
-				} });
-			}
 			return res.statusJson(200, {
 				games: gids
 			});
 		})
-		.post(verifyToken, function (req, res, next) {
-			if (undefined === req.body) {
-				return res.statusJson(400, { error: {
-					message: 'no body',
-					body: req.body
-				} });
-			}
-			if ( '[object Object]' !== Object.prototype.toString.call(req.body)) {
-				return res.statusJson(400, { error: {
-					message: 'invalid format for body',
-					body: req.body
-				} });
-			}
-			if (false === Array.isArray(req.body.players)) {
-				return res.statusJson(400, { error: {
-					message: 'invalid value for key',
-					key: 'players',
-					value: req.body.players
-				} });
-			}
-			if (false === Array.isArray(req.body.tarots)) {
-				return res.statusJson(400, { error: {
-					message: 'invalid value for key',
-					key: 'tarots',
-					value: req.body.tarots
-				} });
-			}
+		.post(function (req, res, next) {
+			validateArray(req, res, next, req.body.players, 'players');
+		}, function (req, res, next) {
+			validateArray(req, res, next, req.body.tarots, 'tarots');
+		}, function (req, res, next) {
 			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
 			logger(`POST game ${gid} for players ${req.body.players}`);
 			return res.statusJson(200, {
@@ -344,13 +247,13 @@ export function createApp(emitter, name, version) {
 			});
 		});
 
-	app.route('/games/:gid/status')
+	app.route('/games/:gid/dump')
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			logger(`GET status in game ${req.params.gid}`);
+			logger(`DUMP game ${req.params.gid}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				game: game.getStatus()
+				...game.dump()
 			});
 		});
 
@@ -361,7 +264,7 @@ export function createApp(emitter, name, version) {
 			logger(`GET deck in game ${req.params.gid}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				deck: { length: deck.count() }
+				deck: deck.toJson()
 			});
 		});
 
@@ -369,17 +272,21 @@ export function createApp(emitter, name, version) {
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const deck = game.getDeck();
+			const pile = game.getPile();
 			deck.discard(0);
 			logger(`DISCARD card 0 for deck in game ${req.params.gid}`);
 			emitter.emit('deck', {
-				gid: req.params.gid
+				gid: req.params.gid,
+				pid: req.decoded.pid
 			});
 			emitter.emit('pile', {
-				gid: req.params.gid
+				gid: req.params.gid,
+				pid: req.decoded.pid
 			});
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				deck: { length: deck.count() }
+				deck: deck.toJson(),
+				pile: pile.toJson()
 			});
 		});
 
@@ -387,17 +294,21 @@ export function createApp(emitter, name, version) {
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const deck = game.getDeck();
+			const pile = game.getPile();
 			deck.recycle();
 			logger(`RECYCLE for deck in game ${req.params.gid}`);
 			emitter.emit('deck', {
-				gid: req.params.gid
+				gid: req.params.gid,
+				pid: req.decoded.pid
 			});
 			emitter.emit('pile', {
-				gid: req.params.gid
+				gid: req.params.gid,
+				pid: req.decoded.pid
 			});
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				deck: { length: deck.count() }
+				deck: deck.toJson(),
+				pile: pile.toJson()
 			});
 		});
 
@@ -408,10 +319,7 @@ export function createApp(emitter, name, version) {
 			logger(`GET pile in game ${req.params.gid}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				pile: {
-					length: pile.count(),
-					card: pile.face()
-				}
+				pile: pile.toJson()
 			});
 		});
 
@@ -419,20 +327,21 @@ export function createApp(emitter, name, version) {
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const pile = game.getPile();
+			const deck = game.getDeck();
 			pile.shuffle();
 			logger(`SHUFFLE pile in game ${req.params.gid}`);
 			emitter.emit('deck', {
-				gid: req.params.gid
+				gid: req.params.gid,
+				pid: req.decoded.pid
 			});
 			emitter.emit('pile', {
-				gid: req.params.gid
+				gid: req.params.gid,
+				pid: req.decoded.pid
 			});
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				pile: {
-					length: pile.count(),
-					card: pile.face()
-				}
+				deck: deck.toJson(),
+				pile: pile.toJson()
 			});
 		});
 
@@ -446,10 +355,7 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: {
-					length: hand.count(),
-					cards: hand.cards()
-				}
+				hand: hand.toJson()
 			});
 		});
 
@@ -458,6 +364,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
+			const deck = game.getDeck();
 			hand.draw();
 			logger(`DRAW for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			emitter.emit('deck', {
@@ -469,10 +376,8 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: {
-					length: hand.count(),
-					cards: hand.cards()
-				}
+				deck: deck.toJson(),
+				hand: hand.toJson()
 			});
 		});
 
@@ -481,6 +386,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
+			const pile = game.getPile();
 			hand.recycle();
 			logger(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.gid}`);
 			emitter.emit('pile', {
@@ -492,10 +398,8 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: {
-					length: hand.count(),
-					cards: hand.cards()
-				}
+				pile: pile.toJson(),
+				hand: hand.toJson()
 			});
 		});
 
@@ -505,7 +409,7 @@ export function createApp(emitter, name, version) {
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const card = hand.at(req.params.cid);
-			logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
+			logger(`GET card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -520,6 +424,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
+			const pile = game.getPile();
 			hand.discard(req.params.cid);
 			logger(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			emitter.emit('pile', {
@@ -531,10 +436,8 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: {
-					length: hand.count(),
-					cards: hand.cards()
-				}
+				pile: pile.toJson(),
+				hand: hand.toJson()
 			});
 		});
 
@@ -557,10 +460,7 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: {
-					length: hand.count(),
-					cards: hand.cards()
-				}
+				hand: hand.toJson()
 			});
 		});
 
@@ -569,24 +469,21 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
-			const playerTo = game.getPlayer(req.params.tid);
+			const playerFrom = game.getPlayer(req.params.tid);
 			hand.pickFrom(req.params.tid);
-			logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${playerTo} in game ${req.params.gid}`);
+			logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${playerFrom} in game ${req.params.gid}`);
 			emitter.emit('hand', {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
 				tid: req.params.tid,
-				playerTo: playerTo
+				playerFrom: playerFrom
 			});
 			return res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: {
-					length: hand.count(),
-					cards: hand.cards()
-				}
+				hand: hand.toJson()
 			});
 		});
 
@@ -597,7 +494,7 @@ export function createApp(emitter, name, version) {
 			logger(`GET tarot deck in game ${req.params.gid}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				deck: { length: deck.count() }
+				deck: deck.toJson()
 			});
 		});
 
@@ -605,14 +502,17 @@ export function createApp(emitter, name, version) {
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const deck = game.getTarotDeck();
+			const pile = game.getTarotPile();
 			deck.discard(0);
 			logger(`DISCARD card 0 for tarot in game ${req.params.gid}`);
 			emitter.emit('tarot', {
-				gid: req.params.gid
+				gid: req.params.gid,
+				pid: req.decoded.pid
 			});
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				deck: { length: deck.count() }
+				deck: deck.toJson(),
+				pile: pile.toJson(),
 			});
 		});
 
@@ -623,10 +523,7 @@ export function createApp(emitter, name, version) {
 			logger(`GET tarot pile in game ${req.params.gid}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				pile: {
-					length: pile.count(),
-					card: pile.face()
-				}
+				pile: pile.toJson()
 			});
 		});
 
@@ -637,14 +534,12 @@ export function createApp(emitter, name, version) {
 			pile.flip();
 			logger(`FLIP tarot pile in game ${req.params.gid}`);
 			emitter.emit('tarot', {
-				gid: req.params.gid
+				gid: req.params.gid,
+				pid: req.decoded.pid
 			});
 			return res.statusJson(200, {
 				gid: req.params.gid,
-				pile: {
-					length: pile.count(),
-					card: pile.face()
-				}
+				pile: pile.toJson()
 			});
 		});
 
@@ -658,10 +553,7 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: {
-					length: hand.count(),
-					cards: hand.cards()
-				}
+				hand: hand.toJson()
 			});
 		});
 
@@ -670,6 +562,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getTarotHandOfPlayer(req.params.pid);
+			const pile = game.getTarotPile();
 			logger(`DISCARD card 0 for tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			hand.discard(0);
 			emitter.emit('tarot', {
@@ -681,10 +574,8 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: {
-					length: hand.count(),
-					cards: hand.cards()
-				}
+				pile: pile.toJson(),
+				hand: hand.toJson()
 			});
 		});
 
@@ -695,10 +586,17 @@ export function createApp(emitter, name, version) {
 	});
 
 	app.use(function (err, req, res, next) {
-		logger.extend('error')(err);
-		return res.statusJson(500, { error: {
-			message: `${err.name}: ${err.message}`
-		} });
+		if (err instanceof AppError) {
+			return res.statusJson(err.code, { error: {
+				message: err.message,
+				cause: err.cause
+			} });
+		} else {
+			logger.extend('error')(err);
+			return res.statusJson(500, { error: {
+				message: `${err.name}: ${err.message}`
+			} });
+		}
 	});
 
 	return app;

@@ -64,18 +64,18 @@ export function createServer(emitter, name, options) {
 	emitter.on('hand', function (data) {
 		logger.extend('emitter')({ hand: data });
 		const gid = data.gid;
-		const tid = data.tid;
-		const key = `${gid}:${tid}`;
-		const value = wsMap.get(key);
-		if (undefined !== value) {
-			if (wsServer.clients.has(value)) {
-				value.send(JSON.stringify({ hand: data }));
-				logger(`HAND to ${key}`);
-			} else {
-				wsMap.delete(key);
-				logger(`delete ${key}`);
+		const re = new RegExp(`^${gid}:\\d+$`);
+		wsMap.forEach((value, key) => {
+			if (re.test(key)) {
+				if (wsServer.clients.has(value)) {
+					value.send(JSON.stringify({ hand: data }));
+					logger(`HAND to ${key}`);
+				} else {
+					wsMap.delete(key);
+					logger(`delete ${key}`);
+				}
 			}
-		}
+		});
 	});
 
 	emitter.on('tarot', function (data) {

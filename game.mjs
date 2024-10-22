@@ -32,10 +32,10 @@ class Game {
 		});
 	}
 
-	getStatus() {
+	dump() {
 		return {
-			deck: { length: this.deck.length },
-			pile: { length: this.pile.length },
+			deck: this.deck.names(),
+			pile: this.pile.names(),
 			players: this.players.map((player, index) => {
 				return {
 					player: player,
@@ -43,8 +43,8 @@ class Game {
 					tarotHand: this.tarotHands[index].names()
 				}
 			}),
-			tarotDeck: { length: this.tarotDeck.length },
-			tarotPile: { length: this.tarotPile.length }
+			tarotDeck: this.tarotDeck.names(),
+			tarotPile: this.tarotPile.names()
 		}
 	}
 
@@ -88,10 +88,6 @@ class Deck {
 		this.pile = game.pile;
 	}
 
-	count() {
-		return this.deck.length;
-	}
-
 	discard(index) {
 		const card = this.deck.splice(index, 1)[0];
 		if (undefined !== card) {
@@ -118,14 +114,6 @@ class Pile {
 		this.pile = game.pile;
 	}
 
-	count() {
-		return this.pile.length;
-	}
-
-	face() {
-		return this.pile[0];
-	}
-
 	shuffle(shuffle) {
 		let card;
 		while ((card = this.pile.pop()) !== undefined) {
@@ -136,7 +124,7 @@ class Pile {
 
 	toJson() {
 		return {
-			length: this.deck.length,
+			length: this.pile.length,
 			card: this.pile[0]
 		};
 	}
@@ -154,14 +142,6 @@ class Hand {
 
 	at(index) {
 		return this.hand[index];
-	}
-
-	cards() {
-		return this.hand;
-	}
-
-	count() {
-		return this.hand.length;
 	}
 
 	draw() {
@@ -240,10 +220,6 @@ class TarotHand extends Hand {
 		this.deck = game.tarotDeck;
 		this.pile = game.tarotPile;
 		this.hands = game.tarotHands;
-	}
-
-	face() {
-		return this.hand[0];
 	}
 
 	toJson() {

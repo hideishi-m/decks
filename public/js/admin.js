@@ -65,7 +65,6 @@ $(document).ready(async function () {
     $('#newGame').click(newGame);
     async function newGame() {
 		try {
-			token = token ?? await getToken();
 			const params = parseDataValuesEach({
 				players: 'input[name^=players]',
 				tarots: 'select[name^=tarots]',
@@ -77,7 +76,6 @@ $(document).ready(async function () {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${token}`
 				},
 				cache: 'no-cache',
 				body: JSON.stringify({
@@ -127,7 +125,7 @@ $(document).ready(async function () {
 	try {
 		const data = await ajax('./games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
-		for (const gid of data.games) {
+		for (const {gid} of data.games) {
 			await appendGame(gid);
 		}
 	} catch (error) {

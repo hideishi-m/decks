@@ -76,8 +76,14 @@ $(document).ready(async function () {
 			const data = JSON.parse(event.data) ?? {};
 			// hand: gid,pid,player,tid
 			if (data.hand) {
-				appendLog(`${data.hand.player} passed/picked a card to/from ${data.hand.playerTo}`);
-				if (pid === data.hand.pid || pid === data.hand.tid) {
+				if (data.hand.player && data.hand.playerTo) {
+					appendLog(`${data.hand.player} passed a card to ${data.hand.playerTo}`);
+				} else if (data.hand.player && data.hand.playerFrom) {
+					appendLog(`${data.hand.player} picked a card from ${data.hand.playerFrom}`);
+				} else {
+					appendLog('hand was updated');
+				}
+				if (pid === data.hand.tid) {
 					await updateHand();
 				}
 			}
@@ -440,12 +446,15 @@ $(document).ready(async function () {
 	async function updateTarotHand(hand) {
 		try {
 			if ('0' === pid) {
-				const data = await ajax('./games/' + gid + '/tarot/deck', {
-					method: 'GET',
-					headers: { 'Authorization': `Bearer ${token}` }
-				});
-				updateStatus(JSON.stringify(data, null, 2));
-				$('#tarotHandLabel').text(data.deck.length);
+				if (undefined === hand) {
+					const data = await ajax('./games/' + gid + '/tarot/deck', {
+						method: 'GET',
+						headers: { 'Authorization': `Bearer ${token}` }
+					});
+					updateStatus(JSON.stringify(data, null, 2));
+					hand = data.deck;
+				}
+				$('#tarotHandLabel').text(hand.length);
 				$('#tarotHand').empty().append(
 					createTarotCardImg()
 				);
@@ -460,7 +469,7 @@ $(document).ready(async function () {
 				}
 				$('#tarotHandLabel').text(hand.length);
 				$('#tarotHand').empty().append(
-					createTarotCardImg(hand.cards[0])
+					createTarotCardImg(hand.card)
 				);
 			}
 		} catch (error) {
@@ -476,8 +485,8 @@ $(document).ready(async function () {
 					headers: { 'Authorization': `Bearer ${token}` }
 				});
 				updateStatus(JSON.stringify(data, null, 2));
-				await updateTarotHand();
-				await updateTarotPile();
+				await updateTarotHand(data.deck);
+				await updateTarotPile(data.pile);
 			} else {
 				const data = await ajax('./games/' + gid + '/tarot/players/' + pid + '/discard', {
 					method: 'PUT',
@@ -485,7 +494,7 @@ $(document).ready(async function () {
 				});
 				updateStatus(JSON.stringify(data, null, 2));
 				await updateTarotHand(data.hand);
-				await updateTarotPile();
+				await updateTarotPile(data.pile);
 			}
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
@@ -511,21 +520,24 @@ $(document).ready(async function () {
 				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			updateStatus(JSON.stringify(data, null, 2));
-			await updateTarotPile();
+			await updateTarotPile(data.pile);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
 	}
-	async function updateTarotPile() {
+	async function updateTarotPile(pile) {
 		try {
-			const data = await ajax('./games/' + gid + '/tarot/pile', {
-				method: 'GET',
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
-			updateStatus(JSON.stringify(data, null, 2));
-			$('#tarotPileLabel').text(data.pile.length);
+			if (undefined === pile) {
+				const data = await ajax('./games/' + gid + '/tarot/pile', {
+					method: 'GET',
+					headers: { 'Authorization': `Bearer ${token}` }
+				});
+				updateStatus(JSON.stringify(data, null, 2));
+				pile = data.pile;
+			}
+			$('#tarotPileLabel').text(pile.length);
 			$('#tarotPile').empty().append(
-				createTarotCardImg(data.pile.card)
+				createTarotCardImg(pile.card)
 			);
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
