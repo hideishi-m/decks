@@ -48,12 +48,12 @@ class Game {
 		}
 	}
 
-	getPlayers() {
+	getAllPlayers() {
 		return this.players;
 	}
 
-	getHandOf(player) {
-		return new Hand(this, player);
+	getPlayer(player) {
+		return this.players[player];
 	}
 
 	getDeck() {
@@ -64,6 +64,10 @@ class Game {
 		return new Pile(this);
 	}
 
+	getHandOfPlayer(player) {
+		return new Hand(this, player);
+	}
+
 	getTarotDeck() {
 		return new TarotDeck(this);
 	}
@@ -72,7 +76,7 @@ class Game {
 		return new TarotPile(this);
 	}
 
-	getTarotHandOf(player) {
+	getTarotHandOfPlayer(player) {
 		return new TarotHand(this, player);
 	}
 }
@@ -101,6 +105,10 @@ class Deck {
 			this.deck.unshift(card);  // 先頭に戻す
 		}
 	}
+
+	toJson() {
+		return { length: this.deck.length };
+	}
 }
 
 
@@ -124,6 +132,13 @@ class Pile {
 			this.deck.push(card);
 		}
 		this.deck.shuffle(shuffle);
+	}
+
+	toJson() {
+		return {
+			length: this.deck.length,
+			card: this.pile[0]
+		};
 	}
 }
 
@@ -185,6 +200,13 @@ class Hand {
 			this.hand.push(card);
 		}
 	}
+
+	toJson() {
+		return {
+			length: this.hand.length,
+			cards: this.hand
+		};
+	}
 }
 
 
@@ -222,6 +244,13 @@ class TarotHand extends Hand {
 
 	face() {
 		return this.hand[0];
+	}
+
+	toJson() {
+		return {
+			length: this.hand.length,
+			card: this.hand[0]
+		};
 	}
 }
 

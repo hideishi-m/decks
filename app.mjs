@@ -157,8 +157,7 @@ export function createApp(emitter, name, version) {
 			} });
 		}
 		const game = games[req.params.gid];
-		const players = game.getPlayers();
-		const player = players[pid];
+		const player = game.getPlayer(pid);
 		if (undefined === player) {
 			return res.statusJson(404, { error: {
 				message: 'player not found for pid',
@@ -182,7 +181,7 @@ export function createApp(emitter, name, version) {
 			} });
 		}
 		const game = games[req.params.gid];
-		const hand = game.getHandOf(req.params.pid);
+		const hand = game.getHandOfPlayer(req.params.pid);
 		const card = hand.at(cid);
 		if (undefined === card) {
 			return res.statusJson(404, { error: {
@@ -208,8 +207,7 @@ export function createApp(emitter, name, version) {
 			} });
 		}
 		const game = games[req.params.gid];
-		const players = game.getPlayers();
-		const player = players[tid];
+		const player = game.getPlayer(tid);
 		if (undefined === player) {
 			return res.statusJson(404, { error: {
 				message: 'player not found for tid',
@@ -331,7 +329,7 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid')
 		.get(function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
+			const players = game.getAllPlayers();
 			logger(`GET game ${req.params.gid} for players ${players}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
@@ -441,9 +439,8 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/players/:pid')
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getHandOf(req.params.pid);
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getHandOfPlayer(req.params.pid);
 			logger(`GET hand for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
@@ -459,9 +456,8 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/players/:pid/draw')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getHandOf(req.params.pid);
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getHandOfPlayer(req.params.pid);
 			hand.draw();
 			logger(`DRAW for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			emitter.emit('deck', {
@@ -483,9 +479,8 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/players/:pid/recycle')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getHandOf(req.params.pid);
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getHandOfPlayer(req.params.pid);
 			hand.recycle();
 			logger(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.gid}`);
 			emitter.emit('pile', {
@@ -507,9 +502,8 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/players/:pid/cards/:cid')
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getHandOf(req.params.pid);
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getHandOfPlayer(req.params.pid);
 			const card = hand.at(req.params.cid);
 			logger(`GET card ${req.params.cid}} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			return res.statusJson(200, {
@@ -524,9 +518,8 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/players/:pid/cards/:cid/discard')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getHandOf(req.params.pid);
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getHandOfPlayer(req.params.pid);
 			hand.discard(req.params.cid);
 			logger(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			emitter.emit('pile', {
@@ -548,10 +541,9 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/players/:pid/cards/:cid/pass/:tid')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getHandOf(req.params.pid);
-			const playerTo = players[req.params.tid];
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getHandOfPlayer(req.params.pid);
+			const playerTo = game.getPlayer(req.params.tid);
 			hand.passTo(req.params.cid, req.params.tid);
 			logger(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${playerTo} in game ${req.params.gid}`);
 			emitter.emit('hand', {
@@ -575,10 +567,9 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/players/:pid/pick/:tid')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getHandOf(req.params.pid);
-			const playerTo = players[req.params.tid];
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getHandOfPlayer(req.params.pid);
+			const playerTo = game.getPlayer(req.params.tid);
 			hand.pickFrom(req.params.tid);
 			logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${playerTo} in game ${req.params.gid}`);
 			emitter.emit('hand', {
@@ -660,9 +651,8 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/tarot/players/:pid')
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getTarotHandOf(req.params.pid);
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getTarotHandOfPlayer(req.params.pid);
 			logger(`GET tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			return res.statusJson(200, {
 				gid: req.params.gid,
@@ -678,9 +668,8 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/tarot/players/:pid/discard')
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			const players = game.getPlayers();
-			const player = players[req.params.pid];
-			const hand = game.getTarotHandOf(req.params.pid);
+			const player = game.getPlayer(req.params.pid);
+			const hand = game.getTarotHandOfPlayer(req.params.pid);
 			logger(`DISCARD card 0 for tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			hand.discard(0);
 			emitter.emit('tarot', {
