@@ -1,8 +1,8 @@
-swagger: '2.0'
+openapi: 3.0.0
 info:
-  description: Simple card deck app for playing TOKYO-NIGHTMARE
-  version: 1.4.0
   title: Simple card deck API
+  description: Simple card deck app for playing TOKYO-NIGHTMARE
+  version: 1.5.0
   # put the contact info for your development or API team
   contact:
     email: hideishi.magisystem.net@gmail.com
@@ -18,6 +18,12 @@ tags:
 - name: admins
   description: Calls for game administrators
 
+servers:
+  - url: http://127.0.0.1:8080
+    description: Simple card deck app server
+
+security: []
+
 paths:
   /version:
     get:
@@ -27,15 +33,50 @@ paths:
       operationId: getVersion
       description: |
         Retrieves version
-      produces:
-      - application/json
       responses:
         200:
           description: version
-          schema:
-            $ref: '#/definitions/Version'
-        404:
-          description: no game available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    example: 1.0.0
+        400:
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /token:
+    post:
+      tags:
+      - players
+      - admins
+      summary: retrieve an access token
+      operationId: getToken
+      description: Retrieves an acess token
+      requestBody:
+        description: access token attributes
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenAttributes'
+      responses:
+        200:
+          description: game ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameToken'
+        400:
+          description: invalid input, object invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /games:
     get:
       tags:
@@ -45,45 +86,45 @@ paths:
       operationId: getGames
       description: |
         Retrieves all games available
-      produces:
-      - application/json
       responses:
         200:
           description: game IDs
-          schema:
-            type: object
-            required:
-            - games
-            properties:
-              games:
-                type: array
-                items:
-                  type: string
-                  example: '1'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Games'
+        400:
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     post:
       tags:
       - admins
       summary: create a new game
       operationId: addGame
       description: Creates a new game
-      consumes:
-      - application/json
-      produces:
-      - application/json
-      parameters:
-      - in: body
-        name: gameAttributes
-        description: attributes for a new game
-        schema:
-          $ref: '#/definitions/GameAttributes'
+      requestBody:
+        description: game attributes
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameAttributes'
       responses:
         200:
           description: game ID
-          schema:
-            $ref: '#/definitions/Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameId'
         400:
           description: invalid input, object invalid
-  /games/{id}:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}:
     get:
       tags:
       - admins
@@ -91,823 +132,1225 @@ paths:
       summary: retrieve a game
       operationId: getGame
       description: |
-        Retrieves a game for id
-      produces:
-      - application/json
+        Retrieves a game for gid
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: game
-          schema:
-            $ref: '#/definitions/Game'
+          description: game ID and players
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GamePlayers'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       tags:
       - admins
+      security:
+      - JWT: []
       summary: delete all game
       operationId: deleteGame
       description: |
-        Deletes a game for id
-      produces:
-      - application/json
+        Deletes a game for gid
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
           description: game ID
-          schema:
-            $ref: '#/definitions/Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameId'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/deck:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/dump:
+    get:
+      tags:
+      - admins
+      security:
+      - JWT: []
+      summary: dump a game
+      operationId: dumpGame
+      description: |
+        Dumps a game for gid
+      parameters:
+      - name: gid
+        in: path
+        description: Game ID
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      responses:
+        200:
+          description: game ID and dumps
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDumps'
+        400:
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/deck:
     get:
       tags:
       - players
+      security:
+      - JWT: []
       summary: retrieve deck
       operationId: getDeck
       description: |
         Retrieves information for the deck
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: deck
-          schema:
-            $ref: '#/definitions/Deck'
+          description: game ID and deck
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDeck'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/deck/discard:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/deck/discard:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: discard deck
       operationId: discardDeck
       description: |
         Discards the top card of the deck
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: deck
-          schema:
-            $ref: '#/definitions/Deck'
+          description: game ID, deck and pile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDeckPile'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/deck/recycle:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/deck/recycle:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: recycle to deck
       operationId: recycleDeck
       description: |
         Recycles the top card of the pile to the deck
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: deck
-          schema:
-            $ref: '#/definitions/Deck'
+          description: game ID, deck and pile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDeckPile'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/pile:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/pile:
     get:
       tags:
       - players
+      security:
+      - JWT: []
       summary: retrieve pile
       operationId: getPile
       description: |
         Retrieves information for the pile
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: pile
-          schema:
-            $ref: '#/definitions/Pile'
+          description: game ID and pile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GamePile'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/pile/shuffle:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/pile/shuffle:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: shuffle pile
       operationId: shufflePile
       description: |
         Recycles all cards in the pile to the deck,
         and shuffle the deck
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: pile
-          schema:
-            $ref: '#/definitions/Pile'
+          description: game ID, deck and pile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDeckPile'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/players/{pid}:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/players/{pid}:
     get:
       tags:
       - players
+      security:
+      - JWT: []
       summary: retrieve hand
       operationId: getHand
       description: |
         Retrieves information for the hand of the player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: hand
-          schema:
-            $ref: '#/definitions/Hand'
+          description: game ID and hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameHand'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id or pid
-  /games/{id}/players/{pid}/draw:
+          description: no game for gid or pid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/players/{pid}/draw:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: draw to hand
       operationId: drawHand
       description: |
         Draws a card to the hand of the player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: hand
-          schema:
-            $ref: '#/definitions/Hand'
+          description: game ID, deck and hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDeckHand'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id or pid
-  /games/{id}/players/{pid}/recycle:
+          description: no game for gid or pid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/players/{pid}/recycle:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: recycle to hand
       operationId: recycleHand
       description: |
         Recycles a card from the pile to the hand of the player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: hand
-          schema:
-            $ref: '#/definitions/Hand'
+          description: game ID, pile and hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GamePileHand'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id or pid
-  /games/{id}/players/{pid}/cards/{cid}:
+          description: no game for gid or pid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/players/{pid}/cards/{cid}:
     get:
       tags:
       - players
+      security:
+      - JWT: []
       summary: retrieve card
       operationId: getCard
       description: |
         Retrieves the card in the hand of the player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: cid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: cid
+        in: path
         description: Card ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: card in the hand
-          schema:
-            $ref: '#/definitions/HandCard'
+          description: game ID and card
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameCard'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id, pid or cid
-  /games/{id}/players/{pid}/cards/{cid}/discard:
+          description: no game for gid, pid or cid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/players/{pid}/cards/{cid}/discard:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: discard card
       operationId: discardCard
       description: |
         Discards the card in the hand of the player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: cid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: cid
+        in: path
         description: Card ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: hand
-          schema:
-            $ref: '#/definitions/Hand'
+          description: game ID, pile and hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GamePileHand'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id, pid or cid
-  /games/{id}/players/{pid}/cards/{cid}/pass/{tid}:
+          description: no game for gid or pid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/players/{pid}/cards/{cid}/pass/{tid}:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: pass card
       operationId: passCard
       description: |
         Passes the card in the hand of the player to other player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: cid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: cid
+        in: path
         description: Card ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: tid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: tid
+        in: path
         description: Target player ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: hand
-          schema:
-            $ref: '#/definitions/Hand'
+          description: game ID and hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameHand'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id, pid or cid
-  /games/{id}/players/{pid}/pick/{tid}:
+          description: no game for gid or pid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/players/{pid}/pick/{tid}:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: pick card
       operationId: pickCard
       description: |
         Picks a card randomly from other player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: tid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: tid
+        in: path
         description: Target player ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: hand
-          schema:
-            $ref: '#/definitions/Hand'
+          description: game ID and hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameHand'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id, pid or cid
-  /games/{id}/tarot/deck:
+          description: no game for gid or pid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/tarot/deck:
     get:
       tags:
       - players
+      security:
+      - JWT: []
       summary: retrieve tarot deck
       operationId: getTarotDeck
       description: |
         Retrieves information for the tarot deck
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: tarot deck
-          schema:
-            $ref: '#/definitions/Deck'
+          description: game ID and tarot deck
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDeck'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/tarot/deck/discard:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/tarot/deck/discard:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: discard tarot deck
       operationId: discardTarotDeck
       description: |
         Discards the top tarot card of the tarot deck
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: tarot deck
-          schema:
-            $ref: '#/definitions/Deck'
+          description: game ID, tarot deck and tarot pile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameTarotDeckPile'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/tarot/pile:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/tarot/pile:
     get:
       tags:
       - players
+      security:
+      - JWT: []
       summary: retrieve tarot pile
       operationId: getTarotPile
       description: |
         Retrieves information for the tarot pile
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: tarot pile
-          schema:
-            $ref: '#/definitions/TarotPile'
+          description: game ID and tarot pile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameTarotPile'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/tarot/pile/flip:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/tarot/pile/flip:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: flip tarot pile
       operationId: flipTarotPile
       description: |
         Flips a tarot card from the tarot pile
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: tarot pile
-          schema:
-            $ref: '#/definitions/TarotPile'
+          description: game ID and tarot pile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameTarotPile'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id
-  /games/{id}/tarot/players/{pid}:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/tarot/players/{pid}:
     get:
       tags:
       - players
+      security:
+      - JWT: []
       summary: retrieve tarot hand
       operationId: getTarotHand
       description: |
         Retrieves information for the tarot hand of the player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: trump
-          schema:
-            $ref: '#/definitions/TarotHand'
+          description: game ID and tarot hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameTarotHand'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id or pid
-  /games/{id}/tarot/players/{pid}/discard:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/tarot/players/{pid}/discard:
     put:
       tags:
       - players
+      security:
+      - JWT: []
       summary: discard tarot hand
       operationId: discardTarotHand
       description: |
         Discards the top tarot card in the tarot hand of the player
-      produces:
-      - application/json
       parameters:
-      - in: path
-        name: id
+      - name: gid
+        in: path
         description: Game ID
         required: true
-        type: integer
-        format: int64
-      - in: path
-        name: pid
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: pid
+        in: path
         description: Player ID
         required: true
-        type: integer
-        format: int64
+        schema:
+          $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: trump
-          schema:
-            $ref: '#/definitions/TarotHand'
+          description: game ID, tarot pile and tarot hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameTarotPileHand'
         400:
           description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
-          description: no game for id or pid
-definitions:
-  Version:
-    type: object
-    properties:
-      version:
-        type: string
-        example: '1.0.0'
-  Card:
-    type: object
-    required:
-    - suit
-    - rank
-    - deck
-    properties:
-      suit:
-        type: string
-        enum: [C,D,H,S,X]
-      rank:
-        type: string
-        enum: [A,'2','3','4','5','6','7','8','9','0',J,Q,K,X]
-      deck:
-        type: string
-        example: '0'
-  TarotCard:
-    type: object
-    required:
-    - position
-    - rank
-    properties:
-      position:
-        type: string
-        enum: [U,R]
-      rank:
-        type: string
-        enum: ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','-14','-18','-2','-9','-12','-17']
-  Id:
-    type: object
-    required:
-    - id
-    properties:
-      id:
-        type: string
-        example: '1'
-  GameAttributes:
-    type: object
-    required:
-    - players
-    - tarots
-    properties:
-      players:
-        type: array
-        items:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    JWT:
+      description: JWT bearer token
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      required:
+      - message
+      properties:
+        message:
           type: string
-          example: pc1
-      tarots:
-        type: array
-        items:
+          example: something wrong happend
+        cause:
+          type: object
+    TokenAttributes:
+      type: object
+      required:
+      - gid
+      - pid
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+    GameToken:
+      type: object
+      required:
+      - gid
+      - pid
+      - token
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+        token:
+          type: string
+          description: JWT bearer token
+    Id:
+      type: string
+      example: '0'
+    GameId:
+      type: object
+      required:
+      - gid
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+    Games:
+      type: object
+      required:
+      - games
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameId'
+    Player:
+      type: string
+      example: pc1
+    Players:
+      type: array
+      items:
+        $ref: '#/components/schemas/Player'
+    TarotRank:
+      type: string
+      enum: ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','-14','-18','-2','-9','-12','-17']
+    Tarots:
+      type: array
+      items:
+        $ref: '#/components/schemas/TarotRank'
+    GameAttributes:
+      type: object
+      required:
+      - players
+      - tarots
+      properties:
+        players:
+          $ref: '#/components/schemas/Players'
+        tarots:
+          $ref: '#/components/schemas/Tarots'
+    CardName:
+      type: string
+      example: 'スペード エース (0)'
+    CardNames:
+      type: array
+      items:
+        $ref: '#/components/schemas/CardName'
+    TarotCardName:
+      type: string
+      example: 'カブキ 正位置'
+    TarotCardNames:
+      type: array
+      items:
+        $ref: '#/components/schemas/TarotCardName'
+    GameDumps:
+      type: object
+      required:
+      - deck
+      - pile
+      - players
+      - tarotDeck
+      - tarotPile
+      properties:
+        deck:
+          $ref: '#/components/schemas/CardNames'
+        pile:
+          $ref: '#/components/schemas/CardNames'
+        players:
+          type: array
+          items:
+            type: object
+            required:
+            - player
+            - hand
+            - tarotHand
+            properties:
+              player:
+                $ref: '#/components/schemas/Player'
+              hand:
+                $ref: '#/components/schemas/CardNames'
+              tarotHand:
+                $ref: '#/components/schemas/TarotCardNames'
+        tarotDeck:
+          $ref: '#/components/schemas/TarotCardNames'
+        tarotPile:
+          $ref: '#/components/schemas/TarotCardNames'
+    GamePlayers:
+      type: object
+      required:
+      - gid
+      - players
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        players:
+          $ref: '#/components/schemas/Players'
+    Length:
+      type: integer
+      format: int64
+      example: 108
+    Deck:
+      type: object
+      required:
+      - length
+      properties:
+        length:
+          $ref: '#/components/schemas/Length'
+    GameDeck:
+      type: object
+      required:
+      - gid
+      - deck
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        deck:
+          $ref: '#/components/schemas/Deck'
+    Suit:
+      type: string
+      enum: [C,D,H,S,X]
+    Rank:
+      type: string
+      enum: [A,'2','3','4','5','6','7','8','9','0',J,Q,K,X]
+    Card:
+      type: object
+      required:
+      - suit
+      - rank
+      - deck
+      properties:
+        suit:
+          $ref: '#/components/schemas/Suit'
+        rank:
+          $ref: '#/components/schemas/Rank'
+        deck:
           type: string
           example: '0'
-  Game:
-    type: object
-    required:
-    - id
-    - players
-    properties:
-      id:
-        type: string
-        example: '1'
-      players:
-        type: array
-        items:
-          type: string
-          example: pc1
-  Deck:
-    type: object
-    required:
-    - id
-    - deck
-    properties:
-      id:
-        type: string
-        example: '1'
-      deck:
-        type: object
-        required:
-        - length
-        properties:
-          length:
-            type: integer
-            format: int64
-            example: 108
-  Pile:
-    type: object
-    required:
-    - id
-    - pile
-    properties:
-      id:
-        type: string
-        example: '1'
-      pile:
-        type: object
-        required:
-        - length
-        - card
-        properties:
-          length:
-            type: integer
-            format: int64
-            example: 108
-          card:
-            $ref: '#/definitions/Card'
-  Hand:
-    type: object
-    required:
-    - id
-    - pid
-    - player
-    - hand
-    properties:
-      id:
-        type: string
-        example: '1'
-      pid:
-        type: string
-        example: '1'
-      player:
-        type: string
-        example: pc1
-      hand:
-        type: object
-        required:
-        - length
-        - cards
-        properties:
-          length:
-            type: integer
-            format: int64
-            example: 108
-          cards:
-            type: array
-            items:
-              $ref: '#/definitions/Card'
-  HandCard:
-    type: object
-    required:
-    - id
-    - pid
-    - player
-    - cid
-    - card
-    properties:
-      id:
-        type: string
-        example: '1'
-      pid:
-        type: string
-        example: '1'
-      player:
-        type: string
-        example: pc1
-      cid:
-        type: string
-        example: '1'
-      card:
-         $ref: '#/definitions/Card'
-  TarotPile:
-    type: object
-    required:
-    - id
-    - pile
-    properties:
-      id:
-        type: string
-        example: '1'
-      pile:
-        type: object
-        required:
-        - length
-        - card
-        properties:
-          length:
-            type: integer
-            format: int64
-            example: 108
-          card:
-            $ref: '#/definitions/TarotCard'
-  TarotHand:
-    type: object
-    required:
-    - id
-    - pid
-    - player
-    - hand
-    properties:
-      id:
-        type: string
-        example: '1'
-      pid:
-        type: string
-        example: '1'
-      player:
-        type: string
-        example: pc1
-      hand:
-        type: object
-        required:
-        - length
-        - cards
-        properties:
-          length:
-            type: integer
-            format: int64
-            example: 108
-          cards:
-            type: array
-            items:
-              $ref: '#/definitions/TarotCard'
-# Added by API Auto Mocking Plugin
-host: virtserver.swaggerhub.com
-basePath: /h6623/decks/1.0.0
-schemes:
- - https
+    Pile:
+      type: object
+      required:
+      - length
+      - card
+      properties:
+        length:
+          $ref: '#/components/schemas/Length'
+        card:
+          $ref: '#/components/schemas/Card'
+    GameDeckPile:
+      type: object
+      required:
+      - gid
+      - deck
+      - pile
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        deck:
+          $ref: '#/components/schemas/Deck'
+        pile:
+          $ref: '#/components/schemas/Pile'
+    GamePile:
+      type: object
+      required:
+      - gid
+      - pile
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pile:
+          $ref: '#/components/schemas/Pile'
+    Hand:
+      type: object
+      required:
+      - length
+      - cards
+      properties:
+        length:
+          $ref: '#/components/schemas/Length'
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+    GameHand:
+      type: object
+      required:
+      - gid
+      - pid
+      - player
+      - hand
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+        player:
+          $ref: '#/components/schemas/Player'
+        hand:
+          $ref: '#/components/schemas/Hand'
+    GameDeckHand:
+      type: object
+      required:
+      - gid
+      - pid
+      - player
+      - deck
+      - hand
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+        player:
+          $ref: '#/components/schemas/Player'
+        deck:
+          $ref: '#/components/schemas/Deck'
+        hand:
+          $ref: '#/components/schemas/Hand'
+    GamePileHand:
+      type: object
+      required:
+      - gid
+      - pid
+      - player
+      - pile
+      - hand
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+        player:
+          $ref: '#/components/schemas/Player'
+        pile:
+          $ref: '#/components/schemas/Pile'
+        hand:
+          $ref: '#/components/schemas/Hand'
+    GameCard:
+      type: object
+      required:
+      - gid
+      - pid
+      - player
+      - cid
+      - card
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+        player:
+          $ref: '#/components/schemas/Player'
+        cid:
+          $ref: '#/components/schemas/Id'
+        card:
+          $ref: '#/components/schemas/Card'
+    Position:
+      type: string
+      enum: [U,R]
+    TarotCard:
+      type: object
+      required:
+      - position
+      - rank
+      properties:
+        position:
+          $ref: '#/components/schemas/Position'
+        rank:
+          $ref: '#/components/schemas/TarotRank'
+    TarotPile:
+      type: object
+      required:
+      - length
+      - card
+      properties:
+        length:
+          $ref: '#/components/schemas/Length'
+        card:
+          $ref: '#/components/schemas/TarotCard'
+    GameTarotDeckPile:
+      type: object
+      required:
+      - gid
+      - deck
+      - pile
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        deck:
+          $ref: '#/components/schemas/Deck'
+        pile:
+          $ref: '#/components/schemas/TarotPile'
+    GameTarotPile:
+      type: object
+      required:
+      - gid
+      - pile
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pile:
+          $ref: '#/components/schemas/TarotPile'
+    TarotHand:
+      type: object
+      required:
+      - length
+      - card
+      properties:
+        length:
+          $ref: '#/components/schemas/Length'
+        card:
+          $ref: '#/components/schemas/TarotCard'
+    GameTarotHand:
+      type: object
+      required:
+      - gid
+      - pid
+      - player
+      - hand
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+        player:
+          $ref: '#/components/schemas/Player'
+        hand:
+          $ref: '#/components/schemas/TarotHand'
+    GameTarotPileHand:
+      type: object
+      required:
+      - gid
+      - pid
+      - player
+      - pile
+      - hand
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+        player:
+          $ref: '#/components/schemas/Player'
+        pile:
+          $ref: '#/components/schemas/Pile'
+        hand:
+          $ref: '#/components/schemas/TarotHand'
