@@ -199,8 +199,6 @@ export function createApp(emitter, name, version) {
 			}, secret, { expiresIn: '1d' });
 			logger(`POST token for player ${req.body.pid} in game ${req.body.gid}`);
 			return res.statusJson(200, {
-				gid: req.body.gid,
-				pid: req.body.pid,
 				token: token
 			});
 		});

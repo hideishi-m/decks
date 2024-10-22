@@ -70,7 +70,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GameToken'
+                $ref: '#/components/schemas/Token'
         400:
           description: invalid input, object invalid
           content:
@@ -991,17 +991,11 @@ components:
           $ref: '#/components/schemas/Id'
         pid:
           $ref: '#/components/schemas/Id'
-    GameToken:
+    Token:
       type: object
       required:
-      - gid
-      - pid
       - token
       properties:
-        gid:
-          $ref: '#/components/schemas/Id'
-        pid:
-          $ref: '#/components/schemas/Id'
         token:
           type: string
           description: JWT bearer token
