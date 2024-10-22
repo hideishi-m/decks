@@ -43,12 +43,8 @@ class TarotCard {
 
 
 class Cards extends Array {
-	count() {
-		return this.length;
-	}
-
-	splice(index) {
-		return super.splice(index, 1)[0];
+	names() {
+		return this.map((item) => item.name);
 	}
 
 	shuffle(n) {
@@ -59,10 +55,6 @@ class Cards extends Array {
 				[ this[i], this[j] ] = [ this[j], this[i] ];
 			}
 		}
-	}
-
-	names() {
-		return this.map((item) => item.name);
 	}
 }
 
@@ -81,12 +73,6 @@ class TarotCards extends Cards {
 					this[j].flip();
 				}
 			}
-		}
-	}
-
-	flip(index) {
-		if (undefined !== this.at(index)) {
-			this.at(index).flip();
 		}
 	}
 }

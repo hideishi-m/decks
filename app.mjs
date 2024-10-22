@@ -421,7 +421,7 @@ export function createApp(emitter, name, version) {
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const pile = game.getPile();
-			game.shuffle();
+			pile.shuffle();
 			logger(`SHUFFLE pile in game ${req.params.gid}`);
 			emitter.emit('deck', {
 				gid: req.params.gid

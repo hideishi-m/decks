@@ -32,18 +32,10 @@ class Game {
 		});
 	}
 
-	shuffle(shuffle) {
-		let card;
-		while ((card = this.pile.pop()) !== undefined) {
-			this.deck.push(card);
-		}
-		this.deck.shuffle(shuffle);
-	}
-
 	getStatus() {
 		return {
-			deck: { length: this.deck.count() },
-			pile: { length: this.pile.count() },
+			deck: { length: this.deck.length },
+			pile: { length: this.pile.length },
 			players: this.players.map((player, index) => {
 				return {
 					player: player,
@@ -51,8 +43,8 @@ class Game {
 					tarotHand: this.tarotHands[index].names()
 				}
 			}),
-			tarotDeck: { length: this.tarotDeck.count() },
-			tarotPile: { length: this.tarotPile.count() }
+			tarotDeck: { length: this.tarotDeck.length },
+			tarotPile: { length: this.tarotPile.length }
 		}
 	}
 
@@ -97,7 +89,7 @@ class Deck {
 	}
 
 	discard(index) {
-		const card = this.deck.splice(index);
+		const card = this.deck.splice(index, 1)[0];
 		if (undefined !== card) {
 			this.pile.unshift(card);
 		}
@@ -114,6 +106,7 @@ class Deck {
 
 class Pile {
 	constructor(game) {
+		this.deck = game.deck;
 		this.pile = game.pile;
 	}
 
@@ -122,7 +115,15 @@ class Pile {
 	}
 
 	face() {
-		return (this.pile.count() ? this.pile.at(0) : undefined);
+		return this.pile[0];
+	}
+
+	shuffle(shuffle) {
+		let card;
+		while ((card = this.pile.pop()) !== undefined) {
+			this.deck.push(card);
+		}
+		this.deck.shuffle(shuffle);
 	}
 }
 
@@ -137,7 +138,7 @@ class Hand {
 	}
 
 	at(index) {
-		return this.hand.at(index);
+		return this.hand[index];
 	}
 
 	cards() {
@@ -156,7 +157,7 @@ class Hand {
 	}
 
 	discard(index) {
-		const card = this.hand.splice(index);
+		const card = this.hand.splice(index, 1)[0];
 		if (undefined !== card) {
 			this.pile.unshift(card);
 		}
@@ -170,7 +171,7 @@ class Hand {
 	}
 
 	passTo(index, player) {
-		const card = this.hand.splice(index);
+		const card = this.hand.splice(index, 1)[0];
 		if (undefined !== card) {
 			this.hands[player].push(card);
 		}
@@ -178,8 +179,8 @@ class Hand {
 
 	pickFrom(player) {
 		const cards = this.hands[player];
-		const index = Math.floor(Math.random() * cards.count());
-		const card = cards.splice(index);
+		const index = Math.floor(Math.random() * cards.length);
+		const card = cards.splice(index, 1)[0];
 		if (undefined !== card) {
 			this.hand.push(card);
 		}
@@ -203,8 +204,8 @@ class TarotPile extends Pile {
 	}
 
 	flip() {
-		if (this.pile.count()) {
-			this.pile.at(0).flip();
+		if (undefined !== this.pile[0]) {
+			this.pile[0].flip();
 		}
 	}
 }
@@ -220,7 +221,7 @@ class TarotHand extends Hand {
 	}
 
 	face() {
-		return (this.hand.count() ? this.hand.at(0) : undefined);
+		return this.hand[0];
 	}
 }
 
