@@ -549,8 +549,8 @@ $(document).ready(async function () {
 		const data = await ajax('./games', { method: 'GET' });
 		updateStatus(JSON.stringify(data, null, 2));
 		$('#selectGameSelect').empty();
-		for (const game of data.games) {
-			appendOption('#selectGameSelect', game, game);
+		for (const {gid} of data.games) {
+			appendOption('#selectGameSelect', gid, gid);
 		}
 		toggleGameModal();
 	} catch (error) {
