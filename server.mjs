@@ -15,10 +15,10 @@ import https from 'node:https';
 import proxyaddr from 'proxy-addr';
 import { WebSocketServer } from 'ws';
 
-import logging from './logging.mjs';
+import { getLogger } from './logger.mjs';
 import { ping } from './public/js/common.js';
 
-const logger = logging.getLogger('server');
+const logger = getLogger(import.meta.url);
 
 export function createServer(emitter, options) {
 	const wsMap = new Map();
@@ -34,10 +34,10 @@ export function createServer(emitter, options) {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ deck: data }));
-					logger.info(`DECK to ${key}`);
+					logger.log(`DECK to ${key}`);
 				} else {
 					wsMap.delete(key);
-					logger.info(`delete ${key}`);
+					logger.log(`delete ${key}`);
 				}
 			}
 		});
@@ -51,10 +51,10 @@ export function createServer(emitter, options) {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ pile: data }));
-					logger.info(`PILE to ${key}`);
+					logger.log(`PILE to ${key}`);
 				} else {
 					wsMap.delete(key);
-					logger.info(`delete ${key}`);
+					logger.log(`delete ${key}`);
 				}
 			}
 		});
@@ -68,10 +68,10 @@ export function createServer(emitter, options) {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ hand: data }));
-					logger.info(`HAND to ${key}`);
+					logger.log(`HAND to ${key}`);
 				} else {
 					wsMap.delete(key);
-					logger.info(`delete ${key}`);
+					logger.log(`delete ${key}`);
 				}
 			}
 		});
@@ -85,10 +85,10 @@ export function createServer(emitter, options) {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ tarot: data }));
-					logger.info(`TAROT to ${key}`);
+					logger.log(`TAROT to ${key}`);
 				} else {
 					wsMap.delete(key);
-					logger.info(`delete ${key}`);
+					logger.log(`delete ${key}`);
 				}
 			}
 		});
@@ -96,7 +96,7 @@ export function createServer(emitter, options) {
 
 	wsServer.on('connection', function (ws, req) {
 		const ip = proxyaddr(req, ['loopback', 'uniquelocal']);
-		logger.info(`connected from ${ip}`);
+		logger.log(`connected from ${ip}`);
 
 		ws.on('message', function (data) {
 			if (Buffer.from(ping).equals(data)) {
@@ -109,7 +109,7 @@ export function createServer(emitter, options) {
 				const pid = /^\d+$/.test(data.pid) ? data.pid : undefined;
 				if (undefined !== gid && undefined !== pid) {
 					wsMap.set(`${gid}:${pid}`, ws);
-					logger.info(`welcome player ${pid} for game ${gid}`);
+					logger.log(`welcome player ${pid} for game ${gid}`);
 					logger.log('ws', { websockets: [...wsMap.keys()] });
 				}
 			} catch (error) {
@@ -118,7 +118,7 @@ export function createServer(emitter, options) {
 		});
 
 		ws.on('close', function () {
-			logger.info(`closed from ${ip}`);
+			logger.log(`closed from ${ip}`);
 		});
 	});
 

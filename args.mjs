@@ -13,18 +13,15 @@ import { readFile } from 'node:fs/promises';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import logging from './logging.mjs';
-
-const logger = logging.getLogger('args');
 const packageJson = JSON.parse(await readFile(fileURLToPath(new URL('./package.json', import.meta.url))));
 
 export const version = packageJson['version'];
 
 function usage(message) {
 	if (message) {
-		console.log(message);
+		console.error(message);
 	}
-	console.log(`usage: ${process.argv[1]}
+	console.error(`usage: ${process.argv[1]}
     [--ip IP]               Listen at IP address (default: '127.0.0.1')
     [--port PORT]           Listen at PORT (default: 8080)
     [--timeout TIMEOUT]     Set timeout in ms (default: 3000)
@@ -69,6 +66,5 @@ export function parseArgs() {
 			usage(`Unknown option: ${arg}`);
 		}
 	}
-	logger.info({ options });
 	return options;
 }

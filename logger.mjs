@@ -9,83 +9,51 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import debug from 'debug';
 
+const loggers = new Map();
 
-class Logger {
-	constructor(name) {
-		Object.defineProperties(this, {
-			name: { value: name },
-			loggers: { value: new Map() }
-		});
+function getName(name) {
+	try {
+		const __filename = fileURLToPath(name);
+		const __dirname = path.dirname(name);
+		const dir = path.parse(__dirname).base;
+		const file = path.parse(__filename).name;
+		return 'index' === file ? dir : `${dir}:${file}`;
+	} catch {
+		return name;
 	}
+}
 
-	log(level, ...args) {
+export function getLogger(name) {
+
+	function logger(level, ...args) {
 		if (0 === args.length) {
 			args.push(level);
 			level = '';
 		}
-		const namespace = level ? `${this.name}:${level}`: this.name;
-		if (false === this.loggers.has(namespace)) {
-			this.loggers.set(namespace, debug(namespace));
+		const namespace = level ? `${name}:${level}`: name;
+		let logger = loggers.get(namespace);
+		if (undefined === logger) {
+			logger = debug(namespace);
+			logger.color = loggers.size + 1;
+			loggers.set(namespace, logger);
 		}
-		this.loggers.get(namespace)(...args);
+		logger(...args);
 	}
 
-	debug(...args) {
-		this.log('debug', ...args);
-	}
+	Object.defineProperties(logger, {
+		log: { value: function (level, ...args) {
+			this(level, ...args);
+		} },
+		error: { value:  function (...args) {
+			this('error', ...args);
+		} }
+	});
 
-	info(...args) {
-		this.log('info', ...args);
-	}
-
-	warn(...args) {
-		this.log('warn', ...args);
-	}
-
-	error(...args) {
-		this.log('error', ...args);
-	}
+	name = getName(name);
+	return logger;
 }
-
-
-const loggers = new Map();
-const NOTSET = 0;
-const DEBUG = 10;
-const INFO = 20;
-const WARN = 30;
-const ERROR = 40;
-const loggingLevels = [
-	[NOTSET, '*'],
-	[DEBUG, 'debug'],
-	[INFO, 'info'],
-	[WARN, 'warn'],
-	[ERROR, 'error']
-];
-let loggingLevel = NOTSET;
-
-function getLogger(name) {
-	if (false === loggers.has(name)) {
-		loggers.set(name, new Logger(name));
-		setLevel(loggingLevel);
-	}
-	return loggers.get(name);
-}
-
-function setLevel(level) {
-	const namespaces = [];
-	if (loggingLevels.some(([key, _]) => key === level)) {
-		[ ...loggers.keys() ].forEach((name) => {
-			loggingLevels.forEach(([key, value]) => {
-				if (level <= key) {
-					namespaces.push(`${name}:${value}`);
-				}
-			});
-		});
-	}
-	debug.enable(namespaces.join(','));
-	loggingLevel = level;
-}
-
-export default { NOTSET, DEBUG, INFO, WARN, ERROR, getLogger, setLevel };
