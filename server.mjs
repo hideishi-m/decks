@@ -12,82 +12,83 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import http from 'node:http';
 import https from 'node:https';
 
-import debug from 'debug';
 import proxyaddr from 'proxy-addr';
 import { WebSocketServer } from 'ws';
 
+import logging from './logging.mjs';
 import { ping } from './public/js/common.js';
 
-export function createServer(emitter, name, options) {
-	const logger = debug(name ? `${name}:server` : 'server');
+const logger = logging.getLogger('server');
+
+export function createServer(emitter, options) {
 	const wsMap = new Map();
 
 	const server = (options.key && options.cert) ? https.createServer(options) : http.createServer(options);
 	const wsServer = new WebSocketServer({ server: server });
 
 	emitter.on('deck', function (data) {
-		logger.extend('emitter')({ deck: data });
+		logger.log('emitter', { deck: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ deck: data }));
-					logger(`DECK to ${key}`);
+					logger.info(`DECK to ${key}`);
 				} else {
 					wsMap.delete(key);
-					logger(`delete ${key}`);
+					logger.info(`delete ${key}`);
 				}
 			}
 		});
 	});
 
 	emitter.on('pile', function (data) {
-		logger.extend('emitter')({ pile: data });
+		logger.log('emitter', { pile: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ pile: data }));
-					logger(`PILE to ${key}`);
+					logger.info(`PILE to ${key}`);
 				} else {
 					wsMap.delete(key);
-					logger(`delete ${key}`);
+					logger.info(`delete ${key}`);
 				}
 			}
 		});
 	});
 
 	emitter.on('hand', function (data) {
-		logger.extend('emitter')({ hand: data });
+		logger.log('emitter', { hand: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ hand: data }));
-					logger(`HAND to ${key}`);
+					logger.info(`HAND to ${key}`);
 				} else {
 					wsMap.delete(key);
-					logger(`delete ${key}`);
+					logger.info(`delete ${key}`);
 				}
 			}
 		});
 	});
 
 	emitter.on('tarot', function (data) {
-		logger.extend('emitter')({ tarot: data });
+		logger.log('emitter', { tarot: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
 			if (re.test(key)) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ tarot: data }));
-					logger(`TAROT to ${key}`);
+					logger.info(`TAROT to ${key}`);
 				} else {
 					wsMap.delete(key);
-					logger(`delete ${key}`);
+					logger.info(`delete ${key}`);
 				}
 			}
 		});
@@ -95,7 +96,7 @@ export function createServer(emitter, name, options) {
 
 	wsServer.on('connection', function (ws, req) {
 		const ip = proxyaddr(req, ['loopback', 'uniquelocal']);
-		logger(`connected from ${ip}`);
+		logger.info(`connected from ${ip}`);
 
 		ws.on('message', function (data) {
 			if (Buffer.from(ping).equals(data)) {
@@ -103,21 +104,21 @@ export function createServer(emitter, name, options) {
 			}
 			try {
 				data = JSON.parse(data) ?? {};
-				logger.extend('ws')({ message: data });
+				logger.log('ws', { message: data });
 				const gid = /^\d+$/.test(data.gid) ? data.gid : undefined;
 				const pid = /^\d+$/.test(data.pid) ? data.pid : undefined;
 				if (undefined !== gid && undefined !== pid) {
 					wsMap.set(`${gid}:${pid}`, ws);
-					logger(`welcome player ${pid} for game ${gid}`);
-					logger.extend('ws')({ websockets: [...wsMap.keys()] });
+					logger.info(`welcome player ${pid} for game ${gid}`);
+					logger.log('ws', { websockets: [...wsMap.keys()] });
 				}
 			} catch (error) {
-				logger.extend('error')(error);
+				logger.error(error);
 			}
 		});
 
 		ws.on('close', function () {
-			logger(`closed from ${ip}`);
+			logger.info(`closed from ${ip}`);
 		});
 	});
 

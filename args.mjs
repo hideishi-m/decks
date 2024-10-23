@@ -13,7 +13,12 @@ import { readFile } from 'node:fs/promises';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+import logging from './logging.mjs';
+
+const logger = logging.getLogger('args');
 const packageJson = JSON.parse(await readFile(fileURLToPath(new URL('./package.json', import.meta.url))));
+
+export const version = packageJson['version'];
 
 function usage(message) {
 	if (message) {
@@ -40,8 +45,6 @@ function defaults() {
 	return options;
 }
 
-export const version = packageJson['version'];
-
 export function parseArgs() {
 	const options = defaults();
 	const args = process.argv.slice(2);
@@ -66,6 +69,6 @@ export function parseArgs() {
 			usage(`Unknown option: ${arg}`);
 		}
 	}
-	console.log({ options });
+	logger.info({ options });
 	return options;
 }

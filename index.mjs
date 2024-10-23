@@ -14,57 +14,54 @@ import { readFile } from 'node:fs/promises';
 import process from 'node:process';
 
 import 'dotenv/config';
-import debug from 'debug';
 
 import { version, parseArgs } from './args.mjs';
 import { createApp } from './app.mjs';
+import logging from './logging.mjs';
 import { createServer } from './server.mjs';
 
 const options = await parseArgs();
 const name = options.name ?? 'decks';
-
-debug.enable(`${name}*`);
-
-const logger = debug(name);
+const logger = logging.getLogger(name);
 const emitter = new EventEmitter();
-const app = createApp(emitter, name, version);
+const app = createApp(emitter, version);
 
 async function createServerOpts(options) {
 	const serverOpts = {};
 	if (options.key && options.cert) {
-		logger(`Using key ${options.key}`);
+		logger.info(`Using key ${options.key}`);
 		serverOpts.key = await readFile(options.key);
-		logger(`Using cert ${options.cert}`);
+		logger.info(`Using cert ${options.cert}`);
 		serverOpts.cert = await readFile(options.cert);
 	}
 	return serverOpts;
 }
 
-const server = createServer(emitter, name, await createServerOpts(options));
+const server = createServer(emitter, await createServerOpts(options));
 
 function shutdown() {
 	emitter.emit('close');
 	setTimeout(function () {
-		logger(`Timeout exceeded for ${options.timeout} ms, shutdown`);
+		logger.info(`Timeout exceeded for ${options.timeout} ms, shutdown`);
 		process.exit(1);
 	}, options.timeout);
 	server.on('close', function () {
-		logger('Shutdown');
+		logger.info('Shutdown');
 		process.exit(0);
 	});
 }
 
 process.on('SIGINT', function () {
-	logger('SIGINT received');
+	logger.info('SIGINT received');
 	shutdown();
 });
 process.on('SIGTERM', function () {
-	logger('SIGTERM received');
+	logger.info('SIGTERM received');
 	shutdown();
 });
 
 server.on('request', app);
 
 server.listen(options.port, options.ip, function () {
-	logger(`Listening on ${options.ip}:${options.port}`);
+	logger.info(`Listening on ${options.ip}:${options.port}`);
 });

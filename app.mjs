@@ -12,12 +12,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import debug from 'debug';
 import express from 'express';
 import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
 
 import { createGame } from './game.mjs';
+import logging from './logging.mjs';
 
 
 class AppError extends Error {
@@ -28,10 +28,10 @@ class AppError extends Error {
 }
 
 
+const logger = logging.getLogger('app');
 const secret = randomBytes(64).toString('hex');
 
-export function createApp(emitter, name, version) {
-	const logger = debug(name ? `${name}:app` : 'app');
+export function createApp(emitter, version) {
 	const games = [];
 	const app = express();
 
@@ -47,7 +47,7 @@ export function createApp(emitter, name, version) {
 		return token ?? null;
 	};
 	app.response.statusJson = function (code, body) {
-		logger.extend('response')({
+		logger.log('response', {
 			time: new Date(),
 			route: this.req.route?.path,
 			status: code,
@@ -119,7 +119,7 @@ export function createApp(emitter, name, version) {
 			try {
 				req.decoded = jwt.verify(req.token(), secret);
 			} catch (error) {
-				logger.extend('error')(error);
+				logger.error(error);
 				res.set('WWW-Authenticate', `Bearer realem="/games", error="invalid_token", error_description="${error.message}"`);
 				throw new AppError(401, 'authorization failed', { cause: `${error.name}: ${error.message}` });
 			}
@@ -159,7 +159,7 @@ export function createApp(emitter, name, version) {
 	}));
 
 	app.use(function (req, res, next) {
-		logger.extend('request')({
+		logger.log('request', {
 			time: new Date(),
 			ip: req.ip,
 			method: req.method,
@@ -195,7 +195,7 @@ export function createApp(emitter, name, version) {
 				gid: `${req.body.gid}`,
 				pid: `${req.body.pid}`
 			}, secret, { expiresIn: '1d' });
-			logger(`POST token for player ${req.body.pid} in game ${req.body.gid}`);
+			logger.info(`POST token for player ${req.body.pid} in game ${req.body.gid}`);
 			res.statusJson(200, {
 				token: token
 			});
@@ -214,8 +214,8 @@ export function createApp(emitter, name, version) {
 			});
 		})
 		.post(partialBodyKey(validateArray, 'players'), partialBodyKey(validateArray, 'tarots'), function (req, res, next) {
-			const gid = games.push(createGame(name, req.body.players, req.body.tarots)) - 1;
-			logger(`POST game ${gid} for players ${req.body.players}`);
+			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
+			logger.info(`POST game ${gid} for players ${req.body.players}`);
 			res.statusJson(200, {
 				gid: `${gid}`
 			});
@@ -225,7 +225,7 @@ export function createApp(emitter, name, version) {
 		.get(function (req, res, next) {
 			const game = games[req.params.gid];
 			const players = game.getAllPlayers();
-			logger(`GET game ${req.params.gid} for players ${players}`);
+			logger.info(`GET game ${req.params.gid} for players ${players}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
 				players: players
@@ -233,7 +233,7 @@ export function createApp(emitter, name, version) {
 		})
 		.delete(verifyToken, function (req, res, next) {
 			delete games[req.params.gid];
-			logger(`DELETE game ${req.params.gid}`);
+			logger.info(`DELETE game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid
 			});
@@ -242,7 +242,7 @@ export function createApp(emitter, name, version) {
 	app.route('/games/:gid/dump')
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
-			logger(`DUMP game ${req.params.gid}`);
+			logger.info(`DUMP game ${req.params.gid}`);
 			game.dump();
 			res.statusJson(200, {
 				gid: req.params.gid
@@ -253,7 +253,7 @@ export function createApp(emitter, name, version) {
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const deck = game.getDeck();
-			logger(`GET deck in game ${req.params.gid}`);
+			logger.info(`GET deck in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson()
@@ -266,7 +266,7 @@ export function createApp(emitter, name, version) {
 			const deck = game.getDeck();
 			const pile = game.getPile();
 			deck.discard(0);
-			logger(`DISCARD card 0 for deck in game ${req.params.gid}`);
+			logger.info(`DISCARD card 0 for deck in game ${req.params.gid}`);
 			emitter.emit('deck', {
 				gid: req.params.gid,
 				pid: req.decoded.pid
@@ -288,7 +288,7 @@ export function createApp(emitter, name, version) {
 			const deck = game.getDeck();
 			const pile = game.getPile();
 			deck.recycle();
-			logger(`RECYCLE for deck in game ${req.params.gid}`);
+			logger.info(`RECYCLE for deck in game ${req.params.gid}`);
 			emitter.emit('deck', {
 				gid: req.params.gid,
 				pid: req.decoded.pid
@@ -308,7 +308,7 @@ export function createApp(emitter, name, version) {
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const pile = game.getPile();
-			logger(`GET pile in game ${req.params.gid}`);
+			logger.info(`GET pile in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pile: pile.toJson()
@@ -321,7 +321,7 @@ export function createApp(emitter, name, version) {
 			const pile = game.getPile();
 			const deck = game.getDeck();
 			pile.shuffle();
-			logger(`SHUFFLE pile in game ${req.params.gid}`);
+			logger.info(`SHUFFLE pile in game ${req.params.gid}`);
 			emitter.emit('deck', {
 				gid: req.params.gid,
 				pid: req.decoded.pid
@@ -342,7 +342,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
-			logger(`GET hand for player ${req.params.pid} ${player} in game ${req.params.gid}`);
+			logger.info(`GET hand for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -358,7 +358,7 @@ export function createApp(emitter, name, version) {
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const deck = game.getDeck();
 			hand.draw();
-			logger(`DRAW for player ${req.params.pid} ${player} in game ${req.params.gid}`);
+			logger.info(`DRAW for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			emitter.emit('deck', {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -380,7 +380,7 @@ export function createApp(emitter, name, version) {
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const pile = game.getPile();
 			hand.recycle();
-			logger(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.gid}`);
+			logger.info(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.gid}`);
 			emitter.emit('pile', {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -401,7 +401,7 @@ export function createApp(emitter, name, version) {
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const card = hand.at(req.params.cid);
-			logger(`GET card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
+			logger.info(`GET card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -418,7 +418,7 @@ export function createApp(emitter, name, version) {
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const pile = game.getPile();
 			hand.discard(req.params.cid);
-			logger(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
+			logger.info(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			emitter.emit('pile', {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -440,7 +440,7 @@ export function createApp(emitter, name, version) {
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const playerTo = game.getPlayer(req.params.tid);
 			hand.passTo(req.params.cid, req.params.tid);
-			logger(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${playerTo} in game ${req.params.gid}`);
+			logger.info(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${playerTo} in game ${req.params.gid}`);
 			emitter.emit('hand', {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -463,7 +463,7 @@ export function createApp(emitter, name, version) {
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const playerFrom = game.getPlayer(req.params.tid);
 			hand.pickFrom(req.params.tid);
-			logger(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${playerFrom} in game ${req.params.gid}`);
+			logger.info(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${playerFrom} in game ${req.params.gid}`);
 			emitter.emit('hand', {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -483,7 +483,7 @@ export function createApp(emitter, name, version) {
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const deck = game.getTarotDeck();
-			logger(`GET tarot deck in game ${req.params.gid}`);
+			logger.info(`GET tarot deck in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson()
@@ -496,7 +496,7 @@ export function createApp(emitter, name, version) {
 			const deck = game.getTarotDeck();
 			const pile = game.getTarotPile();
 			deck.discard(0);
-			logger(`DISCARD card 0 for tarot in game ${req.params.gid}`);
+			logger.info(`DISCARD card 0 for tarot in game ${req.params.gid}`);
 			emitter.emit('tarot', {
 				gid: req.params.gid,
 				pid: req.decoded.pid
@@ -512,7 +512,7 @@ export function createApp(emitter, name, version) {
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			const pile = game.getTarotPile();
-			logger(`GET tarot pile in game ${req.params.gid}`);
+			logger.info(`GET tarot pile in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pile: pile.toJson()
@@ -524,7 +524,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const pile = game.getTarotPile();
 			pile.flip();
-			logger(`FLIP tarot pile in game ${req.params.gid}`);
+			logger.info(`FLIP tarot pile in game ${req.params.gid}`);
 			emitter.emit('tarot', {
 				gid: req.params.gid,
 				pid: req.decoded.pid
@@ -540,7 +540,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getTarotHandOfPlayer(req.params.pid);
-			logger(`GET tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
+			logger.info(`GET tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -555,7 +555,7 @@ export function createApp(emitter, name, version) {
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getTarotHandOfPlayer(req.params.pid);
 			const pile = game.getTarotPile();
-			logger(`DISCARD card 0 for tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
+			logger.info(`DISCARD card 0 for tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			hand.discard(0);
 			emitter.emit('tarot', {
 				gid: req.params.gid,
@@ -584,7 +584,7 @@ export function createApp(emitter, name, version) {
 				cause: err.cause
 			} });
 		} else {
-			logger.extend('error')(err);
+			logger.error(err);
 			res.statusJson(500, { error: {
 				message: `${err.name}: ${err.message}`
 			} });

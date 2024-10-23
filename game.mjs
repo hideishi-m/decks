@@ -9,13 +9,12 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import debug from 'debug';
-
 import { createDrawDeck, createDiscardPile, createHand, createTarotDeck, createTarotHand } from './card.mjs';
+import logging from './logging.mjs';
 
 
 class Game {
-	constructor(players, tarots, deck, joker, shuffle, draw, logger) {
+	constructor(players, tarots, deck, joker, shuffle, draw) {
 		Object.defineProperties(this, {
 			deck: { value: createDrawDeck(deck, joker, shuffle) },
 			pile: { value: createDiscardPile() },
@@ -23,8 +22,7 @@ class Game {
 			tarotPile: { value: createDiscardPile() },
 			players: { value: [] },
 			hands: { value: [] },
-			tarotHands: { value: [] },
-			logger: { value: logger }
+			tarotHands: { value: [] }
 		});
 		[ 'マスター', ...players ].forEach((player, index) => {
 			this.players.push(player);
@@ -90,7 +88,7 @@ class Game {
 	}
 
 	dump() {
-		this.logger.extend('dump')({
+		logger.log('dump', {
 			deck: this.deck.names(),
 			pile: this.pile.names(),
 			players: this.players.map((player, index) => {
@@ -243,14 +241,15 @@ class TarotHand extends Hand {
 }
 
 
-export function createGame(name, players, tarots, deck, joker, shuffle, draw) {
+const logger = logging.getLogger('game');
+
+export function createGame(players, tarots, deck, joker, shuffle, draw) {
 	players = players ?? [];
 	tarots = tarots ?? [];
 	deck = deck ?? 2;
 	joker = joker ?? 2;
 	shuffle = shuffle ?? 10;
 	draw = draw ?? 4;
-	const logger = debug(name ? `${name}:game` : 'game');
-	const game = new Game(players, tarots, deck, joker, shuffle, draw, logger);
+	const game = new Game(players, tarots, deck, joker, shuffle, draw);
 	return game;
 }
