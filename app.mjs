@@ -59,7 +59,7 @@ export function createApp(emitter, name, version) {
 			.json(body);
 	};
 
-	function validateKeyValue(req, res, next, value, key) {
+	function validateId(req, res, next, value, key) {
 		if (false === /^\d+$/.test(value)) {
 			throw new AppError(400, `invalid format for ${key}`, { cause: { [key]: value } });
 		}
@@ -124,23 +124,26 @@ export function createApp(emitter, name, version) {
 				throw new AppError(401, 'authorization failed', { cause: `${error.name}: ${error.message}` });
 			}
 		}
-
 		if (undefined !== req.params.gid) {
 			if (req.params.gid !== req.decoded.gid) {
 				res.set('WWW-Authenticate', `Bearer realem="id: ${req.params.gid}", error="insufficient_scope"`);
 				throw new AppError(403, 'authorization failed for gid', { cause: { gid: req.params.gid } });
 			}
 		}
-
 		if (undefined !== req.params.pid) {
 			if (req.params.pid !== req.decoded.pid) {
 				res.set('WWW-Authenticate', `Bearer realem="pid: ${req.params.pid}", error="insufficient_scope"`);
 				throw new AppError(403, 'authorization failed for pid', { cause: { pid: req.params.pid } });
 			}
 		}
-
 		next();
 	}
+
+	function partialBodyKey(fn, key) {
+		return function (req, res, next) {
+			return fn(req, res, next, req.body?.[key], key);
+		}
+	};
 
 	app.set('trust proxy', 'loopback, uniquelocal');
 	app.disable('x-powered-by');
@@ -167,16 +170,16 @@ export function createApp(emitter, name, version) {
 		next();
 	});
 
-	app.param('gid', validateKeyValue);
+	app.param('gid', validateId);
 	app.param('gid', validateGame);
 
-	app.param('pid', validateKeyValue);
+	app.param('pid', validateId);
 	app.param('pid', validatePlayer);
 
-	app.param('cid', validateKeyValue);
+	app.param('cid', validateId);
 	app.param('cid', validateCard);
 
-	app.param('tid', validateKeyValue);
+	app.param('tid', validateId);
 	app.param('tid', validatePlayer);
 
 	app.route('/version')
@@ -186,14 +189,8 @@ export function createApp(emitter, name, version) {
 			});
 		})
 
-	function partialBodyKey(fn, key) {
-		return function (req, res, next) {
-			return fn(req, res, next, req.body?.[key], key);
-		}
-	};
-
 	app.route('/token')
-		.post(partialBodyKey(validateKeyValue, 'gid'), partialBodyKey(validateKeyValue, 'pid'), function (req, res, next) {
+		.post(partialBodyKey(validateId, 'gid'), partialBodyKey(validateId, 'pid'), function (req, res, next) {
 			const token = jwt.sign({
 				gid: `${req.body.gid}`,
 				pid: `${req.body.pid}`
