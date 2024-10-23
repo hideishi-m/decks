@@ -53,7 +53,10 @@ export function createApp(emitter, name, version) {
 			status: code,
 			body: body
 		});
-		return this.set('Cache-Control', 'no-cache').status(code).json(body);
+		return this
+			.set('Cache-Control', 'no-cache')
+			.status(code)
+			.json(body);
 	};
 
 	function validateKeyValue(req, res, next, value, key) {
@@ -183,12 +186,14 @@ export function createApp(emitter, name, version) {
 			});
 		})
 
+	function partialBodyKey(fn, key) {
+		return function (req, res, next) {
+			return fn(req, res, next, req.body?.[key], key);
+		}
+	};
+
 	app.route('/token')
-		.post(function (req, res, next) {
-			validateKeyValue(req, res, next, req.body.gid, 'gid');
-		}, function (req, res, next) {
-			validateKeyValue(req, res, next, req.body.pid, 'pid');
-		}, function (req, res, next) {
+		.post(partialBodyKey(validateKeyValue, 'gid'), partialBodyKey(validateKeyValue, 'pid'), function (req, res, next) {
 			const token = jwt.sign({
 				gid: `${req.body.gid}`,
 				pid: `${req.body.pid}`
@@ -211,11 +216,7 @@ export function createApp(emitter, name, version) {
 				games: gids
 			});
 		})
-		.post(function (req, res, next) {
-			validateArray(req, res, next, req.body.players, 'players');
-		}, function (req, res, next) {
-			validateArray(req, res, next, req.body.tarots, 'tarots');
-		}, function (req, res, next) {
+		.post(partialBodyKey(validateArray, 'players'), partialBodyKey(validateArray, 'tarots'), function (req, res, next) {
 			const gid = games.push(createGame(name, req.body.players, req.body.tarots)) - 1;
 			logger(`POST game ${gid} for players ${req.body.players}`);
 			res.statusJson(200, {
