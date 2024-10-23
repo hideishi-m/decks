@@ -19,9 +19,7 @@ import { WebSocketServer } from 'ws';
 import { ping } from './public/js/common.js';
 
 export function createServer(emitter, name, options) {
-	name = name ? `${name}:server` : 'server';
-
-	const logger = debug(name);
+	const logger = debug(name ? `${name}:server` : 'server');
 	const wsMap = new Map();
 
 	const server = (options.key && options.cert) ? https.createServer(options) : http.createServer(options);

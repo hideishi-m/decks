@@ -31,10 +31,7 @@ class AppError extends Error {
 const secret = randomBytes(64).toString('hex');
 
 export function createApp(emitter, name, version) {
-	name = name ? `${name}:app` : 'app';
-	version = version ?? '1.0.0';
-
-	const logger = debug(name);
+	const logger = debug(name ? `${name}:app` : 'app');
 	const games = [];
 	const app = express();
 
@@ -56,8 +53,7 @@ export function createApp(emitter, name, version) {
 			status: code,
 			body: body
 		});
-		this.set('Cache-Control', 'no-cache');
-		return this.status(code).json(body);
+		return this.set('Cache-Control', 'no-cache').status(code).json(body);
 	};
 
 	function validateKeyValue(req, res, next, value, key) {
@@ -182,7 +178,7 @@ export function createApp(emitter, name, version) {
 
 	app.route('/version')
 		.get(function (req, res, next) {
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				version: version
 			});
 		})
@@ -198,7 +194,7 @@ export function createApp(emitter, name, version) {
 				pid: `${req.body.pid}`
 			}, secret, { expiresIn: '1d' });
 			logger(`POST token for player ${req.body.pid} in game ${req.body.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				token: token
 			});
 		});
@@ -211,7 +207,7 @@ export function createApp(emitter, name, version) {
 					gids.push({ gid: `${index}` });
 				}
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				games: gids
 			});
 		})
@@ -220,9 +216,9 @@ export function createApp(emitter, name, version) {
 		}, function (req, res, next) {
 			validateArray(req, res, next, req.body.tarots, 'tarots');
 		}, function (req, res, next) {
-			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
+			const gid = games.push(createGame(name, req.body.players, req.body.tarots)) - 1;
 			logger(`POST game ${gid} for players ${req.body.players}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: `${gid}`
 			});
 		});
@@ -232,7 +228,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const players = game.getAllPlayers();
 			logger(`GET game ${req.params.gid} for players ${players}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				players: players
 			});
@@ -240,7 +236,7 @@ export function createApp(emitter, name, version) {
 		.delete(verifyToken, function (req, res, next) {
 			delete games[req.params.gid];
 			logger(`DELETE game ${req.params.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid
 			});
 		});
@@ -249,9 +245,9 @@ export function createApp(emitter, name, version) {
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			logger(`DUMP game ${req.params.gid}`);
-			return res.statusJson(200, {
-				gid: req.params.gid,
-				...game.dump()
+			game.dump();
+			res.statusJson(200, {
+				gid: req.params.gid
 			});
 		});
 
@@ -260,7 +256,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const deck = game.getDeck();
 			logger(`GET deck in game ${req.params.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson()
 			});
@@ -281,7 +277,7 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.decoded.pid
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
 				pile: pile.toJson()
@@ -303,7 +299,7 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.decoded.pid
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
 				pile: pile.toJson()
@@ -315,7 +311,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const pile = game.getPile();
 			logger(`GET pile in game ${req.params.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pile: pile.toJson()
 			});
@@ -336,7 +332,7 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.decoded.pid
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
 				pile: pile.toJson()
@@ -349,7 +345,7 @@ export function createApp(emitter, name, version) {
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
 			logger(`GET hand for player ${req.params.pid} ${player} in game ${req.params.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -370,7 +366,7 @@ export function createApp(emitter, name, version) {
 				pid: req.params.pid,
 				player: player
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -392,7 +388,7 @@ export function createApp(emitter, name, version) {
 				pid: req.params.pid,
 				player: player
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -408,7 +404,7 @@ export function createApp(emitter, name, version) {
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const card = hand.at(req.params.cid);
 			logger(`GET card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -430,7 +426,7 @@ export function createApp(emitter, name, version) {
 				pid: req.params.pid,
 				player: player
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -454,7 +450,7 @@ export function createApp(emitter, name, version) {
 				tid: req.params.tid,
 				playerTo: playerTo
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -477,7 +473,7 @@ export function createApp(emitter, name, version) {
 				tid: req.params.tid,
 				playerFrom: playerFrom
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -490,7 +486,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const deck = game.getTarotDeck();
 			logger(`GET tarot deck in game ${req.params.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson()
 			});
@@ -507,7 +503,7 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.decoded.pid
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
 				pile: pile.toJson(),
@@ -519,7 +515,7 @@ export function createApp(emitter, name, version) {
 			const game = games[req.params.gid];
 			const pile = game.getTarotPile();
 			logger(`GET tarot pile in game ${req.params.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pile: pile.toJson()
 			});
@@ -535,7 +531,7 @@ export function createApp(emitter, name, version) {
 				gid: req.params.gid,
 				pid: req.decoded.pid
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pile: pile.toJson()
 			});
@@ -547,7 +543,7 @@ export function createApp(emitter, name, version) {
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getTarotHandOfPlayer(req.params.pid);
 			logger(`GET tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -568,7 +564,7 @@ export function createApp(emitter, name, version) {
 				pid: req.params.pid,
 				player: player
 			});
-			return res.statusJson(200, {
+			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
@@ -578,20 +574,20 @@ export function createApp(emitter, name, version) {
 		});
 
 	app.use(function (req, res, next) {
-		return res.statusJson(404, { error: {
+		res.statusJson(404, { error: {
 			message: `Cannot ${req.method} ${req.path}`
 		} });
 	});
 
 	app.use(function (err, req, res, next) {
 		if (err instanceof AppError) {
-			return res.statusJson(err.code, { error: {
+			res.statusJson(err.code, { error: {
 				message: err.message,
 				cause: err.cause
 			} });
 		} else {
 			logger.extend('error')(err);
-			return res.statusJson(500, { error: {
+			res.statusJson(500, { error: {
 				message: `${err.name}: ${err.message}`
 			} });
 		}
