@@ -14,7 +14,7 @@ response: { id : "1" }
 
 GET /games
 
-response: { games: [ "1", "2" ] }
+response: { games: [ { game: "1" }, { game: "2" } ] }
 
 ### ゲーム取得
 
@@ -30,6 +30,9 @@ response: {
 DELETE /games/:id
 
 response: { id: "1" }
+
+
+## 山札
 
 ### 山札
 
@@ -57,6 +60,9 @@ response: {
   id: "1",
   deck: { length: 108 }
 }
+
+
+## 捨て札
 
 ### 捨て札
 
@@ -161,26 +167,62 @@ response: {
 }
 
 
-### タロット
+## タロット山札
 
-GET /games/:id/tarot
+### タロット山札
+
+GET /games/:id/tarot/deck
 
 response: {
   id: "1",
-  tarot: {
+  deck: { length: 1 }
+}
+
+### タロットをめくる
+
+PUT /games/:id/tarot/deck/discard
+
+response: {
+  id: "1",
+  deck: { length: 1 }
+}
+
+
+## タロット捨て札
+
+### タロット捨て札
+
+GET /games/:id/tarot/pile
+
+response: {
+  id: "1",
+  pile: {
     length: 1,
     card: card
   }
 }
 
-### タロットをめくる
 
-PUT /games/:id/tarot/draw
+## タロット切り札
+
+### 切り札
+
+GET /games/:id/tarot/players/:pid
 
 response: {
   id: "1",
-  tarot: {
-    length: 1,
-    card: card
-  }
+  pid: "1",
+  player: "pc1",
+  hand: { card: card }
+}
+
+### 捨て札にする
+
+PUT /games/:id/tarot/players/:pid/discard
+
+response: {
+  id: "1",
+  pid: "1",
+  player: "pc1",
+  hand: { card: card }
 }
