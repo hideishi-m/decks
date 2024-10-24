@@ -9,41 +9,53 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { createDrawDeck, createDiscardPile, createHand, createTarotDeck, createTarotHand } from './card.mjs';
-import { getLogger } from './logger.mjs';
-import { name } from './pkgjson.mjs';
-
-const logger = getLogger(name, import.meta.url);
+import { createDeckCards, createPileCards, createHandCards, createTarotDeckCards, createTarotHandCards } from './card.mjs';
 
 
 class Game {
-	constructor(players, tarots, deck, joker, shuffle, draw) {
-		Object.defineProperties(this, {
-			deck: { value: createDrawDeck(deck, joker, shuffle) },
-			pile: { value: createDiscardPile() },
-			tarotDeck: { value: createTarotDeck(shuffle, tarots) },
-			tarotPile: { value: createDiscardPile() },
-			players: { value: [] },
-			hands: { value: [] },
-			tarotHands: { value: [] }
-		});
+	constructor(players, tarots, decks, jokers, shuffles, draws) {
+		this.playerNames = [];
+		this.deck = createDeckCards(decks, jokers, shuffles);
+		this.pile = createPileCards();
+		this.hands = [];
+		this.tarotDeck = createTarotDeckCards(shuffles, tarots);
+		this.tarotPile = createPileCards();
+		this.tarotHands = [];
+		this.shuffles = shuffles;
+
 		[ 'マスター', ...players ].forEach((player, index) => {
-			this.players.push(player);
-			this.hands.push(createHand(this.deck, draw));
+			this.playerNames.push(player);
+			this.hands.push(createHandCards(this.deck, draws));
 			if (0 === index) {
-				this.tarotHands.push(createTarotHand());
+				this.tarotHands.push(createTarotHandCards());
 			} else {
-				this.tarotHands.push(createTarotHand([tarots[index - 1]]));
+				this.tarotHands.push(createTarotHandCards([tarots[index - 1]]));
 			}
 		});
 	}
 
+	toJson() {
+		return {
+			deck: this.deck.names(),
+			pile: this.pile.names(),
+			players: this.playerNames.map((player, index) => {
+				return {
+					player: player,
+					hand: this.hands[index].names(),
+					tarotHand: this.tarotHands[index].names()
+				}
+			}),
+			tarotDeck: this.tarotDeck.names(),
+			tarotPile: this.tarotPile.names()
+		};
+	}
+
 	getAllPlayers() {
-		return this.players;
+		return this.playerNames;
 	}
 
 	getPlayer(player) {
-		return this.players[player];
+		return this.playerNames[player];
 	}
 
 	getDeck() {
@@ -56,7 +68,8 @@ class Game {
 	getPile() {
 		return new Pile({
 			deck: this.deck,
-			pile: this.pile
+			pile: this.pile,
+			shuffles: this.shuffles
 		});
 	}
 
@@ -78,7 +91,8 @@ class Game {
 	getTarotPile() {
 		return new TarotPile({
 			deck: this.tarotDeck,
-			pile: this.tarotPile
+			pile: this.tarotPile,
+			shuffles: this.shuffles
 		});
 	}
 
@@ -89,32 +103,12 @@ class Game {
 			hands: this.tarotHands
 		}, player);
 	}
-
-	dump() {
-		logger.log('dump', {
-			deck: this.deck.names(),
-			pile: this.pile.names(),
-			players: this.players.map((player, index) => {
-				return {
-					player: player,
-					hand: this.hands[index].names(),
-					tarotHand: this.tarotHands[index].names()
-				}
-			}),
-			tarotDeck: this.tarotDeck.names(),
-			tarotPile: this.tarotPile.names()
-		});
-	}
 }
-
 
 class Deck {
 	constructor(game) {
-		const { deck, pile } = game;
-		Object.defineProperties(this, {
-			deck: { value: deck },
-			pile: { value: pile }
-		});
+		this.deck = game.deck;
+		this.pile = game.pile;
 	}
 
 	discard(index) {
@@ -139,19 +133,17 @@ class Deck {
 
 class Pile {
 	constructor(game) {
-		const { deck, pile } = game;
-		Object.defineProperties(this, {
-			deck: { value: deck },
-			pile: { value: pile }
-		});
+		this.deck = game.deck;
+		this.pile = game.pile;
+		this.shuffles = game.shuffles;
 	}
 
-	shuffle(shuffle) {
+	shuffle() {
 		let card;
 		while ((card = this.pile.pop()) !== undefined) {
 			this.deck.push(card);
 		}
-		this.deck.shuffle(shuffle);
+		this.deck.shuffle(this.shuffles);
 	}
 
 	toJson() {
@@ -165,14 +157,11 @@ class Pile {
 
 class Hand {
 	constructor(game, player) {
-		const { deck, pile, hands } = game;
-		Object.defineProperties(this, {
-			player: { value: player },
-			hand: { value: hands[player] },
-			deck: { value: deck },
-			pile: { value: pile },
-			hands: { value: hands }
-		});
+		this.deck = game.deck;
+		this.pile = game.pile;
+		this.hands = game.hands;
+		this.player = player;
+		this.hand = this.hands[player];
 	}
 
 	at(index) {
@@ -244,13 +233,12 @@ class TarotHand extends Hand {
 }
 
 
-export function createGame(players, tarots, deck, joker, shuffle, draw) {
+export function createGame(players, tarots, decks, jokers, shuffles, draws) {
 	players = players ?? [];
 	tarots = tarots ?? [];
-	deck = deck ?? 2;
-	joker = joker ?? 2;
-	shuffle = shuffle ?? 10;
-	draw = draw ?? 4;
-	const game = new Game(players, tarots, deck, joker, shuffle, draw);
-	return game;
+	decks = decks ?? 2;
+	jokers = jokers ?? 2;
+	shuffles = shuffles ?? 10;
+	draws = draws ?? 4;
+	return new Game(players, tarots, decks, jokers, shuffles, draws);
 }
