@@ -9,62 +9,13 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import EventEmitter from 'node:events';
 import { readFile } from 'node:fs/promises';
-import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
-import 'dotenv/config';
+const packageJson = JSON.parse(await readFile(fileURLToPath(new URL('./package.json', import.meta.url))));
 
-import { parseArgs } from './args.mjs';
-import { createApp } from './app.mjs';
-import { getLogger } from './logger.mjs';
-import { name } from './pkgjson.mjs';
-import { createServer } from './server.mjs';
+export const name = packageJson.name;
+export const version = packageJson.version;
+export const config = packageJson.config;
 
-const logger = getLogger(name);
-const options = await parseArgs();
-
-logger.log({ options });
-
-const emitter = new EventEmitter();
-const app = createApp(emitter);
-
-async function createServerOpts(options) {
-	const serverOpts = {};
-	if (options.key && options.cert) {
-		logger.log(`Using key ${options.key}`);
-		serverOpts.key = await readFile(options.key);
-		logger.log(`Using cert ${options.cert}`);
-		serverOpts.cert = await readFile(options.cert);
-	}
-	return serverOpts;
-}
-
-const server = createServer(emitter, await createServerOpts(options));
-
-function shutdown() {
-	emitter.emit('close');
-	setTimeout(function () {
-		logger.log(`Timeout exceeded for ${options.timeout} ms, shutdown`);
-		process.exit(1);
-	}, options.timeout);
-	server.on('close', function () {
-		logger.log('Shutdown');
-		process.exit(0);
-	});
-}
-
-process.on('SIGINT', function () {
-	logger.log('SIGINT received');
-	shutdown();
-});
-process.on('SIGTERM', function () {
-	logger.log('SIGTERM received');
-	shutdown();
-});
-
-server.on('request', app);
-
-server.listen(options.port, options.ip, function () {
-	logger.log(`Listening on ${options.ip}:${options.port}`);
-});
+export default { name, version, config };

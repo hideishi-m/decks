@@ -11,6 +11,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import { createDrawDeck, createDiscardPile, createHand, createTarotDeck, createTarotHand } from './card.mjs';
 import { getLogger } from './logger.mjs';
+import { name } from './pkgjson.mjs';
+
+const logger = getLogger(name, import.meta.url);
 
 
 class Game {
@@ -240,8 +243,6 @@ class TarotHand extends Hand {
 	}
 }
 
-
-const logger = getLogger(import.meta.url);
 
 export function createGame(players, tarots, deck, joker, shuffle, draw) {
 	players = players ?? [];

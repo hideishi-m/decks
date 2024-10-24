@@ -14,46 +14,43 @@ import { fileURLToPath } from 'node:url';
 
 import debug from 'debug';
 
-const loggers = new Map();
+export function getLogger(...names) {
+	names = names.map((name) => {
+		try {
+			return path.parse(fileURLToPath(name)).name;
+		} catch {
+			return name;
+		}
+	});
 
-function getName(name) {
-	try {
-		const __filename = fileURLToPath(name);
-		const __dirname = path.dirname(name);
-		const dir = path.parse(__dirname).base;
-		const file = path.parse(__filename).name;
-		return 'index' === file ? dir : `${dir}:${file}`;
-	} catch {
-		return name;
-	}
-}
+	const loggers = new Map();
 
-export function getLogger(name) {
-
-	function logger(level, ...args) {
+	function createLogger(level, ...args) {
 		if (0 === args.length) {
 			args.push(level);
 			level = '';
 		}
-		const namespace = level ? `${name}:${level}`: name;
+		const namespace = [ ...names, level ].filter((name) => name).join(':');
 		let logger = loggers.get(namespace);
 		if (undefined === logger) {
 			logger = debug(namespace);
-			logger.color = loggers.size + 1;
+			if (namespace.endsWith(':error')) {
+				logger.color = 1;  // error is in RED.
+			}
 			loggers.set(namespace, logger);
 		}
 		logger(...args);
 	}
 
-	Object.defineProperties(logger, {
-		log: { value: function (level, ...args) {
-			this(level, ...args);
-		} },
-		error: { value:  function (...args) {
-			this('error', ...args);
-		} }
-	});
+	function log(level, ...args) {
+		this(level, ...args);
+	}
 
-	name = getName(name);
-	return logger;
+	function error(...args) {
+		this('error', ...args);
+	}
+
+	createLogger.log = log;
+	createLogger.error = error;
+	return createLogger;
 }

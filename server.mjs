@@ -16,9 +16,10 @@ import proxyaddr from 'proxy-addr';
 import { WebSocketServer } from 'ws';
 
 import { getLogger } from './logger.mjs';
+import { name } from './pkgjson.mjs';
 import { ping } from './public/js/common.js';
 
-const logger = getLogger(import.meta.url);
+const logger = getLogger(name, import.meta.url);
 
 export function createServer(emitter, options) {
 	const wsMap = new Map();
