@@ -20,7 +20,7 @@ import jwt from 'jsonwebtoken';
 
 import { createGame } from './game.mjs';
 import { getLogger } from './logger.mjs';
-import { version } from './pkgjson.mjs';
+import { name, version } from './pkgjson.mjs';
 
 
 class AppError extends Error {
@@ -32,7 +32,7 @@ class AppError extends Error {
 
 
 export function createApp(emitter) {
-	const logger = getLogger('app');
+	const logger = getLogger(name, import.meta.url);
 	const secret = randomBytes(64).toString('hex');
 	const games = [];
 	const app = express();
@@ -159,7 +159,7 @@ export function createApp(emitter) {
 		limit: '10mb',
 	}));
 
-	app.use(function loggerHandler(req, res, next) {
+	app.use(function (req, res, next) {
 		logger('request', {
 			time: new Date(),
 			ip: req.ip,
@@ -218,6 +218,7 @@ export function createApp(emitter) {
 					gids.push({ gid: `${index}` });
 				}
 			});
+			logger.log(`GET games ${gids.map((game) => game.gid)}`);
 			res.statusJson(200, {
 				games: gids,
 			});
@@ -585,11 +586,11 @@ export function createApp(emitter) {
 		maxAge: '1d',
 		redirect: false,
 	}));
-	app.use(function errorRoute(req, res, next) {
+	app.use(function (req, res, next) {
 		// no path matched.
 		throw new AppError(404, `Cannot ${req.method} ${req.path}`);
 	});
-	app.use(function errorHandler(err, req, res, next) {
+	app.use(function (err, req, res, next) {
 		if (err instanceof AppError) {
 			res.statusJson(err.code, { error: {
 				message: err.message,
