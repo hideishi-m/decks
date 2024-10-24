@@ -25,7 +25,7 @@ export function createServer(emitter, options) {
 	const server = (options.key && options.cert) ? https.createServer(options) : http.createServer(options);
 	const wsServer = new WebSocketServer({ server: server });
 
-	emitter.on('deck', function (data) {
+	emitter.on('deck', (data) => {
 		logger('emitter', { deck: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
@@ -42,7 +42,7 @@ export function createServer(emitter, options) {
 		});
 	});
 
-	emitter.on('pile', function (data) {
+	emitter.on('pile', (data) => {
 		logger('emitter', { pile: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
@@ -59,7 +59,7 @@ export function createServer(emitter, options) {
 		});
 	});
 
-	emitter.on('hand', function (data) {
+	emitter.on('hand', (data) => {
 		logger('emitter', { hand: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
@@ -76,7 +76,7 @@ export function createServer(emitter, options) {
 		});
 	});
 
-	emitter.on('tarot', function (data) {
+	emitter.on('tarot', (data) => {
 		logger('emitter', { tarot: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
@@ -93,11 +93,11 @@ export function createServer(emitter, options) {
 		});
 	});
 
-	wsServer.on('connection', function (ws, req) {
+	wsServer.on('connection', (ws, req) => {
 		const ip = proxyaddr(req, ['loopback', 'uniquelocal']);
 		logger.log(`connected from ${ip}`);
 
-		ws.on('message', function (data) {
+		ws.on('message', (data) => {
 			if (Buffer.from(ping).equals(data)) {
 				return ws.send(ping);
 			}
@@ -116,12 +116,12 @@ export function createServer(emitter, options) {
 			}
 		});
 
-		ws.on('close', function () {
+		ws.on('close', () => {
 			logger.log(`closed from ${ip}`);
 		});
 	});
 
-	emitter.on('close', function () {
+	emitter.on('close', () => {
 		wsServer.clients.forEach((ws) => {
 			ws.terminate();
 		});

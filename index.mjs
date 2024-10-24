@@ -40,11 +40,11 @@ async function createServerOpts(options) {
 
 function shutdown() {
 	emitter.emit('close');
-	setTimeout(function () {
+	setTimeout(() => {
 		logger.log(`Timeout exceeded for ${options.timeout} ms, shutdown`);
 		process.exit(1);
 	}, options.timeout);
-	server.on('close', function () {
+	server.on('close', () => {
 		logger.log('Shutdown');
 		process.exit(0);
 	});
@@ -52,17 +52,17 @@ function shutdown() {
 
 logger('options', options);
 
-process.on('SIGINT', function () {
+process.on('SIGINT', () => {
 	logger.log('SIGINT received');
 	shutdown();
 });
-process.on('SIGTERM', function () {
+process.on('SIGTERM', () => {
 	logger.log('SIGTERM received');
 	shutdown();
 });
 
 server.on('request', app);
 
-server.listen(options.port, options.ip, function () {
+server.listen(options.port, options.ip, () => {
 	logger.log(`Listening on ${options.ip}:${options.port}`);
 });

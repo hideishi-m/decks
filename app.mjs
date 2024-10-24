@@ -118,7 +118,7 @@ export function createApp(emitter) {
 	}
 
 	function partialBodyKey(fn, key) {
-		return function (req, res, next) {
+		return (req, res, next) => {
 			return fn(req, res, next, req.body?.[key], key);
 		}
 	};
@@ -159,7 +159,7 @@ export function createApp(emitter) {
 		limit: '10mb',
 	}));
 
-	app.use(function (req, res, next) {
+	app.use((req, res, next) => {
 		logger('request', {
 			time: new Date(),
 			ip: req.ip,
@@ -168,7 +168,7 @@ export function createApp(emitter) {
 			token: req.token(),
 			body: req.body,
 		});
-		res.on('finish', function () {
+		res.on('finish', () => {
 			logger('response', {
 				time: new Date(),
 				route: res.locals.route,  // retrive from locals stored in statusJson().
@@ -192,14 +192,14 @@ export function createApp(emitter) {
 	app.param('tid', validatePlayer);
 
 	app.route('/version')
-		.get(function (req, res, next) {
+		.get((req, res, next) => {
 			res.statusJson(200, {
 				version: version,
 			});
 		});
 
 	app.route('/token')
-		.post(partialBodyKey(validateId, 'gid'), partialBodyKey(validateId, 'pid'), function (req, res, next) {
+		.post(partialBodyKey(validateId, 'gid'), partialBodyKey(validateId, 'pid'), (req, res, next) => {
 			const token = jwt.sign({
 				gid: `${req.body.gid}`,
 				pid: `${req.body.pid}`,
@@ -211,7 +211,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games')
-		.get(function (req, res, next) {
+		.get((req, res, next) => {
 			const gids = [];
 			games.forEach((game, index) => {
 				if (undefined !== game) {
@@ -223,7 +223,7 @@ export function createApp(emitter) {
 				games: gids,
 			});
 		})
-		.post(partialBodyKey(validateArray, 'players'), partialBodyKey(validateArray, 'tarots'), function (req, res, next) {
+		.post(partialBodyKey(validateArray, 'players'), partialBodyKey(validateArray, 'tarots'), (req, res, next) => {
 			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
 			res.statusJson(200, {
@@ -232,7 +232,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid')
-		.get(function (req, res, next) {
+		.get((req, res, next) => {
 			const game = games[req.params.gid];
 			const players = game.getAllPlayers();
 			logger.log(`GET game ${req.params.gid} for players ${players}`);
@@ -241,7 +241,7 @@ export function createApp(emitter) {
 				players: players,
 			});
 		})
-		.delete(verifyToken, function (req, res, next) {
+		.delete(verifyToken, (req, res, next) => {
 			delete games[req.params.gid];
 			logger.log(`DELETE game ${req.params.gid}`);
 			res.statusJson(200, {
@@ -250,7 +250,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/deck')
-		.get(verifyToken, function (req, res, next) {
+		.get(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const deck = game.getDeck();
 			logger.log(`GET deck in game ${req.params.gid}`);
@@ -261,7 +261,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/deck/discard')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const deck = game.getDeck();
 			const pile = game.getPile();
@@ -283,7 +283,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/deck/recycle')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const deck = game.getDeck();
 			const pile = game.getPile();
@@ -305,7 +305,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/pile')
-		.get(verifyToken, function (req, res, next) {
+		.get(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const pile = game.getPile();
 			logger.log(`GET pile in game ${req.params.gid}`);
@@ -316,7 +316,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/pile/shuffle')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const pile = game.getPile();
 			const deck = game.getDeck();
@@ -338,7 +338,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/players/:pid')
-		.get(verifyToken, function (req, res, next) {
+		.get(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -352,7 +352,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/players/:pid/draw')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -374,7 +374,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/players/:pid/recycle')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -396,7 +396,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/players/:pid/cards/:cid')
-		.get(verifyToken, function (req, res, next) {
+		.get(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -412,7 +412,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/players/:pid/cards/:cid/discard')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -434,7 +434,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/players/:pid/cards/:cid/pass/:tid')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -457,7 +457,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/players/:pid/pick/:tid')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -480,7 +480,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/tarot/deck')
-		.get(verifyToken, function (req, res, next) {
+		.get(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const deck = game.getTarotDeck();
 			logger.log(`GET tarot deck in game ${req.params.gid}`);
@@ -491,7 +491,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/tarot/deck/discard')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const deck = game.getTarotDeck();
 			const pile = game.getTarotPile();
@@ -509,7 +509,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/tarot/pile')
-		.get(verifyToken, function (req, res, next) {
+		.get(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const pile = game.getTarotPile();
 			logger.log(`GET tarot pile in game ${req.params.gid}`);
@@ -520,7 +520,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/tarot/pile/flip')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const pile = game.getTarotPile();
 			pile.flip();
@@ -536,7 +536,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/tarot/players/:pid')
-		.get(verifyToken, function (req, res, next) {
+		.get(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getTarotHandOfPlayer(req.params.pid);
@@ -550,7 +550,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/tarot/players/:pid/discard')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getTarotHandOfPlayer(req.params.pid);
@@ -572,7 +572,7 @@ export function createApp(emitter) {
 		});
 
 	app.route('/games/:gid/dump')
-		.put(verifyToken, function (req, res, next) {
+		.put(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];
 			logger.log(`DUMP game ${req.params.gid}`);
 			logger('dump', game.toJson());
@@ -586,11 +586,13 @@ export function createApp(emitter) {
 		maxAge: '1d',
 		redirect: false,
 	}));
-	app.use(function (req, res, next) {
+	app.use((req, res, next) => {
 		// no path matched.
+		logger.log(`NO route for ${req.method} ${req.path}`);
 		throw new AppError(404, `Cannot ${req.method} ${req.path}`);
 	});
-	app.use(function (err, req, res, next) {
+	app.use((err, req, res, next) => {
+		// error handler.
 		if (err instanceof AppError) {
 			res.statusJson(err.code, { error: {
 				message: err.message,
