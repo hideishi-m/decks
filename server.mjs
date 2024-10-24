@@ -16,11 +16,10 @@ import proxyaddr from 'proxy-addr';
 import { WebSocketServer } from 'ws';
 
 import { getLogger } from './logger.mjs';
-import { name } from './pkgjson.mjs';
 import { ping } from './public/js/common.js';
 
 export function createServer(emitter, options) {
-	const logger = getLogger(name, import.meta.url);
+	const logger = getLogger('server');
 	const wsMap = new Map();
 	const server = (options.key && options.cert) ? https.createServer(options) : http.createServer(options);
 	const wsServer = new WebSocketServer({ server: server });
@@ -109,7 +108,7 @@ export function createServer(emitter, options) {
 				if (undefined !== gid && undefined !== pid) {
 					wsMap.set(`${gid}:${pid}`, ws);
 					logger.log(`welcome player ${pid} for game ${gid}`);
-					logger.log('ws', { websockets: [ ...wsMap.keys() ] });
+					logger.log('ws', [ ...wsMap.keys() ]);
 				}
 			} catch (error) {
 				logger.error(error);

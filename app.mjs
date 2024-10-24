@@ -18,7 +18,7 @@ import jwt from 'jsonwebtoken';
 
 import { createGame } from './game.mjs';
 import { getLogger } from './logger.mjs';
-import { name, version } from './pkgjson.mjs';
+import { version } from './pkgjson.mjs';
 
 
 class AppError extends Error {
@@ -30,7 +30,7 @@ class AppError extends Error {
 
 
 export function createApp(emitter) {
-	const logger = getLogger(name, import.meta.url);
+	const logger = getLogger('app');
 	const secret = randomBytes(64).toString('hex');
 	const games = [];
 	const app = express();

@@ -9,44 +9,39 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import debug from 'debug';
 
-export function getLogger(...names) {
-	names = names.map((name) => {
-		try {
-			return path.parse(fileURLToPath(name)).name;
-		} catch {
-			return name;
-		}
-	});
-
+export function getLogger(name) {
 	const loggers = new Map();
 
-	function logger(level, ...args) {
-		if (0 === args.length) {
-			args.push(level);
-			level = '';
-		}
-		const namespace = [ ...names, level ].filter((name) => name).join(':');
-		let logger = loggers.get(namespace);
-		if (undefined === logger) {
-			logger = debug(namespace);
+	function createLogger(level) {
+		const namespace = level ? `${name}:${level}` : name;
+		return loggers.get(namespace) ?? (() => {
+			const logger = debug(namespace);
 			if (namespace.endsWith(':error')) {
 				logger.color = 1;  // error is in RED.
 			}
 			loggers.set(namespace, logger);
-		}
-		logger(...args);
+			return logger
+		})();
+	}
+
+	function logger(...args) {
+		createLogger()(...args);
 	}
 
 	logger.log = function (level, ...args) {
-		this(level, ...args);
+		if (0 === args.length) {
+			args.push(level);
+			level = undefined;
+		} else if ('string' !== typeof level) {
+			args.unshift(level);
+			level = undefined;
+		}
+		createLogger(level)(...args);
 	};
 	logger.error = function (...args) {
-		this('error', ...args);
+		createLogger('error')(...args);
 	};
 
 	return logger;
