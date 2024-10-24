@@ -159,8 +159,8 @@ export function createApp(emitter) {
 		limit: '10mb',
 	}));
 
-	app.use(function requestLogger(req, res, next) {
-		logger.log('request', {
+	app.use(function loggerHandler(req, res, next) {
+		logger('request', {
 			time: new Date(),
 			ip: req.ip,
 			method: req.method,
@@ -168,11 +168,8 @@ export function createApp(emitter) {
 			token: req.token(),
 			body: req.body,
 		});
-		next();
-	});
-	app.use(function responseLogger(req, res, next) {
 		res.on('finish', function () {
-			logger.log('response', {
+			logger('response', {
 				time: new Date(),
 				route: res.locals.route,  // retrive from locals stored in statusJson().
 				status: res.statusCode,
@@ -577,7 +574,7 @@ export function createApp(emitter) {
 		.put(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			logger.log(`DUMP game ${req.params.gid}`);
-			logger.log('dump', game.toJson());
+			logger('dump', game.toJson());
 			res.statusJson(200, {
 				gid: req.params.gid,
 			});
@@ -589,6 +586,7 @@ export function createApp(emitter) {
 		redirect: false,
 	}));
 	app.use(function errorRoute(req, res, next) {
+		// no path matched.
 		throw new AppError(404, `Cannot ${req.method} ${req.path}`);
 	});
 	app.use(function errorHandler(err, req, res, next) {

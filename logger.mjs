@@ -26,11 +26,7 @@ export function getLogger(name) {
 		})();
 	}
 
-	function logger(...args) {
-		createLogger()(...args);
-	}
-
-	logger.log = function (level, ...args) {
+	function logger(level, ...args) {
 		if (0 === args.length) {
 			args.push(level);
 			level = undefined;
@@ -39,6 +35,10 @@ export function getLogger(name) {
 			level = undefined;
 		}
 		createLogger(level)(...args);
+	}
+
+	logger.log = function (...args) {
+		createLogger()(...args);
 	};
 	logger.error = function (...args) {
 		createLogger('error')(...args);

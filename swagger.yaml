@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: Simple card deck API
   description: Simple card deck app for playing TOKYO-NIGHTMARE
-  version: 1.5.0
+  version: 1.6.0
   # put the contact info for your development or API team
   contact:
     email: hideishi.magisystem.net@gmail.com

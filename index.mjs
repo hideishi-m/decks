@@ -50,7 +50,7 @@ function shutdown() {
 	});
 }
 
-logger.log('options', options);
+logger('options', options);
 
 process.on('SIGINT', function () {
 	logger.log('SIGINT received');

@@ -25,7 +25,7 @@ export function createServer(emitter, options) {
 	const wsServer = new WebSocketServer({ server: server });
 
 	emitter.on('deck', function (data) {
-		logger.log('emitter', { deck: data });
+		logger('emitter', { deck: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
@@ -42,7 +42,7 @@ export function createServer(emitter, options) {
 	});
 
 	emitter.on('pile', function (data) {
-		logger.log('emitter', { pile: data });
+		logger('emitter', { pile: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
@@ -59,7 +59,7 @@ export function createServer(emitter, options) {
 	});
 
 	emitter.on('hand', function (data) {
-		logger.log('emitter', { hand: data });
+		logger('emitter', { hand: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
@@ -76,7 +76,7 @@ export function createServer(emitter, options) {
 	});
 
 	emitter.on('tarot', function (data) {
-		logger.log('emitter', { tarot: data });
+		logger('emitter', { tarot: data });
 		const gid = data.gid;
 		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
@@ -102,13 +102,13 @@ export function createServer(emitter, options) {
 			}
 			try {
 				data = JSON.parse(data) ?? {};
-				logger.log('ws', { message: data });
+				logger('ws', { message: data });
 				const gid = /^\d+$/.test(data.gid) ? data.gid : undefined;
 				const pid = /^\d+$/.test(data.pid) ? data.pid : undefined;
 				if (undefined !== gid && undefined !== pid) {
 					wsMap.set(`${gid}:${pid}`, ws);
 					logger.log(`welcome player ${pid} for game ${gid}`);
-					logger.log('ws', [ ...wsMap.keys() ]);
+					logger('ws', [ ...wsMap.keys() ]);
 				}
 			} catch (error) {
 				logger.error(error);
