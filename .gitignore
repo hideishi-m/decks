@@ -1,5 +1,6 @@
 .env
 /node_modules
+/log
 decks-*.tgz
 package-lock.json
 /public/spec.html

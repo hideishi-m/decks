@@ -11,9 +11,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { createWriteStream } from 'node:fs';
 
 import express from 'express';
 import helmet from 'helmet';
+import morgan from 'morgan';
 import jwt from 'jsonwebtoken';
 
 import { createGame } from './game.mjs';
@@ -121,6 +123,11 @@ export function createApp(emitter) {
 		}
 	};
 
+	function getDateString() {
+		// sv-SV is in YYYY-MM-DD format.
+		return new Date().toLocaleDateString('sv-SV').replaceAll('-', '');
+	}
+
 	app.request.token = function () {
 		const authorization = this.get('authorization');
 		if (undefined === authorization) {
@@ -133,8 +140,8 @@ export function createApp(emitter) {
 		return token;
 	};
 	app.response.statusJson = function (code, body) {
-		this.locals.route = this.req.route?.path;  // store for logger.
-		this.locals.body = body;  // store for logger.
+		this.locals.route = this.req.route?.path;  // store to locals for logger.
+		this.locals.body = body;  // store to locals for logger.
 		return this
 			.set('Cache-Control', 'no-cache')
 			.status(code)
@@ -144,6 +151,9 @@ export function createApp(emitter) {
 	app.set('trust proxy', 'loopback, uniquelocal');
 	app.disable('x-powered-by');
 	app.disable('etag');
+	app.use(morgan('combined', {
+		stream: createWriteStream(fileURLToPath(new URL(`./log/access.log-${getDateString()}`, import.meta.url)), { flags: 'a' }),
+	}));
 	app.use(helmet());
 	app.use(express.json({
 		limit: '10mb',
@@ -164,9 +174,9 @@ export function createApp(emitter) {
 		res.on('finish', function () {
 			logger.log('response', {
 				time: new Date(),
-				route: res.locals.route,
+				route: res.locals.route,  // retrive from locals stored in statusJson().
 				status: res.statusCode,
-				body: res.locals.body,
+				body: res.locals.body,  // retrive from locals stored in statusJson().
 			});
 		});
 		next();
