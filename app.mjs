@@ -59,7 +59,7 @@ export function createApp(emitter) {
 		if (undefined === player) {
 			throw new AppError(404, `player not found for ${key}`, { cause: {
 				gid: req.params.gid,
-				[key]: value
+				[key]: value,
 			} });
 		}
 		next();
@@ -73,7 +73,7 @@ export function createApp(emitter) {
 			throw new AppError(404, 'card not found for cid', { cause: {
 				gid: req.params.gid,
 				pid: req.params.pid,
-				[key]: value
+				[key]: value,
 			} });
 		}
 		next();
@@ -137,7 +137,7 @@ export function createApp(emitter) {
 			time: new Date(),
 			route: this.req.route?.path,
 			status: code,
-			body: body
+			body: body,
 		});
 		return this
 			.set('Cache-Control', 'no-cache')
@@ -149,12 +149,12 @@ export function createApp(emitter) {
 	app.disable('etag');
 	app.use(helmet());
 	app.use(express.json({
-		limit: '10mb'
+		limit: '10mb',
 	}));
 	app.use(express.static(fileURLToPath(new URL('./public', import.meta.url)), {
 		index: false,
 		maxAge: '1d',
-		redirect: false
+		redirect: false,
 	}));
 
 	app.use(function (req, res, next) {
@@ -164,7 +164,7 @@ export function createApp(emitter) {
 			method: req.method,
 			path: req.path,
 			token: req.token(),
-			body: req.body
+			body: req.body,
 		});
 		next();
 	});
@@ -184,19 +184,19 @@ export function createApp(emitter) {
 	app.route('/version')
 		.get(function (req, res, next) {
 			res.statusJson(200, {
-				version: version
+				version: version,
 			});
-		})
+		});
 
 	app.route('/token')
 		.post(partialBodyKey(validateId, 'gid'), partialBodyKey(validateId, 'pid'), function (req, res, next) {
 			const token = jwt.sign({
 				gid: `${req.body.gid}`,
-				pid: `${req.body.pid}`
+				pid: `${req.body.pid}`,
 			}, secret, { expiresIn: '1d' });
 			logger.log(`POST token for player ${req.body.pid} in game ${req.body.gid}`);
 			res.statusJson(200, {
-				token: token
+				token: token,
 			});
 		});
 
@@ -209,14 +209,14 @@ export function createApp(emitter) {
 				}
 			});
 			res.statusJson(200, {
-				games: gids
+				games: gids,
 			});
 		})
 		.post(partialBodyKey(validateArray, 'players'), partialBodyKey(validateArray, 'tarots'), function (req, res, next) {
 			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
 			res.statusJson(200, {
-				gid: `${gid}`
+				gid: `${gid}`,
 			});
 		});
 
@@ -227,14 +227,14 @@ export function createApp(emitter) {
 			logger.log(`GET game ${req.params.gid} for players ${players}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
-				players: players
+				players: players,
 			});
 		})
 		.delete(verifyToken, function (req, res, next) {
 			delete games[req.params.gid];
 			logger.log(`DELETE game ${req.params.gid}`);
 			res.statusJson(200, {
-				gid: req.params.gid
+				gid: req.params.gid,
 			});
 		});
 
@@ -244,7 +244,7 @@ export function createApp(emitter) {
 			logger.log(`DUMP game ${req.params.gid}`);
 			logger.log('dump', game.toJson());
 			res.statusJson(200, {
-				gid: req.params.gid
+				gid: req.params.gid,
 			});
 		});
 
@@ -255,7 +255,7 @@ export function createApp(emitter) {
 			logger.log(`GET deck in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
-				deck: deck.toJson()
+				deck: deck.toJson(),
 			});
 		});
 
@@ -268,16 +268,16 @@ export function createApp(emitter) {
 			logger.log(`DISCARD card 0 for deck in game ${req.params.gid}`);
 			emitter.emit('deck', {
 				gid: req.params.gid,
-				pid: req.decoded.pid
+				pid: req.decoded.pid,
 			});
 			emitter.emit('pile', {
 				gid: req.params.gid,
-				pid: req.decoded.pid
+				pid: req.decoded.pid,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
-				pile: pile.toJson()
+				pile: pile.toJson(),
 			});
 		});
 
@@ -290,16 +290,16 @@ export function createApp(emitter) {
 			logger.log(`RECYCLE for deck in game ${req.params.gid}`);
 			emitter.emit('deck', {
 				gid: req.params.gid,
-				pid: req.decoded.pid
+				pid: req.decoded.pid,
 			});
 			emitter.emit('pile', {
 				gid: req.params.gid,
-				pid: req.decoded.pid
+				pid: req.decoded.pid,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
-				pile: pile.toJson()
+				pile: pile.toJson(),
 			});
 		});
 
@@ -310,7 +310,7 @@ export function createApp(emitter) {
 			logger.log(`GET pile in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
-				pile: pile.toJson()
+				pile: pile.toJson(),
 			});
 		});
 
@@ -323,16 +323,16 @@ export function createApp(emitter) {
 			logger.log(`SHUFFLE pile in game ${req.params.gid}`);
 			emitter.emit('deck', {
 				gid: req.params.gid,
-				pid: req.decoded.pid
+				pid: req.decoded.pid,
 			});
 			emitter.emit('pile', {
 				gid: req.params.gid,
-				pid: req.decoded.pid
+				pid: req.decoded.pid,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
-				pile: pile.toJson()
+				pile: pile.toJson(),
 			});
 		});
 
@@ -346,7 +346,7 @@ export function createApp(emitter) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.toJson()
+				hand: hand.toJson(),
 			});
 		});
 
@@ -361,14 +361,14 @@ export function createApp(emitter) {
 			emitter.emit('deck', {
 				gid: req.params.gid,
 				pid: req.params.pid,
-				player: player
+				player: player,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
 				deck: deck.toJson(),
-				hand: hand.toJson()
+				hand: hand.toJson(),
 			});
 		});
 
@@ -383,14 +383,14 @@ export function createApp(emitter) {
 			emitter.emit('pile', {
 				gid: req.params.gid,
 				pid: req.params.pid,
-				player: player
+				player: player,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
 				pile: pile.toJson(),
-				hand: hand.toJson()
+				hand: hand.toJson(),
 			});
 		});
 
@@ -406,7 +406,7 @@ export function createApp(emitter) {
 				pid: req.params.pid,
 				player: player,
 				cid: req.params.cid,
-				card: card
+				card: card,
 			});
 		});
 
@@ -421,14 +421,14 @@ export function createApp(emitter) {
 			emitter.emit('pile', {
 				gid: req.params.gid,
 				pid: req.params.pid,
-				player: player
+				player: player,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
 				pile: pile.toJson(),
-				hand: hand.toJson()
+				hand: hand.toJson(),
 			});
 		});
 
@@ -445,13 +445,13 @@ export function createApp(emitter) {
 				pid: req.params.pid,
 				player: player,
 				tid: req.params.tid,
-				playerTo: playerTo
+				playerTo: playerTo,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.toJson()
+				hand: hand.toJson(),
 			});
 		});
 
@@ -468,13 +468,13 @@ export function createApp(emitter) {
 				pid: req.params.pid,
 				player: player,
 				tid: req.params.tid,
-				playerFrom: playerFrom
+				playerFrom: playerFrom,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.toJson()
+				hand: hand.toJson(),
 			});
 		});
 
@@ -485,7 +485,7 @@ export function createApp(emitter) {
 			logger.log(`GET tarot deck in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
-				deck: deck.toJson()
+				deck: deck.toJson(),
 			});
 		});
 
@@ -498,7 +498,7 @@ export function createApp(emitter) {
 			logger.log(`DISCARD card 0 for tarot in game ${req.params.gid}`);
 			emitter.emit('tarot', {
 				gid: req.params.gid,
-				pid: req.decoded.pid
+				pid: req.decoded.pid,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
@@ -514,7 +514,7 @@ export function createApp(emitter) {
 			logger.log(`GET tarot pile in game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
-				pile: pile.toJson()
+				pile: pile.toJson(),
 			});
 		});
 
@@ -526,11 +526,11 @@ export function createApp(emitter) {
 			logger.log(`FLIP tarot pile in game ${req.params.gid}`);
 			emitter.emit('tarot', {
 				gid: req.params.gid,
-				pid: req.decoded.pid
+				pid: req.decoded.pid,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
-				pile: pile.toJson()
+				pile: pile.toJson(),
 			});
 		});
 
@@ -544,7 +544,7 @@ export function createApp(emitter) {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
-				hand: hand.toJson()
+				hand: hand.toJson(),
 			});
 		});
 
@@ -559,20 +559,20 @@ export function createApp(emitter) {
 			emitter.emit('tarot', {
 				gid: req.params.gid,
 				pid: req.params.pid,
-				player: player
+				player: player,
 			});
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
 				player: player,
 				pile: pile.toJson(),
-				hand: hand.toJson()
+				hand: hand.toJson(),
 			});
 		});
 
 	app.use(function (req, res, next) {
 		res.statusJson(404, { error: {
-			message: `Cannot ${req.method} ${req.path}`
+			message: `Cannot ${req.method} ${req.path}`,
 		} });
 	});
 
@@ -580,12 +580,12 @@ export function createApp(emitter) {
 		if (err instanceof AppError) {
 			res.statusJson(err.code, { error: {
 				message: err.message,
-				cause: err.cause
+				cause: err.cause,
 			} });
 		} else {
 			logger.error(err);
 			res.statusJson(500, { error: {
-				message: `${err.name}: ${err.message}`
+				message: `${err.name}: ${err.message}`,
 			} });
 		}
 	});

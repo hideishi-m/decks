@@ -109,7 +109,7 @@ export function createServer(emitter, options) {
 				if (undefined !== gid && undefined !== pid) {
 					wsMap.set(`${gid}:${pid}`, ws);
 					logger.log(`welcome player ${pid} for game ${gid}`);
-					logger.log('ws', { websockets: [...wsMap.keys()] });
+					logger.log('ws', { websockets: [ ...wsMap.keys() ] });
 				}
 			} catch (error) {
 				logger.error(error);

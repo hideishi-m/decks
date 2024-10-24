@@ -25,7 +25,7 @@ export function getLogger(...names) {
 
 	const loggers = new Map();
 
-	function createLogger(level, ...args) {
+	function logger(level, ...args) {
 		if (0 === args.length) {
 			args.push(level);
 			level = '';
@@ -42,12 +42,12 @@ export function getLogger(...names) {
 		logger(...args);
 	}
 
-	createLogger.log = function (level, ...args) {
+	logger.log = function (level, ...args) {
 		this(level, ...args);
 	};
-	createLogger.error = function (...args) {
+	logger.error = function (...args) {
 		this('error', ...args);
 	};
 
-	return createLogger;
+	return logger;
 }

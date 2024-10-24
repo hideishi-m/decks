@@ -42,11 +42,11 @@ class Game {
 				return {
 					player: player,
 					hand: this.hands[index].names(),
-					tarotHand: this.tarotHands[index].names()
+					tarotHand: this.tarotHands[index].names(),
 				}
 			}),
 			tarotDeck: this.tarotDeck.names(),
-			tarotPile: this.tarotPile.names()
+			tarotPile: this.tarotPile.names(),
 		};
 	}
 
@@ -61,7 +61,7 @@ class Game {
 	getDeck() {
 		return new Deck({
 			deck: this.deck,
-			pile: this.pile
+			pile: this.pile,
 		});
 	}
 
@@ -69,7 +69,7 @@ class Game {
 		return new Pile({
 			deck: this.deck,
 			pile: this.pile,
-			shuffles: this.shuffles
+			shuffles: this.shuffles,
 		});
 	}
 
@@ -77,14 +77,14 @@ class Game {
 		return new Hand({
 			deck: this.deck,
 			pile: this.pile,
-			hands: this.hands
+			hands: this.hands,
 		}, player);
 	}
 
 	getTarotDeck() {
 		return new Deck({
 			deck: this.tarotDeck,
-			pile: this.tarotPile
+			pile: this.tarotPile,
 		});
 	}
 
@@ -92,7 +92,7 @@ class Game {
 		return new TarotPile({
 			deck: this.tarotDeck,
 			pile: this.tarotPile,
-			shuffles: this.shuffles
+			shuffles: this.shuffles,
 		});
 	}
 
@@ -100,7 +100,7 @@ class Game {
 		return new TarotHand({
 			deck: this.tarotDeck,
 			pile: this.tarotPile,
-			hands: this.tarotHands
+			hands: this.tarotHands,
 		}, player);
 	}
 }
@@ -149,7 +149,7 @@ class Pile {
 	toJson() {
 		return {
 			length: this.pile.length,
-			card: this.pile[0]
+			card: this.pile[0],
 		};
 	}
 }
@@ -208,7 +208,7 @@ class Hand {
 	toJson() {
 		return {
 			length: this.hand.length,
-			cards: this.hand
+			cards: this.hand,
 		};
 	}
 }
@@ -227,15 +227,15 @@ class TarotHand extends Hand {
 	toJson() {
 		return {
 			length: this.hand.length,
-			card: this.hand[0]
+			card: this.hand[0],
 		};
 	}
 }
 
 
 export function createGame(players, tarots, decks, jokers, shuffles, draws) {
-	players = players ?? [];
-	tarots = tarots ?? [];
+	players = players ? [ ...players ] : [];
+	tarots = tarots ? [ ...tarots ] : [];
 	decks = decks ?? 2;
 	jokers = jokers ?? 2;
 	shuffles = shuffles ?? 10;
