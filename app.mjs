@@ -88,7 +88,7 @@ export function createApp(emitter) {
 
 	function verifyToken(req, res, next) {
 		if (undefined === req.decoded) {
-			if (null === req.token()) {
+			if (undefined === req.token()) {
 				res.set('WWW-Authenticate', `Bearer realem="/games"`);
 				throw new AppError(401, 'authorization required');
 			}
@@ -124,13 +124,13 @@ export function createApp(emitter) {
 	app.request.token = function () {
 		const authorization = this.get('authorization');
 		if (undefined === authorization) {
-			return null;
+			return undefined;
 		}
 		const [bearer, token] = authorization.split(' ') ?? [];
 		if ('Bearer' !== bearer) {
-			return null;
+			return undefined;
 		}
-		return token ?? null;
+		return token;
 	};
 	app.response.statusJson = function (code, body) {
 		logger.log('response', {
