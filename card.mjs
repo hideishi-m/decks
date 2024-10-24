@@ -20,7 +20,7 @@ class Card {
 		this.deck = deck;
 	}
 
-	get name() {
+	name() {
 		return `${cardSuits.get(this.suit)} ${cardRanks.get(this.rank)} (${this.deck})`;
 	}
 }
@@ -32,7 +32,7 @@ class TarotCard {
 		this.position = position ?? defaultPosition;
 	}
 
-	get name() {
+	name() {
 		return `${tarotRanks.get(this.rank)} ${cardPositions.get(this.position)}`;
 	}
 
@@ -44,7 +44,7 @@ class TarotCard {
 
 class Cards extends Array {
 	names() {
-		return this.map((item) => item.name);
+		return this.map((item) => item.name());
 	}
 
 	shuffle(n) {
