@@ -133,17 +133,14 @@ export function createApp(emitter) {
 		return token;
 	};
 	app.response.statusJson = function (code, body) {
-		logger.log('response', {
-			time: new Date(),
-			route: this.req.route?.path,
-			status: code,
-			body: body,
-		});
+		this.locals.route = this.req.route?.path;  // store for logger.
+		this.locals.body = body;  // store for logger.
 		return this
 			.set('Cache-Control', 'no-cache')
 			.status(code)
 			.json(body);
 	};
+
 	app.set('trust proxy', 'loopback, uniquelocal');
 	app.disable('x-powered-by');
 	app.disable('etag');
@@ -151,13 +148,8 @@ export function createApp(emitter) {
 	app.use(express.json({
 		limit: '10mb',
 	}));
-	app.use(express.static(fileURLToPath(new URL('./public', import.meta.url)), {
-		index: false,
-		maxAge: '1d',
-		redirect: false,
-	}));
 
-	app.use(function (req, res, next) {
+	app.use(function requestLogger(req, res, next) {
 		logger.log('request', {
 			time: new Date(),
 			ip: req.ip,
@@ -165,6 +157,17 @@ export function createApp(emitter) {
 			path: req.path,
 			token: req.token(),
 			body: req.body,
+		});
+		next();
+	});
+	app.use(function responseLogger(req, res, next) {
+		res.on('finish', function () {
+			logger.log('response', {
+				time: new Date(),
+				route: res.locals.route,
+				status: res.statusCode,
+				body: res.locals.body,
+			});
 		});
 		next();
 	});
@@ -233,16 +236,6 @@ export function createApp(emitter) {
 		.delete(verifyToken, function (req, res, next) {
 			delete games[req.params.gid];
 			logger.log(`DELETE game ${req.params.gid}`);
-			res.statusJson(200, {
-				gid: req.params.gid,
-			});
-		});
-
-	app.route('/games/:gid/dump')
-		.get(verifyToken, function (req, res, next) {
-			const game = games[req.params.gid];
-			logger.log(`DUMP game ${req.params.gid}`);
-			logger.log('dump', game.toJson());
 			res.statusJson(200, {
 				gid: req.params.gid,
 			});
@@ -570,13 +563,25 @@ export function createApp(emitter) {
 			});
 		});
 
-	app.use(function (req, res, next) {
-		res.statusJson(404, { error: {
-			message: `Cannot ${req.method} ${req.path}`,
-		} });
-	});
+	app.route('/games/:gid/dump')
+		.put(verifyToken, function (req, res, next) {
+			const game = games[req.params.gid];
+			logger.log(`DUMP game ${req.params.gid}`);
+			logger.log('dump', game.toJson());
+			res.statusJson(200, {
+				gid: req.params.gid,
+			});
+		});
 
-	app.use(function (err, req, res, next) {
+	app.use(express.static(fileURLToPath(new URL('./public', import.meta.url)), {
+		index: false,
+		maxAge: '1d',
+		redirect: false,
+	}));
+	app.use(function errorRoute(req, res, next) {
+		throw new AppError(404, `Cannot ${req.method} ${req.path}`);
+	});
+	app.use(function errorHandler(err, req, res, next) {
 		if (err instanceof AppError) {
 			res.statusJson(err.code, { error: {
 				message: err.message,

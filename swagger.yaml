@@ -194,42 +194,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /games/{gid}/dump:
-    get:
-      tags:
-        - admins
-      security:
-        - JWT: []
-      summary: dump a game
-      operationId: dumpGame
-      description: |
-        Dumps a game for gid
-      parameters:
-        - name: gid
-          in: path
-          description: Game ID
-          required: true
-          schema:
-            $ref: '#/components/schemas/Id'
-      responses:
-        200:
-          description: game ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GameId'
-        400:
-          description: invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        404:
-          description: no game for gid
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /games/{gid}/deck:
     get:
       tags:
@@ -951,6 +915,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GameTarotPileHand'
+        400:
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/dump:
+    put:
+      tags:
+        - admins
+      security:
+        - JWT: []
+      summary: dump a game
+      operationId: dumpGame
+      description: |
+        Dumps a game for gid
+      parameters:
+        - name: gid
+          in: path
+          description: Game ID
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        200:
+          description: game ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameId'
         400:
           description: invalid input
           content:
