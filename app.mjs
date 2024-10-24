@@ -35,30 +35,6 @@ export function createApp(emitter) {
 	const games = [];
 	const app = express();
 
-	app.request.token = function () {
-		const authorization = this.get('authorization');
-		if (undefined === authorization) {
-			return null;
-		}
-		const [bearer, token] = authorization.split(' ') ?? [];
-		if ('Bearer' !== bearer) {
-			return null;
-		}
-		return token ?? null;
-	};
-	app.response.statusJson = function (code, body) {
-		logger.log('response', {
-			time: new Date(),
-			route: this.req.route?.path,
-			status: code,
-			body: body
-		});
-		return this
-			.set('Cache-Control', 'no-cache')
-			.status(code)
-			.json(body);
-	};
-
 	function validateId(req, res, next, value, key) {
 		if (false === /^\d+$/.test(value)) {
 			throw new AppError(400, `invalid format for ${key}`, { cause: { [key]: value } });
@@ -145,6 +121,29 @@ export function createApp(emitter) {
 		}
 	};
 
+	app.request.token = function () {
+		const authorization = this.get('authorization');
+		if (undefined === authorization) {
+			return null;
+		}
+		const [bearer, token] = authorization.split(' ') ?? [];
+		if ('Bearer' !== bearer) {
+			return null;
+		}
+		return token ?? null;
+	};
+	app.response.statusJson = function (code, body) {
+		logger.log('response', {
+			time: new Date(),
+			route: this.req.route?.path,
+			status: code,
+			body: body
+		});
+		return this
+			.set('Cache-Control', 'no-cache')
+			.status(code)
+			.json(body);
+	};
 	app.set('trust proxy', 'loopback, uniquelocal');
 	app.disable('x-powered-by');
 	app.disable('etag');
@@ -243,7 +242,7 @@ export function createApp(emitter) {
 		.get(verifyToken, function (req, res, next) {
 			const game = games[req.params.gid];
 			logger.log(`DUMP game ${req.params.gid}`);
-			game.dump();
+			logger.log('dump', game.toJson());
 			res.statusJson(200, {
 				gid: req.params.gid
 			});

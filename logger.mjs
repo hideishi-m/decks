@@ -42,15 +42,12 @@ export function getLogger(...names) {
 		logger(...args);
 	}
 
-	function log(level, ...args) {
+	createLogger.log = function (level, ...args) {
 		this(level, ...args);
-	}
-
-	function error(...args) {
+	};
+	createLogger.error = function (...args) {
 		this('error', ...args);
-	}
+	};
 
-	createLogger.log = log;
-	createLogger.error = error;
 	return createLogger;
 }
