@@ -29,10 +29,9 @@ class AppError extends Error {
 }
 
 
-const logger = getLogger(name, import.meta.url);
-const secret = randomBytes(64).toString('hex');
-
 export function createApp(emitter) {
+	const logger = getLogger(name, import.meta.url);
+	const secret = randomBytes(64).toString('hex');
 	const games = [];
 	const app = express();
 

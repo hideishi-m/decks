@@ -19,11 +19,9 @@ import { getLogger } from './logger.mjs';
 import { name } from './pkgjson.mjs';
 import { ping } from './public/js/common.js';
 
-const logger = getLogger(name, import.meta.url);
-
 export function createServer(emitter, options) {
+	const logger = getLogger(name, import.meta.url);
 	const wsMap = new Map();
-
 	const server = (options.key && options.cert) ? https.createServer(options) : http.createServer(options);
 	const wsServer = new WebSocketServer({ server: server });
 

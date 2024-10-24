@@ -23,11 +23,9 @@ import { createServer } from './server.mjs';
 
 const logger = getLogger(name);
 const options = await parseArgs();
-
-logger.log({ options });
-
 const emitter = new EventEmitter();
 const app = createApp(emitter);
+const server = createServer(emitter, await createServerOpts(options));
 
 async function createServerOpts(options) {
 	const serverOpts = {};
@@ -40,8 +38,6 @@ async function createServerOpts(options) {
 	return serverOpts;
 }
 
-const server = createServer(emitter, await createServerOpts(options));
-
 function shutdown() {
 	emitter.emit('close');
 	setTimeout(function () {
@@ -53,6 +49,8 @@ function shutdown() {
 		process.exit(0);
 	});
 }
+
+logger.log({ options });
 
 process.on('SIGINT', function () {
 	logger.log('SIGINT received');
