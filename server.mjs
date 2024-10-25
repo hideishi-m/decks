@@ -119,6 +119,10 @@ export function createServer(emitter, options) {
 		ws.on('close', () => {
 			logger.log(`closed from ${ip}`);
 		});
+
+		ws.on('error', (err) => {
+			logger.error(err);
+		});
 	});
 
 	emitter.on('close', () => {

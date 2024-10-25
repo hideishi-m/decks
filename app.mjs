@@ -10,8 +10,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { randomBytes } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import { createWriteStream } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import express from 'express';
 import helmet from 'helmet';
@@ -31,10 +31,18 @@ class AppError extends Error {
 }
 
 
-export function createApp(emitter, secret) {
+export function createApp(emitter, options) {
 	const logger = getLogger(`${name}:app`);
 	const games = [];
 	const app = express();
+
+	const secret = options.secret ?? randomBytes(64).toString('hex');
+	logger(`secret "${secret}"`);
+
+	const stream = createWriteStream(fileURLToPath(new URL(`./logs/access.log-${getDateString()}`, import.meta.url)), { flags: 'a' });
+	stream.on('error', (err) => {
+		logger.error(err);
+	});
 
 	function validateId(req, res, next, value, key) {
 		if (false === /^\d+$/.test(value)) {
@@ -127,9 +135,6 @@ export function createApp(emitter, secret) {
 		return new Date().toLocaleDateString('sv-SV').replaceAll('-', '');
 	}
 
-	secret = secret ?? randomBytes(64).toString('hex');
-	logger(`secret "${secret}"`);
-
 	app.request.token = function () {
 		const authorization = this.get('authorization');
 		if (undefined === authorization) {
@@ -154,7 +159,7 @@ export function createApp(emitter, secret) {
 	app.disable('x-powered-by');
 	app.disable('etag');
 	app.use(morgan('combined', {
-		stream: createWriteStream(fileURLToPath(new URL(`./log/access.log-${getDateString()}`, import.meta.url)), { flags: 'a' }),
+			stream: stream,
 	}));
 	app.use(helmet());
 	app.use(express.json({

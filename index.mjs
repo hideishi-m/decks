@@ -27,7 +27,7 @@ const options = await parseArgs();
 logger('options', options);
 
 const emitter = new EventEmitter();
-const app = createApp(emitter, options.secret ?? process.env['SECRET']);
+const app = createApp(emitter, options);
 const server = createServer(emitter, await createServerOpts(options));
 
 async function createServerOpts(options) {

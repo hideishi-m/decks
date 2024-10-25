@@ -11,6 +11,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import debug from 'debug';
 
+debug.colors = debug.colors.filter((c) => 1 !== c);  // exclude RED.
+
 export function getLogger(name) {
 	const loggers = new Map();
 
@@ -34,7 +36,6 @@ export function getLogger(name) {
 			args.unshift(level);
 			level = undefined;
 		}
-		getLogger.enabled();
 		createLogger(level)(...args);
 	}
 
@@ -42,7 +43,9 @@ export function getLogger(name) {
 		createLogger()(...args);
 	};
 	getLogger.error = function (...args) {
-		createLogger('error')(...args);
+		// avoid coercing to instanceof Error in debug.
+		const error = args.shift();
+		createLogger('error')({ error: error }, ...args);
 	};
 	getLogger.enabled = function() {
 		return [ ...loggers.entries() ].map(([key, value]) => {

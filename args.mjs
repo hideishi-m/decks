@@ -23,18 +23,22 @@ function usage(message) {
     [--timeout TIMEOUT]     Set timeout in ms (default: 3000)
     [--key SSL_KEY]         Use SSL_KEY for ssl key
     [--cert SSL_CERT]       Use SSL_CERT for ssl certificate
-    [--secret SECRET]       Use SECRET for JWT secret
+    [--secret SECRET]       Set SECRET for JWT secret
 `);
 	process.exit(1);
 }
 
 function defaults() {
 	const options = {};
-	['ip', 'port', 'timeout', 'key', 'cert'].forEach((key) => {
+	['ip', 'port', 'timeout', 'key', 'cert', 'secret'].forEach((key) => {
 		if (undefined !== config[key]) {
 			options[key] = config[key];
 		}
 	});
+	if (undefined === options['secret']
+		&& undefined !== process.env['SECRET']) {
+		options['secret'] = process.env['SECRET'];
+	}
 	return options;
 }
 
