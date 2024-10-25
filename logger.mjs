@@ -44,8 +44,8 @@ export function getLogger(name) {
 	};
 	getLogger.error = function (...args) {
 		// avoid coercing to instanceof Error in debug.
-		const error = args.shift();
-		createLogger('error')({ error: error }, ...args);
+		args[0] = args[0] instanceof Error ? { error: args[0] } : args[0];
+		createLogger('error')(...args);
 	};
 	getLogger.enabled = function() {
 		return [ ...loggers.entries() ].map(([key, value]) => {
