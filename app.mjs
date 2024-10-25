@@ -32,7 +32,7 @@ class AppError extends Error {
 
 
 export function createApp(emitter, secret) {
-	const logger = getLogger(name, import.meta.url);
+	const logger = getLogger(`${name}:app`);
 	const games = [];
 	const app = express();
 
