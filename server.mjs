@@ -122,6 +122,7 @@ export function createServer(emitter, options) {
 	});
 
 	emitter.on('close', () => {
+		logger('emitter', 'close');
 		wsServer.clients.forEach((ws) => {
 			ws.terminate();
 		});

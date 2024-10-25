@@ -23,6 +23,9 @@ import { createServer } from './server.mjs';
 
 const logger = getLogger(name);
 const options = await parseArgs();
+
+logger('options', options);
+
 const emitter = new EventEmitter();
 const app = createApp(emitter, options.secret ?? process.env['SECRET']);
 const server = createServer(emitter, await createServerOpts(options));
@@ -49,8 +52,6 @@ function shutdown() {
 		process.exit(0);
 	});
 }
-
-logger('options', options);
 
 process.on('SIGINT', () => {
 	logger.log('SIGINT received');
