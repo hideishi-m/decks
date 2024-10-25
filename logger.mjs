@@ -31,9 +31,6 @@ export function getLogger(...names) {
 			if (namespace.endsWith(':error')) {
 				logger.color = 1;  // error is in RED.
 			}
-			if ('boolean' === typeof getLogger.enable) {
-				logger.enable = getLogger.enable;
-			}
 			loggers.set(namespace, logger);
 			return logger
 		})();
@@ -47,10 +44,10 @@ export function getLogger(...names) {
 			args.unshift(level);
 			level = undefined;
 		}
+		getLogger.enabled();
 		createLogger(level)(...args);
 	}
 
-	getLogger.enable = undefined;
 	getLogger.log = function (...args) {
 		createLogger()(...args);
 	};
