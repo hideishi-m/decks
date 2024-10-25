@@ -24,7 +24,7 @@ import { createServer } from './server.mjs';
 const logger = getLogger(name);
 const options = await parseArgs();
 const emitter = new EventEmitter();
-const app = createApp(emitter);
+const app = createApp(emitter, options.secret ?? process.env['SECRET']);
 const server = createServer(emitter, await createServerOpts(options));
 
 async function createServerOpts(options) {

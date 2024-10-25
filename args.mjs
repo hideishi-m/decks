@@ -23,6 +23,7 @@ function usage(message) {
     [--timeout TIMEOUT]     Set timeout in ms (default: 3000)
     [--key SSL_KEY]         Use SSL_KEY for ssl key
     [--cert SSL_CERT]       Use SSL_CERT for ssl certificate
+    [--secret SECRET]       Use SECRET for JWT secret
 `);
 	process.exit(1);
 }

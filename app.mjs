@@ -31,9 +31,8 @@ class AppError extends Error {
 }
 
 
-export function createApp(emitter) {
+export function createApp(emitter, secret) {
 	const logger = getLogger(name, import.meta.url);
-	const secret = randomBytes(64).toString('hex');
 	const games = [];
 	const app = express();
 
@@ -127,6 +126,9 @@ export function createApp(emitter) {
 		// sv-SV is in YYYY-MM-DD format.
 		return new Date().toLocaleDateString('sv-SV').replaceAll('-', '');
 	}
+
+	secret = secret ?? randomBytes(64).toString('hex');
+	logger(`secret "${secret}"`);
 
 	app.request.token = function () {
 		const authorization = this.get('authorization');
