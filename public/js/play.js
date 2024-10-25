@@ -147,7 +147,7 @@ $(document).ready(async function () {
 			const style = cardPositions.get(card.position, 1)
 			const img = tarotRanks.get(card.rank, 1);
 			const title = tarotRanks.get(card.rank) + (tarotRanks.has(card.rank) ? ' ' : '') + cardPositions.get(card.position);
-			return $(`<img style="max-width: 100%; height: auto; ${style}" src="./images/TNM_tarot/${img}.webp"> title="${title}"`);
+			return $(`<img style="max-width: 100%; height: auto; ${style}" src="./images/TNM_tarot/${img}.webp" title="${title}">`);
 		} else {
 			return $('<img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.webp">');
 		}
