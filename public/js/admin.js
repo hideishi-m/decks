@@ -25,12 +25,12 @@ $(document).ready(async function () {
 		const data = await ajax('./token', {
 			method: 'POST',
 			headers: {
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
 			},
 			cache: 'no-cache',
 			body: JSON.stringify({
 				gid: `${gid}`,
-				pid: `${pid}`
+				pid: `${pid}`,
 			})
 		});
 		console.log(`{"gid":"${gid}","pid":"${pid}"}`);
@@ -45,15 +45,15 @@ $(document).ready(async function () {
 			updateStatus(JSON.stringify(data, null, 2));
 			$('#game').append($('<div />', {
 				class: 'col-3',
-				['data-gid']: data.gid
+				['data-gid']: data.gid,
 			}).append($('<a />', {
 				href: './play.html',
 				target: '_blank',
-				rel: 'noopener noreferrer'
+				rel: 'noopener noreferrer',
 			}).text(data.gid)));
 			$('#game').append($('<div />', {
 				class: 'col-9',
-				['data-gid']: data.gid
+				['data-gid']: data.gid,
 			}).text(data.players));
 			appendOption('#deleteGameSelect', data.gid, data.gid);
 		} catch (error) {
@@ -80,8 +80,8 @@ $(document).ready(async function () {
 				cache: 'no-cache',
 				body: JSON.stringify({
 					players: params.players,
-					tarots: params.tarots
-				})
+					tarots: params.tarots,
+				}),
 			});
 			updateStatus(JSON.stringify(data, null, 2));
 			await appendGame(data.gid);
@@ -104,12 +104,12 @@ $(document).ready(async function () {
     async function deleteGame() {
 		try {
 			const params = parseDataValue({
-				gid: '#deleteGameSelect'
+				gid: '#deleteGameSelect',
 			});
 			token = await getToken(params.gid);
 			const data = await ajax('./games/' + params.gid, {
 				method: 'DELETE',
-				headers: { 'Authorization': `Bearer ${token}` }
+				headers: { 'Authorization': `Bearer ${token}` },
 			} );
 			updateStatus(JSON.stringify(data, null, 2));
 			$(`#game div[data-gid='${data.gid}']`).each(function () {

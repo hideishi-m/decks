@@ -39,6 +39,6 @@ const tarots = {
 	'-2':  ['テツジン',     '24'],
 	'-9':  ['ハンドラー',   '25'],
 	'-12': ['クロガネ',     '26'],
-	'-17': ['エトランゼ',   '27']
+	'-17': ['エトランゼ',   '27'],
 };
 export const tarotRanks = new Attributes(Object.entries(tarots), ['', '99']);

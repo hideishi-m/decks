@@ -32,7 +32,7 @@ export function appendLog(data) {
 
 export function appendOption(selector, id, text) {
 	$(selector).append($('<option />', {
-		value: id
+		value: id,
 	}).text(text));
 }
 

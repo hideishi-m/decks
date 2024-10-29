@@ -95,7 +95,7 @@ export function createServer(emitter, options) {
 
 	wsServer.on('connection', (ws, req) => {
 		const ip = proxyaddr(req, ['loopback', 'uniquelocal']);
-		logger.log(`connected from ${ip}`);
+		logger('ws', `connected from ${ip}`);
 
 		ws.on('message', (data) => {
 			if (Buffer.from(ping).equals(data)) {
@@ -117,12 +117,16 @@ export function createServer(emitter, options) {
 		});
 
 		ws.on('close', () => {
-			logger.log(`closed from ${ip}`);
+			logger('ws', `closed from ${ip}`);
 		});
 
 		ws.on('error', (err) => {
-			logger.error(err);
+			logger('ws:error', '%O', err);
 		});
+	});
+
+	wsServer.on('error', (err) => {
+		logger.error(err);
 	});
 
 	emitter.on('close', () => {

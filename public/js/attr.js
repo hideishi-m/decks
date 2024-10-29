@@ -53,7 +53,7 @@ const suits = {
 	'D': ['ダイヤ',     'diamond'],
 	'H': ['ハート',     'heart'],
 	'S': ['スペード',   'spade'],
-	'X': ['ジョーカー', 'joker']
+	'X': ['ジョーカー', 'joker'],
 };
 export const jokerSuit = 'X';
 export const cardSuits = new Attributes(Object.entries(suits));
@@ -72,12 +72,12 @@ const ranks = {
 	'J': ['ジャック',   'jack'],
 	'Q': ['クイーン',   'queen'],
 	'K': ['キング',     'king'],
-	'X': ['ジョーカー', 'black']
+	'X': ['ジョーカー', 'black'],
 };
 export const cardRanks = new Attributes(Object.entries(ranks), ['', 'back']);
 export const defaultPosition = 'U';
 const positions = {
 	'U': ['正位置', ''],
-	'R': ['逆位置', 'transform: rotate(180deg);']
+	'R': ['逆位置', 'transform: rotate(180deg);'],
 };
 export const cardPositions = new PositionAttributes(Object.entries(positions));
