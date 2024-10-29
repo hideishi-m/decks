@@ -15,15 +15,20 @@ import https from 'node:https';
 import proxyaddr from 'proxy-addr';
 import { WebSocketServer } from 'ws';
 
+import { createApp } from './app.mjs';
 import { getLogger } from './logger.mjs';
 import { name } from './pkgjson.mjs';
 import { ping } from './public/js/common.js';
 
 export function createServer(emitter, options) {
 	const logger = getLogger(`${name}:server`);
-	const wsMap = new Map();
-	const server = (options.key && options.cert) ? https.createServer(options) : http.createServer(options);
+	const app = createApp(emitter, options);
+	const server = (options.key && options.cert) ? https.createServer({
+		key: options.key,
+		cert: options.cert,
+	}, app) : http.createServer(app);
 	const wsServer = new WebSocketServer({ server: server });
+	const wsMap = new Map();
 
 	emitter.on('deck', (data) => {
 		logger('emitter', { deck: data });
@@ -104,15 +109,14 @@ export function createServer(emitter, options) {
 			try {
 				data = JSON.parse(data) ?? {};
 				logger('ws', { message: data });
-				const gid = /^\d+$/.test(data.gid) ? data.gid : undefined;
-				const pid = /^\d+$/.test(data.pid) ? data.pid : undefined;
-				if (undefined !== gid && undefined !== pid) {
-					wsMap.set(`${gid}:${pid}`, ws);
-					logger.log(`welcome player ${pid} for game ${gid}`);
+				emitter.emit('token', data, () => {
+					wsMap.set(`${data.gid}:${data.pid}`, ws);
+					logger.log(`welcome player ${data.pid} for game ${data.gid}`);
 					logger('ws', [ ...wsMap.keys() ]);
-				}
+				});
 			} catch (error) {
 				logger.error(error);
+				ws.terminate();
 			}
 		});
 

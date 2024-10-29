@@ -16,7 +16,6 @@ import process from 'node:process';
 import 'dotenv/config';
 
 import { parseArgs } from './args.mjs';
-import { createApp } from './app.mjs';
 import { getLogger } from './logger.mjs';
 import { name } from './pkgjson.mjs';
 import { createServer } from './server.mjs';
@@ -25,21 +24,15 @@ const logger = getLogger(name);
 const options = await parseArgs();
 
 logger('options', options);
+if (options.key && options.cert) {
+	logger.log(`Using key ${options.key}`);
+	options.key = await readFile(options.key);
+	logger.log(`Using cert ${options.cert}`);
+	options.cert = await readFile(options.cert);
+}
 
 const emitter = new EventEmitter();
-const app = createApp(emitter, options);
-const server = createServer(emitter, await createServerOpts(options));
-
-async function createServerOpts(options) {
-	const serverOpts = {};
-	if (options.key && options.cert) {
-		logger.log(`Using key ${options.key}`);
-		serverOpts.key = await readFile(options.key);
-		logger.log(`Using cert ${options.cert}`);
-		serverOpts.cert = await readFile(options.cert);
-	}
-	return serverOpts;
-}
+const server = createServer(emitter, options);
 
 function shutdown() {
 	emitter.emit('close');
@@ -61,8 +54,6 @@ process.on('SIGTERM', () => {
 	logger.log('SIGTERM received');
 	shutdown();
 });
-
-server.on('request', app);
 
 server.listen(options.port, options.ip, () => {
 	logger.log(`Listening on ${options.ip}:${options.port}`);
