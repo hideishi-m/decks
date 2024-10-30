@@ -36,6 +36,7 @@ export function createServer(emitter, options) {
 			}
 		});
 	}
+
 	const logger = getLogger(`${name}:server`);
 	const app = createApp(emitter, options);
 	const server = (options.key && options.cert) ? https.createServer({

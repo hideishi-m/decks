@@ -14,7 +14,6 @@ import debug from 'debug';
 debug.colors = debug.colors.filter((c) => 1 !== c);  // reserve RED for error.
 
 export function getLogger(name) {
-	const loggers = new Map();
 
 	function createLogger(level) {
 		const namespace = level ? `${name}:${level}` : name;
@@ -38,6 +37,8 @@ export function getLogger(name) {
 		}
 		createLogger(level)(...args);
 	}
+
+	const loggers = new Map();
 
 	getLogger.log = function (...args) {
 		createLogger()(...args);

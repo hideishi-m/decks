@@ -20,6 +20,18 @@ import { getLogger } from './logger.mjs';
 import { name } from './pkgjson.mjs';
 import { createServer } from './server.mjs';
 
+function shutdown() {
+	emitter.emit('close');
+	setTimeout(() => {
+		logger.log(`Timeout exceeded for ${options.timeout} ms, shutdown`);
+		process.exit(1);
+	}, options.timeout);
+	server.on('close', () => {
+		logger.log('Shutdown');
+		process.exit(0);
+	});
+}
+
 const logger = getLogger(name);
 const options = await parseArgs();
 
@@ -33,18 +45,6 @@ if (options.key && options.cert) {
 
 const emitter = new EventEmitter();
 const server = createServer(emitter, options);
-
-function shutdown() {
-	emitter.emit('close');
-	setTimeout(() => {
-		logger.log(`Timeout exceeded for ${options.timeout} ms, shutdown`);
-		process.exit(1);
-	}, options.timeout);
-	server.on('close', () => {
-		logger.log('Shutdown');
-		process.exit(0);
-	});
-}
 
 process.on('SIGINT', () => {
 	logger.log('SIGINT received');
