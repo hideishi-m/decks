@@ -32,51 +32,6 @@ class AppError extends Error {
 
 
 export function createApp(emitter, options) {
-	const logger = getLogger(`${name}:app`);
-	const games = [];
-	const app = express();
-
-	const secret = options.secret ?? randomBytes(64).toString('hex');
-	logger(`secret "${secret}"`);
-
-	const stream = createWriteStream(fileURLToPath(new URL(`./logs/access.log-${getDateString()}`, import.meta.url)), { flags: 'a' });
-	stream.on('error', (err) => {
-		logger.error(err);
-	});
-
-	emitter.on('token', (data, next) => {
-		try {
-			const req = {
-				params: {
-					gid: data.gid,
-					pid: data.pid,
-				},
-				token() { return data.token; },
-			};
-			const res = {
-				set() {},
-			};
-			recurse([
-				partialReqKey(validateId, ['params', 'gid']),
-				partialReqKey(validateGame, ['params', 'gid']),
-				partialReqKey(validateId, ['params', 'pid']),
-				partialReqKey(validatePlayer, ['params', 'pid']),
-				verifyToken,
-			])(req, res, next);
-		} catch (error) {
-			if (error instanceof AppError) {
-				next( { error: {
-					message: error.message,
-					cause: error.cause,
-				} });
-			} else {
-				logger.error(error);
-				next( { error: {
-					message: `${error.name}: ${error.message}`,
-				} });
-			}
-		}
-	});
 
 	function validateId(req, res, next, value, key) {
 		if (false === /^\d+$/.test(value)) {
@@ -181,6 +136,53 @@ export function createApp(emitter, options) {
 		// sv-SV is in YYYY-MM-DD format.
 		return new Date().toLocaleDateString('sv-SV').replaceAll('-', '');
 	}
+
+	const logger = getLogger(`${name}:app`);
+	const games = [];
+	const app = express();
+	const secret = options.secret ?? randomBytes(64).toString('hex');
+
+	logger(`secret "${secret}"`);
+
+	const stream = createWriteStream(fileURLToPath(new URL(`./logs/access.log-${getDateString()}`, import.meta.url)), { flags: 'a' });
+
+	stream.on('error', (err) => {
+		logger.error(err);
+	});
+
+	emitter.on('token', (data, next) => {
+		try {
+			const req = {
+				params: {
+					gid: data.gid,
+					pid: data.pid,
+				},
+				token() { return data.token; },
+			};
+			const res = {
+				set() {},
+			};
+			recurse([
+				partialReqKey(validateId, ['params', 'gid']),
+				partialReqKey(validateGame, ['params', 'gid']),
+				partialReqKey(validateId, ['params', 'pid']),
+				partialReqKey(validatePlayer, ['params', 'pid']),
+				verifyToken,
+			])(req, res, next);
+		} catch (error) {
+			if (error instanceof AppError) {
+				next( { error: {
+					message: error.message,
+					cause: error.cause,
+				} });
+			} else {
+				logger.error(error);
+				next( { error: {
+					message: `${error.name}: ${error.message}`,
+				} });
+			}
+		}
+	});
 
 	app.request.token = function () {
 		const authorization = this.get('authorization');

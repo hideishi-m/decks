@@ -13,11 +13,13 @@ import process from 'node:process';
 
 import { config } from './pkgjson.mjs';
 
-function usage(message) {
-	if (message) {
-		console.error(message);
-	}
-	console.error(`usage: ${process.argv[1]}
+export function parseArgs() {
+
+	function usage(message) {
+		if (message) {
+			console.error(message);
+		}
+		console.error(`usage: ${process.argv[1]}
     [--ip IP]               Listen at IP address (default: '127.0.0.1')
     [--port PORT]           Listen at PORT (default: 8080)
     [--timeout TIMEOUT]     Set timeout in ms (default: 3000)
@@ -25,26 +27,26 @@ function usage(message) {
     [--cert SSL_CERT]       Use SSL_CERT for ssl certificate
     [--secret SECRET]       Set SECRET for JWT secret
 `);
-	process.exit(1);
-}
-
-function defaults() {
-	const options = {};
-	['ip', 'port', 'timeout', 'key', 'cert', 'secret'].forEach((key) => {
-		if (undefined !== config[key]) {
-			options[key] = config[key];
-		}
-	});
-	if (undefined === options['secret']
-		&& undefined !== process.env['SECRET']) {
-		options['secret'] = process.env['SECRET'];
+		process.exit(1);
 	}
-	return options;
-}
 
-export function parseArgs() {
+	function defaults() {
+		const options = {};
+		['ip', 'port', 'timeout', 'key', 'cert', 'secret'].forEach((key) => {
+			if (undefined !== config[key]) {
+				options[key] = config[key];
+			}
+		});
+		if (undefined === options['secret']
+			&& undefined !== process.env['SECRET']) {
+			options['secret'] = process.env['SECRET'];
+		}
+		return options;
+	}
+
 	const options = defaults();
 	const args = process.argv.slice(2);
+
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
 		let m;
@@ -66,5 +68,6 @@ export function parseArgs() {
 			usage(`Unknown option: ${arg}`);
 		}
 	}
+
 	return options;
 }
