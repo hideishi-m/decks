@@ -9,7 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ping, timeout, ajax, updateStatus, appendLog, appendOption, updateOptions, removeOption, parseDataValue } from './common.js';
+import { ping, timeout, retryWait, ajax, updateStatus, appendLog, appendOption, updateOptions, removeOption, parseDataValue } from './common.js';
 import { cardSuits, cardRanks, cardPositions } from './attr.js';
 import { tarotRanks } from './TNM_tarot.js';
 
@@ -50,6 +50,7 @@ $(document).ready(async function () {
 	function createSocket() {
 		const socket = new WebSocket(`${document.location.protocol.replace('http', 'ws')}//${document.location.host}${document.location.pathname.replace(/\/[^/]+$/, '')}`);
 		socket.addEventListener('message', onMessage);
+		socket.addEventListener('open', onOpen);
 		socket.addEventListener('close', onClose);
 		return socket;
 	}
@@ -61,10 +62,21 @@ $(document).ready(async function () {
 		setTimeout(keepAlive, timeout);
 	}
 
-	async function onClose(event) {
+	function onOpen(event) {
+		socket.send(JSON.stringify({
+			gid: gid,
+			pid: pid,
+			token: token,
+		}));
+	}
+
+	function onClose(event) {
 		socket.removeEventListener('message', onMessage);
+		socket.removeEventListener('open', onOpen);
 		socket.removeEventListener('close', onClose);
-		socket = createSocket();
+		setTimeout(() => {
+			socket = createSocket();
+		}, retryWait);
 	}
 
 	async function onMessage(event) {
@@ -205,11 +217,8 @@ $(document).ready(async function () {
 			await updateTarotPile();
 			await updateTarotHand();
 
-			socket.send(JSON.stringify({
-				gid: gid,
-				pid: pid,
-				token: token,
-			}));
+			socket = createSocket();
+			keepAlive();
 		} catch (error) {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
@@ -541,9 +550,6 @@ $(document).ready(async function () {
 			updateStatus(`${error.name}: ${error.message}`);
 		}
 	}
-
-	socket = createSocket();
-	keepAlive();
 
 	// ready
 	try {

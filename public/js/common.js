@@ -10,8 +10,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 export const ping = '';
-
 export const timeout = 10000;
+export const retryWait = 5000;
 
 export async function ajax(url, args) {
 	const response = await fetch(url, args);

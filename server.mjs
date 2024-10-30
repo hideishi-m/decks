@@ -33,15 +33,14 @@ export function createServer(emitter, options) {
 	emitter.on('deck', (data) => {
 		logger('emitter', { deck: data });
 		const gid = data.gid;
-		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
-			if (re.test(key)) {
+			if (undefined !== gid && key?.gid === gid) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ deck: data }));
-					logger.log(`DECK to ${key}`);
+					logger.log(`DECK to ${key.gid}:${key.pid}`);
 				} else {
 					wsMap.delete(key);
-					logger.log(`delete ${key}`);
+					logger.log(`delete ${key.gid}:${key.pid}`);
 				}
 			}
 		});
@@ -50,15 +49,14 @@ export function createServer(emitter, options) {
 	emitter.on('pile', (data) => {
 		logger('emitter', { pile: data });
 		const gid = data.gid;
-		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
-			if (re.test(key)) {
+			if (undefined !== gid && key?.gid === gid) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ pile: data }));
-					logger.log(`PILE to ${key}`);
+					logger.log(`PILE to ${key.gid}:${key.pid}`);
 				} else {
 					wsMap.delete(key);
-					logger.log(`delete ${key}`);
+					logger.log(`delete ${key.gid}:${key.pid}`);
 				}
 			}
 		});
@@ -67,15 +65,14 @@ export function createServer(emitter, options) {
 	emitter.on('hand', (data) => {
 		logger('emitter', { hand: data });
 		const gid = data.gid;
-		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
-			if (re.test(key)) {
+			if (undefined !== gid && key?.gid === gid) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ hand: data }));
-					logger.log(`HAND to ${key}`);
+					logger.log(`HAND to ${key.gid}:${key.pid}`);
 				} else {
 					wsMap.delete(key);
-					logger.log(`delete ${key}`);
+					logger.log(`delete ${key.gid}:${key.pid}`);
 				}
 			}
 		});
@@ -84,15 +81,14 @@ export function createServer(emitter, options) {
 	emitter.on('tarot', (data) => {
 		logger('emitter', { tarot: data });
 		const gid = data.gid;
-		const re = new RegExp(`^${gid}:\\d+$`);
 		wsMap.forEach((value, key) => {
-			if (re.test(key)) {
+			if (undefined !== gid && key?.gid === gid) {
 				if (wsServer.clients.has(value)) {
 					value.send(JSON.stringify({ tarot: data }));
-					logger.log(`TAROT to ${key}`);
+					logger.log(`TAROT to ${key.gid}:${key.pid}`);
 				} else {
 					wsMap.delete(key);
-					logger.log(`delete ${key}`);
+					logger.log(`delete ${key.gid}:${key.pid}`);
 				}
 			}
 		});
@@ -106,22 +102,39 @@ export function createServer(emitter, options) {
 			if (Buffer.from(ping).equals(data)) {
 				return ws.send(ping);
 			}
-			try {
-				data = JSON.parse(data) ?? {};
-				logger('ws', { message: data });
-				emitter.emit('token', data, () => {
-					wsMap.set(`${data.gid}:${data.pid}`, ws);
-					logger.log(`welcome player ${data.pid} for game ${data.gid}`);
-					logger('ws', [ ...wsMap.keys() ]);
-				});
-			} catch (error) {
-				logger.error(error);
-				ws.terminate();
-			}
+			data = JSON.parse(data) ?? {};
+			logger('ws', { message: data });
+			const gid = data.gid;
+			const pid = data.gid;
+			const token = data.token;
+			emitter.emit('token', {
+				gid: gid,
+				pid: pid,
+				token: token,
+			}, (err) => {
+				if (err) {
+					logger('ws', err);
+					return ws.terminate();
+				}
+				wsMap.set({
+					gid: gid,
+					pid: pid,
+					ip: ip,
+				}, ws);
+				logger.log(`welcome player ${pid} for game ${gid} from ${ip}`);
+				logger.log([ ...wsMap.keys() ]);
+			});
 		});
 
 		ws.on('close', () => {
 			logger('ws', `closed from ${ip}`);
+			wsMap.forEach((value, key, map) => {
+				if (ws === value) {
+					map.delete(key);
+					logger.log(`delete ${key.gid}:${key.pid}`);
+				}
+			});
+			logger.log([ ...wsMap.keys() ]);
 		});
 
 		ws.on('error', (err) => {

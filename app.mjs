@@ -45,20 +45,37 @@ export function createApp(emitter, options) {
 	});
 
 	emitter.on('token', (data, next) => {
-		const req = {
-			params: { gid: data.gid, pid: data.pid, },
-			token() { return data.token; },
-		};
-		const res = {
-			set() {},
-		};
-		recursive(req, res, next, [
-			partialKeys(validateId, ['params', 'gid']),
-			partialKeys(validateGame, ['params', 'gid']),
-			partialKeys(validateId, ['params', 'pid']),
-			partialKeys(validatePlayer, ['params', 'pid']),
-			verifyToken,
-		]);
+		try {
+			const req = {
+				params: {
+					gid: data.gid,
+					pid: data.pid,
+				},
+				token() { return data.token; },
+			};
+			const res = {
+				set() {},
+			};
+			recurse([
+				partialReqKey(validateId, ['params', 'gid']),
+				partialReqKey(validateGame, ['params', 'gid']),
+				partialReqKey(validateId, ['params', 'pid']),
+				partialReqKey(validatePlayer, ['params', 'pid']),
+				verifyToken,
+			])(req, res, next);
+		} catch (error) {
+			if (error instanceof AppError) {
+				next( { error: {
+					message: error.message,
+					cause: error.cause,
+				} });
+			} else {
+				logger.error(error);
+				next( { error: {
+					message: `${error.name}: ${error.message}`,
+				} });
+			}
+		}
 	});
 
 	function validateId(req, res, next, value, key) {
@@ -141,23 +158,23 @@ export function createApp(emitter, options) {
 		next();
 	}
 
-	function partialKeys(fn, keys) {
+	function partialReqKey(fn, keys) {
 		return (req, res, next) => {
 			const key = keys.at(-1);
 			const value = keys.reduce((acc, cur) => {
 				return acc?.[cur];
 			}, req);
 			return fn(req, res, next, value, key);
-		}
+		};
 	};
 
-	function recursive(req, res, next, fns) {
-		if (0 === fns.length) {
-			next();
-		} else {
-			const fn = fns.shift();
-			fn(req, res, () => recursive(req, res, next, fns));
-		}
+	function recurse(fns) {
+		const fn = fns.shift();
+		return (req, res, next) => {
+			return fn(req, res, 0 === fns.length ? next : () => {
+				recurse(fns)(req, res, next);
+			});
+		};
 	}
 
 	function getDateString() {
@@ -236,7 +253,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/token')
-		.post(partialKeys(validateId, ['body', 'gid']), partialKeys(validateId, ['body', 'pid']), (req, res, next) => {
+		.post(partialReqKey(validateId, ['body', 'gid']), partialReqKey(validateId, ['body', 'pid']), (req, res, next) => {
 			const token = jwt.sign({
 				gid: `${req.body.gid}`,
 				pid: `${req.body.pid}`,
@@ -260,7 +277,7 @@ export function createApp(emitter, options) {
 				games: gids,
 			});
 		})
-		.post(partialKeys(validateArray, ['body', 'players']), partialKeys(validateArray, ['body', 'tarots']), (req, res, next) => {
+		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateArray, ['body', 'tarots']), (req, res, next) => {
 			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
 			res.statusJson(200, {
