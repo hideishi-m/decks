@@ -9,29 +9,12 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ping, timeout, retryWait, ajax, updateStatus, appendLog, appendOption, updateOptions, removeOption, parseDataValue } from './common.js';
+import { ping, timeout, retryWait, ajax, getToken, updateStatus, appendLog, appendOption, updateOptions, removeOption, parseDataValue } from './common.js';
 import { cardSuits, cardRanks, cardPositions } from './attr.js';
 import { tarotRanks } from './TNM_tarot.js';
 
 $(document).ready(async function () {
 	let gid, pid, socket, token;
-
-	async function getToken(gid, pid) {
-		const data = await ajax('./token', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			cache: 'no-cache',
-			body: JSON.stringify({
-				gid: `${gid}`,
-				pid: `${pid}`,
-			}),
-		});
-		console.log(`{"gid":"${gid}","pid":"${pid}"}`);
-		updateStatus(JSON.stringify(data, null, 2));
-		return data.token;
-	}
 
 	const gameModal = new bootstrap.Modal(document.getElementById('gameModal'), {
 		backdrop: 'static',

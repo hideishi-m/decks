@@ -21,6 +21,23 @@ export async function ajax(url, args) {
 	return await response.json();
 }
 
+export async function getToken(gid, pid) {
+	const data = await ajax('./token', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		cache: 'no-cache',
+		body: JSON.stringify({
+			gid: `${gid}`,
+			pid: `${pid}`,
+		}),
+	});
+	console.log(`{"gid":"${gid}","pid":"${pid}"}`);
+	updateStatus(JSON.stringify(data, null, 2));
+	return data.token;
+}
+
 export function updateStatus(text) {
 	$('#status').empty().append($('<pre />').text(text));
 }
