@@ -21,6 +21,21 @@ import { name } from './pkgjson.mjs';
 import { ping } from './public/js/common.js';
 
 export function createServer(emitter, options) {
+
+	function sendToWebSockets(data, type) {
+		const gid = data.gid;
+		wsMap.forEach((value, key) => {
+			if (undefined !== gid && JSON.parse(key)?.gid === gid) {
+				if (wsServer.clients.has(value)) {
+					value.send(JSON.stringify({ [type]: data }));
+					logger.log(`${type.toUpperCase()} to ${key}`);
+				} else {
+					wsMap.delete(key);
+					logger.log(`delete ${key}`);
+				}
+			}
+		});
+	}
 	const logger = getLogger(`${name}:server`);
 	const app = createApp(emitter, options);
 	const server = (options.key && options.cert) ? https.createServer({
@@ -32,66 +47,31 @@ export function createServer(emitter, options) {
 
 	emitter.on('deck', (data) => {
 		logger('emitter', { deck: data });
-		const gid = data.gid;
-		wsMap.forEach((value, key) => {
-			if (undefined !== gid && key?.gid === gid) {
-				if (wsServer.clients.has(value)) {
-					value.send(JSON.stringify({ deck: data }));
-					logger.log('DECK to', key);
-				} else {
-					wsMap.delete(key);
-					logger.log('delete', key);
-				}
-			}
-		});
+		sendToWebSockets(data, 'deck');
 	});
 
 	emitter.on('pile', (data) => {
 		logger('emitter', { pile: data });
-		const gid = data.gid;
-		wsMap.forEach((value, key) => {
-			if (undefined !== gid && key?.gid === gid) {
-				if (wsServer.clients.has(value)) {
-					value.send(JSON.stringify({ pile: data }));
-					logger.log('PILE to', key);
-				} else {
-					wsMap.delete(key);
-					logger.log('delete', key);
-				}
-			}
-		});
+		sendToWebSockets(data, 'pile');
 	});
 
 	emitter.on('hand', (data) => {
 		logger('emitter', { hand: data });
-		const gid = data.gid;
-		wsMap.forEach((value, key) => {
-			if (undefined !== gid && key?.gid === gid) {
-				if (wsServer.clients.has(value)) {
-					value.send(JSON.stringify({ hand: data }));
-					logger.log('HAND to', key);
-				} else {
-					wsMap.delete(key);
-					logger.log('delete', key);
-				}
-			}
-		});
+		sendToWebSockets(data, 'hand');
 	});
 
 	emitter.on('tarot', (data) => {
 		logger('emitter', { tarot: data });
-		const gid = data.gid;
-		wsMap.forEach((value, key) => {
-			if (undefined !== gid && key?.gid === gid) {
-				if (wsServer.clients.has(value)) {
-					value.send(JSON.stringify({ tarot: data }));
-					logger.log('TAROT to', key);
-				} else {
-					wsMap.delete(key);
-					logger.log('delete', key);
-				}
-			}
+		sendToWebSockets(data, 'tarot');
+	});
+
+	emitter.on('close', () => {
+		logger('emitter', 'close');
+		wsServer.clients.forEach((ws) => {
+			ws.terminate();
 		});
+		wsServer.close();
+		server.close();
 	});
 
 	wsServer.on('connection', (ws, req) => {
@@ -119,13 +99,13 @@ export function createServer(emitter, options) {
 				}
 
 				logger.log(`welcome player ${pid} for game ${gid} from ${ip}`);
-				const key = {
+				const key = JSON.stringify({
 					gid: gid,
 					pid: pid,
 					ip: ip,
-				};
+				});
 				wsMap.set(key, ws);
-				logger.log('set', key);
+				logger.log(`set ${key}`);
 				logger.log([ ...wsMap.keys() ]);
 			});
 		});
@@ -135,7 +115,7 @@ export function createServer(emitter, options) {
 			wsMap.forEach((value, key, map) => {
 				if (ws === value) {
 					map.delete(key);
-					logger.log('delete', key);
+					logger.log(`delete ${key}`);
 				}
 			});
 			logger.log([ ...wsMap.keys() ]);
@@ -148,15 +128,6 @@ export function createServer(emitter, options) {
 
 	wsServer.on('error', (err) => {
 		logger.error(err);
-	});
-
-	emitter.on('close', () => {
-		logger('emitter', 'close');
-		wsServer.clients.forEach((ws) => {
-			ws.terminate();
-		});
-		wsServer.close();
-		server.close();
 	});
 
 	return server;
