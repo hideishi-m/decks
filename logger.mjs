@@ -11,7 +11,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import debug from 'debug';
 
-debug.colors = debug.colors.filter((c) => 1 !== c);  // reserve RED for error.
+const red_colors = [
+	// Xterm system colors
+	1,    // Maroon (SYSTEM): #800000
+	// Xterm non-system colors
+	52,   // DarkRed:         #5f0000
+	88,   // DarkRed:         #870000
+	124,  // Red3:            #af0000
+	160,  // Red3   :         #d70000
+	196,  // Red3:            #ff0000
+];
+
+debug.colors = debug.colors.filter((c) => ! red_colors.includes(c));  // reserve RED for error.
 
 export function getLogger(name) {
 
@@ -23,7 +34,7 @@ export function getLogger(name) {
 				logger.color = 1;  // error is in RED.
 			}
 			loggers.set(namespace, logger);
-			return logger
+			return logger;
 		})();
 	}
 
@@ -49,11 +60,6 @@ export function getLogger(name) {
 		}
 		createLogger('error')(...args);
 	};
-	getLogger.enabled = function() {
-		return [ ...loggers.entries() ].map(([key, value]) => {
-			return [key, value.enabled];
-		});
-	}
 
 	return getLogger;
 }
