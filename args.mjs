@@ -22,7 +22,6 @@ export function parseArgs() {
 		console.error(`usage: ${process.argv[1]}
     [--ip IP]               Listen at IP address (default: '127.0.0.1')
     [--port PORT]           Listen at PORT (default: 8080)
-    [--timeout TIMEOUT]     Set timeout in ms (default: 3000)
     [--key SSL_KEY]         Use SSL_KEY for ssl key
     [--cert SSL_CERT]       Use SSL_CERT for ssl certificate
     [--secret SECRET]       Set SECRET for JWT secret
@@ -32,7 +31,7 @@ export function parseArgs() {
 
 	function defaults() {
 		const options = {};
-		['ip', 'port', 'timeout', 'key', 'cert', 'secret'].forEach((key) => {
+		['ip', 'port', 'key', 'cert', 'secret'].forEach((key) => {
 			if (undefined !== config[key]) {
 				options[key] = config[key];
 			}
