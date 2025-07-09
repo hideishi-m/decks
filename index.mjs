@@ -20,13 +20,6 @@ import { getLogger } from './logger.mjs';
 import { name } from './pkgjson.mjs';
 import { createServer } from './server.mjs';
 
-function shutdown() {
-	server.on('close', () => {
-		logger.log('Shutdown');
-	});
-	emitter.emit('close');
-}
-
 const logger = getLogger(name);
 const options = await parseArgs();
 
@@ -41,17 +34,21 @@ if (options.key && options.cert) {
 const emitter = new EventEmitter();
 const server = createServer(emitter, options);
 
+server.on('close', () => {
+	logger.log('Shutdown');
+});
+
 process.on('SIGHUP', () => {
 	logger.log('SIGHUP received');
-	shutdown();
+	emitter.emit('close');
 });
 process.on('SIGINT', () => {
 	logger.log('SIGINT received');
-	shutdown();
+	emitter.emit('close');
 });
 process.on('SIGTERM', () => {
 	logger.log('SIGTERM received');
-	shutdown();
+	emitter.emit('close');
 });
 
 server.listen(options.port, options.ip, () => {
