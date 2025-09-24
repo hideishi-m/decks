@@ -13,8 +13,6 @@ import { EventEmitter } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import process from 'node:process';
 
-import 'dotenv/config';
-
 import { parseArgs } from './args.mjs';
 import { getLogger } from './logger.mjs';
 import { name } from './pkgjson.mjs';

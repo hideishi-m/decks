@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "start": "node index.mjs",
+    "start": "node --env-file=.env index.mjs",
     "redocly": "node node_modules/.bin/redocly build-docs swagger.yaml -o public/spec.html"
   },
   "author": "Hidenori ISHIKAWA",
@@ -28,7 +28,6 @@
   },
   "dependencies": {
     "debug": "^4.3.3",
-    "dotenv": "^17.1.0",
     "express": "^4.17.2",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
