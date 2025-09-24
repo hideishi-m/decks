@@ -15,10 +15,11 @@ import process from 'node:process';
 
 import { parseArgs } from './args.mjs';
 import { getLogger } from './logger.mjs';
-import { name } from './pkgjson.mjs';
 import { createServer } from './server.mjs';
 
-const logger = getLogger(name);
+import pkgJson from './package.json' with { type: 'json' };
+
+const logger = getLogger(pkgJson.name);
 const options = await parseArgs();
 
 logger('options', options);

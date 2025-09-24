@@ -11,7 +11,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import process from 'node:process';
 
-import { config } from './pkgjson.mjs';
+import pkgJson from './package.json' with { type: 'json' };
 
 export function parseArgs() {
 
@@ -32,8 +32,8 @@ export function parseArgs() {
 	function defaults() {
 		const options = {};
 		['ip', 'port', 'key', 'cert', 'secret'].forEach((key) => {
-			if (undefined !== config[key]) {
-				options[key] = config[key];
+			if (undefined !== pkgJson.config[key]) {
+				options[key] = pkgJson.config[key];
 			}
 		});
 		if (undefined === options['secret']

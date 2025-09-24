@@ -17,8 +17,9 @@ import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.mjs';
 import { getLogger } from './logger.mjs';
-import { name } from './pkgjson.mjs';
 import { ping } from './public/js/common.js';
+
+import pkgJson from './package.json' with { type: 'json' };
 
 export function createServer(emitter, options) {
 
@@ -37,7 +38,7 @@ export function createServer(emitter, options) {
 		});
 	}
 
-	const logger = getLogger(`${name}:server`);
+	const logger = getLogger(`${pkgJson.name}:server`);
 	const app = createApp(emitter, options);
 	const server = (options.key && options.cert) ? https.createServer({
 		key: options.key,

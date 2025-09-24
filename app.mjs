@@ -20,8 +20,8 @@ import jwt from 'jsonwebtoken';
 
 import { createGame } from './game.mjs';
 import { getLogger } from './logger.mjs';
-import { name, version } from './pkgjson.mjs';
 
+import pkgJson from './package.json' with { type: 'json' };
 
 class AppError extends Error {
 	constructor(code = 500, message, options) {
@@ -29,7 +29,6 @@ class AppError extends Error {
 		this.code = code;
 	}
 }
-
 
 export function createApp(emitter, options) {
 
@@ -137,7 +136,7 @@ export function createApp(emitter, options) {
 		return new Date().toLocaleDateString('sv-SV').replaceAll('-', '');
 	}
 
-	const logger = getLogger(`${name}:app`);
+	const logger = getLogger(`${pkgJson.name}:app`);
 	const games = [];
 	const app = express();
 	const secret = options.secret ?? randomBytes(64).toString('hex');
@@ -250,7 +249,7 @@ export function createApp(emitter, options) {
 	app.route('/version')
 		.get((req, res, next) => {
 			res.statusJson(200, {
-				version: version,
+				version: pkgJson.version,
 			});
 		});
 
