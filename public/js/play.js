@@ -86,14 +86,15 @@ function onClose(event) {
 	}, retryWait);
 }
 
+// 場に出た札だけが名前を持つ。伏せたままなら空文字。
 function cardName(card) {
 	if (undefined === card || null === card) {
 		return '';
 	}
 	if (undefined !== card.suit) {
-		return ` - ${cardRanks.get(card.rank)} of ${cardSuits.get(card.suit)}`;
+		return `（${cardSuits.get(card.suit)}の${cardRanks.get(card.rank)}）`;
 	}
-	return ` - ${tarotRanks.get(card.rank)} ${cardPositions.get(card.position)}`;
+	return `（${tarotRanks.get(card.rank)} ${cardPositions.get(card.position)}）`;
 }
 
 // action は自己記述的なので、1 件から 1 行のログを組み立てられる。
@@ -102,29 +103,29 @@ function describeAction(action) {
 	const card = cardName(action.card);
 	switch (action.type) {
 		case 'draw':
-			return `${who} drew a card`;
+			return `${who} が山札から1枚引いた`;
 		case 'discard':
-			return `${who} discarded a card${card}`;
+			return `${who} が手札を捨て札にした${card}`;
 		case 'recycle':
-			return `${who} took a card from the pile${card}`;
+			return `${who} が捨て札を手札に戻した${card}`;
 		case 'pass':
-			return `${who} passed a card to ${action.target}`;
+			return `${who} が ${action.target} へ1枚渡した`;
 		case 'pick':
-			return `${who} picked a card from ${action.target}`;
+			return `${who} が ${action.target} から1枚引いた`;
 		case 'deck-discard':
-			return `${who} turned the deck over${card}`;
+			return `${who} が山札をめくった${card}`;
 		case 'deck-recycle':
-			return `${who} put a card back on the deck`;
+			return `${who} が捨て札を山札に戻した`;
 		case 'shuffle':
-			return `${who} shuffled the pile into the deck`;
+			return `${who} が捨て札を山札に戻して切った`;
 		case 'tarot-deck-discard':
-			return `${who} turned the tarot deck over${card}`;
+			return `${who} がタロット山札をめくった${card}`;
 		case 'tarot-discard':
-			return `${who} discarded a tarot card${card}`;
+			return `${who} が切り札を捨て札にした${card}`;
 		case 'tarot-flip':
-			return `${who} flipped the tarot pile${card}`;
+			return `${who} がタロット捨て札を反転させた${card}`;
 		default:
-			return `${who} did ${action.type}`;
+			return `${who} が ${action.type} をした`;
 	}
 }
 
@@ -155,7 +156,7 @@ async function onMessage(event) {
 
 		// 番号が飛んでいたら、間の動きは追えない。卓ごと取り直して追いつく。
 		if (undefined !== lastSeq && action.seq !== lastSeq + 1) {
-			appendLog(`missed ${action.seq - lastSeq - 1} action(s), syncing`);
+			appendLog(`${action.seq - lastSeq - 1} 件取りこぼしたので取り直す`);
 			await resync();
 			lastSeq = action.seq;
 			return;
@@ -498,7 +499,9 @@ async function selectPlayer() {
 		pid = params.pid;
 		removeOption('#passHandSelect', pid);
 		await fetchTable();
-		qs('#playerLabel').textContent = seatOf(pid)?.player ?? '';
+		const player = seatOf(pid)?.player ?? '';
+		qs('#playerLabel').textContent = player;
+		qs('#playerTag').textContent = player;
 		await updateHand();
 		await fetchTarotHand();
 

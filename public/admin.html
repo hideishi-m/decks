@@ -7,51 +7,54 @@
 
   <link rel="stylesheet" href="./css/app.css">
 
-  <title>Admin</title>
+  <title>管理</title>
 </head>
 <body>
   <div class="container">
-    <h1>Admin</h1>
+    <div class="head">
+      <h1>管理</h1>
+      <span class="sub">DECKS</span>
+    </div>
 
-    <div class="border p-2">
-      <h2>Game</h2>
+    <section class="panel">
+      <h2>卓</h2>
       <div class="row">
-        <div class="col-3">Game</div>
-        <div class="col-9">Players</div>
+        <div class="col-3">卓</div>
+        <div class="col-9">プレーヤー</div>
       </div>
       <div id="game" class="row mb-3"></div>
       <div class="row mb-3">
         <div class="col-4">
-          <button id="newGame" class="btn btn-primary" type="button">New game</button>
+          <button id="newGame" class="btn btn-primary" type="button">卓を作る</button>
         </div>
         <div class="col-8">
-          <label for="players" class="form-label">Players</label>
+          <label for="players" class="form-label">プレーヤー</label>
             <div id="players" class="input-group mb-3">
-              <input name="players[]" class="form-control" type="text" placeholder="PC" value="DEIRmen">
+              <input name="players[]" class="form-control" type="text" placeholder="名前" value="DEIRmen">
               <select name="tarots[]" class="form-select">
-                <option selected>Select tarot</option>
+                <option selected>タロットを選ぶ</option>
               </select>
 			  <button class="btn btn-success add" type="button" aria-label="add"><svg class="bi" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5a.5.5 0 0 1 .5.5v3.5H12a.5.5 0 0 1 0 1H8.5V12a.5.5 0 0 1-1 0V8.5H4a.5.5 0 0 1 0-1h3.5V4a.5.5 0 0 1 .5-.5z"/></svg></button>
             </div>
             <div class="input-group mb-3">
-              <input name="players[]" class="form-control" placeholder="PC" value="Litzia">
+              <input name="players[]" class="form-control" placeholder="名前" value="Litzia">
               <select name="tarots[]" class="form-select">
-                <option selected>Select tarot</option>
+                <option selected>タロットを選ぶ</option>
               </select>
 			  <button class="btn btn-danger remove" type="button" aria-label="remove"><svg class="bi" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 7.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5z"/></svg></button>
             </div>
             <div class="input-group mb-3">
-              <input name="players[]" class="form-control" placeholder="PC" value="yuzuki">
+              <input name="players[]" class="form-control" placeholder="名前" value="yuzuki">
               <select name="tarots[]" class="form-select">
-                <option selected>Select tarot</option>
+                <option selected>タロットを選ぶ</option>
               </select>
 			  <button class="btn btn-danger remove" type="button" aria-label="remove"><svg class="bi" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 7.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5z"/></svg></button>
             </div>
           <div class="copy d-none">
             <div class="input-group mb-3">
-              <input name="players[]" class="form-control" placeholder="PC">
+              <input name="players[]" class="form-control" placeholder="名前">
               <select name="tarots[]" class="form-select">
-                <option selected>Select tarot</option>
+                <option selected>タロットを選ぶ</option>
               </select>
 			  <button class="btn btn-danger remove" type="button" aria-label="remove"><svg class="bi" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 7.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5z"/></svg></button>
             </div>
@@ -61,22 +64,22 @@
       <div class="row mb-3">
         <div class="col">
           <div class="input-group">
-            <button id="deleteGame" class="btn btn-primary" type="button">Delete game</button>
+            <button id="deleteGame" class="btn btn-primary" type="button">卓を消す</button>
             <select id="deleteGameSelect" class="form-select">
-              <option selected>Select game</option>
+              <option selected>卓を選ぶ</option>
             </select>
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="border p-2">
-      <h2>Status</h2>
-      <details class="mb-3">
-        <summary class="btn btn-primary">collapse</summary>
-        <div id="status"></div>
+    <section class="panel">
+      <h2>状態</h2>
+      <details>
+        <summary class="btn btn-secondary">表示</summary>
+        <div id="status" class="status"></div>
       </details>
-    </div>
+    </section>
 
   </div>
 

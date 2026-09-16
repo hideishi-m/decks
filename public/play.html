@@ -8,80 +8,84 @@
   <link rel="stylesheet" href="./css/app.css">
   <link rel="stylesheet" href="./css/table.css">
 
-  <title>Play</title>
+  <title>卓</title>
 </head>
 <body>
   <div class="container">
-    <div class="board-head">
-      <h1>Play</h1>
-      <span class="game-label">Game <span id="gameLabel"></span></span>
+    <div class="head">
+      <h1>卓</h1>
+      <span class="sub">GAME <span id="gameLabel"></span></span>
+      <span class="tag" id="playerTag"></span>
     </div>
 
-    <div id="felt" class="felt">
-      <div id="opponents" class="opponents"></div>
+    <div class="board">
+      <div class="board-main">
+        <div id="felt" class="felt">
+          <div id="opponents" class="opponents"></div>
 
-      <div class="center">
-        <div class="cluster">
-          <div class="slot">
-            <span class="slot-label">山札</span>
-            <div id="deck" class="slot-card"></div>
-            <span id="deckLabel" class="slot-count"></span>
+          <div class="center">
+            <div class="cluster">
+              <div class="slot">
+                <span class="slot-label">山札</span>
+                <div id="deck" class="slot-card"></div>
+                <span id="deckLabel" class="slot-count"></span>
+              </div>
+              <div class="slot">
+                <span class="slot-label">捨て札</span>
+                <div id="pile" class="slot-card"></div>
+                <span id="pileLabel" class="slot-count"></span>
+              </div>
+            </div>
+            <div class="cluster">
+              <div class="slot">
+                <span class="slot-label">タロット山札</span>
+                <div id="tarotDeck" class="slot-card"></div>
+                <span id="tarotDeckLabel" class="slot-count"></span>
+              </div>
+              <div class="slot">
+                <span class="slot-label">タロット捨て札</span>
+                <div id="tarotPile" class="slot-card"></div>
+                <span id="tarotPileLabel" class="slot-count"></span>
+              </div>
+            </div>
           </div>
-          <div class="slot">
-            <span class="slot-label">捨て札</span>
-            <div id="pile" class="slot-card"></div>
-            <span id="pileLabel" class="slot-count"></span>
+
+          <div id="myseat" class="seat seat-me">
+            <div class="seat-name">
+              <span class="seat-role">YOU</span>
+              <span id="playerLabel"></span>
+              <span id="handLabel" class="seat-count"></span>
+            </div>
+            <div class="hand-row">
+              <div id="hand" class="fan"></div>
+              <div class="tarot-slot">
+                <span class="slot-label">切り札</span>
+                <div id="tarotHand"></div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="cluster">
-          <div class="slot">
-            <span class="slot-label">タロット山札</span>
-            <div id="tarotDeck" class="slot-card"></div>
-            <span id="tarotDeckLabel" class="slot-count"></span>
-          </div>
-          <div class="slot">
-            <span class="slot-label">タロット捨て札</span>
-            <div id="tarotPile" class="slot-card"></div>
-            <span id="tarotPileLabel" class="slot-count"></span>
-          </div>
-        </div>
+
+        <p class="hint-line">カードをクリックすると操作を選べる</p>
+
       </div>
 
-      <div id="myseat" class="seat seat-me">
-        <div class="seat-name">
-          <span class="seat-role">YOU</span>
-          <span id="playerLabel"></span>
-          <span id="handLabel" class="seat-count"></span>
-        </div>
-        <div class="hand-row">
-          <div id="hand" class="fan"></div>
-          <div class="tarot-slot">
-            <span class="slot-label">切り札</span>
-            <div id="tarotHand"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <p class="hint-line">カードをクリックすると操作を選べる</p>
-
-    <div class="border p-2">
-      <h2>Log</h2>
-      <div class="row mb-3">
-        <div class="col">
-          <div class="overflow-scroll" style="max-height: 100px">
+      <aside class="rail">
+        <section class="panel">
+          <h2>場の動き</h2>
+          <div class="log">
             <pre id="log"></pre>
           </div>
-        </div>
-      </div>
-    </div>
+        </section>
 
-    <div class="border p-2">
-      <h2>Status</h2>
-      <details class="mb-3">
-        <summary class="btn btn-primary">collapse</summary>
-        <div id="status"></div>
-      </details>
+        <section class="panel">
+          <h2>状態</h2>
+          <details>
+            <summary class="btn btn-secondary">表示</summary>
+            <div id="status" class="status"></div>
+          </details>
+        </section>
+      </aside>
     </div>
 
   </div>
@@ -89,16 +93,16 @@
   <!-- Modal: game -->
   <dialog id="gameModal">
     <div class="modal-header">
-      <h5>Select game to join</h5>
+      <h5>参加する卓を選ぶ</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
         <div class="row">
           <div class="col">
             <div class="input-group">
-              <button id="selectGame" class="btn btn-primary" type="button">Select game</button>
+              <button id="selectGame" class="btn btn-primary" type="button">この卓に入る</button>
               <select id="selectGameSelect" class="form-select">
-                <option selected>Select game</option>
+                <option selected>卓を選ぶ</option>
               </select>
             </div>
           </div>
@@ -110,16 +114,16 @@
   <!-- Modal: player -->
   <dialog id="playerModal">
     <div class="modal-header">
-      <h5>Select player to join</h5>
+      <h5>席を選ぶ</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
         <div class="row">
           <div class="col">
             <div class="input-group">
-              <button id="selectPlayer" class="btn btn-primary" type="button">Select player</button>
+              <button id="selectPlayer" class="btn btn-primary" type="button">この席に座る</button>
               <select id="selectPlayerSelect" class="form-select">
-                <option selected>Select player</option>
+                <option selected>席を選ぶ</option>
               </select>
             </div>
           </div>
@@ -131,7 +135,7 @@
   <!-- Modal: hand -->
   <dialog id="handModal">
     <div class="modal-header">
-      <h5>Hand</h5>
+      <h5>手札</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
@@ -140,22 +144,22 @@
           <div class="col">
             <div class="row mb-3">
               <div class="col">
-                <button id="discardHand" type="button" class="btn btn-primary">Discard</button>
+                <button id="discardHand" type="button" class="btn btn-primary btn-block">捨て札にする</button>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
                 <div class="input-group">
-                  <button id="passHand" type="button" class="btn btn-primary">Pass to</button>
+                  <button id="passHand" type="button" class="btn btn-primary">渡す</button>
                   <select id="passHandSelect" class="form-select">
-                    <option selected>Select player</option>
+                    <option selected>席を選ぶ</option>
                   </select>
                 </div>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button type="button" class="btn btn-secondary">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-block">やめる</button>
               </div>
             </div>
           </div>
@@ -167,7 +171,7 @@
   <!-- Modal: seat -->
   <dialog id="seatModal">
     <div class="modal-header">
-      <h5 id="seatModalName">Player</h5>
+      <h5 id="seatModalName">席</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
@@ -176,7 +180,7 @@
           <div class="col">
             <div class="row mb-3">
               <div class="col">
-                <button id="pick" type="button" class="btn btn-primary">Pick a card</button>
+                <button id="pick" type="button" class="btn btn-primary btn-block">1枚引く</button>
               </div>
             </div>
             <div class="row mb-3">
@@ -186,7 +190,7 @@
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button type="button" class="btn btn-secondary">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-block">やめる</button>
               </div>
             </div>
           </div>
@@ -198,7 +202,7 @@
   <!-- Modal: deck -->
   <dialog id="deckModal">
     <div class="modal-header">
-      <h5>Deck</h5>
+      <h5>山札</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
@@ -207,17 +211,17 @@
           <div class="col">
             <div class="row mb-3">
               <div class="col">
-                <button id="drawDeck" type="button" class="btn btn-primary">Draw</button>
+                <button id="drawDeck" type="button" class="btn btn-primary btn-block">引く</button>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button id="discardDeck" type="button" class="btn btn-primary">Discard</button>
+                <button id="discardDeck" type="button" class="btn btn-primary btn-block">めくって捨て札へ</button>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button type="button" class="btn btn-secondary">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-block">やめる</button>
               </div>
             </div>
           </div>
@@ -229,7 +233,7 @@
   <!-- Modal: pile -->
   <dialog id="pileModal">
     <div class="modal-header">
-      <h5>Pile</h5>
+      <h5>捨て札</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
@@ -238,22 +242,22 @@
           <div class="col">
             <div class="row mb-3">
               <div class="col">
-                <button id="recycleHand" type="button" class="btn btn-primary">Recycle to hand</button>
+                <button id="recycleHand" type="button" class="btn btn-primary btn-block">手札に戻す</button>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button id="recycleDeck" type="button" class="btn btn-primary">Recycle to deck</button>
+                <button id="recycleDeck" type="button" class="btn btn-primary btn-block">山札に戻す</button>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button id="shufflePile" type="button" class="btn btn-primary">Shuffle to deck</button>
+                <button id="shufflePile" type="button" class="btn btn-primary btn-block">山札に戻して切る</button>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button type="button" class="btn btn-secondary">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-block">やめる</button>
               </div>
             </div>
           </div>
@@ -265,7 +269,7 @@
   <!-- Modal: tarotDeck -->
   <dialog id="tarotDeckModal">
     <div class="modal-header">
-      <h5>TarotDeck</h5>
+      <h5>タロット山札</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
@@ -274,7 +278,7 @@
           <div class="col">
             <div class="row mb-3">
               <div class="col">
-                <button id="discardTarotDeck" type="button" class="btn btn-primary">Discard</button>
+                <button id="discardTarotDeck" type="button" class="btn btn-primary btn-block">めくって捨て札へ</button>
               </div>
             </div>
             <div class="row mb-3">
@@ -284,7 +288,7 @@
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button type="button" class="btn btn-secondary">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-block">やめる</button>
               </div>
             </div>
           </div>
@@ -296,7 +300,7 @@
   <!-- Modal: tarotHand -->
   <dialog id="tarotHandModal">
     <div class="modal-header">
-      <h5>TarotHand</h5>
+      <h5>切り札</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
@@ -305,12 +309,12 @@
           <div class="col">
             <div class="row mb-3">
               <div class="col">
-                <button id="discardTarotHand" type="button" class="btn btn-primary">Discard</button>
+                <button id="discardTarotHand" type="button" class="btn btn-primary btn-block">捨て札にする</button>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button type="button" class="btn btn-secondary">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-block">やめる</button>
               </div>
             </div>
           </div>
@@ -322,7 +326,7 @@
   <!-- Modal: tarotPile -->
   <dialog id="tarotPileModal">
     <div class="modal-header">
-      <h5>TarotPile</h5>
+      <h5>タロット捨て札</h5>
     </div>
     <div class="modal-body">
       <div class="container-fluid">
@@ -331,12 +335,12 @@
           <div class="col">
             <div class="row mb-3">
               <div class="col">
-                <button id="flipTarotPile" type="button" class="btn btn-primary">Flip</button>
+                <button id="flipTarotPile" type="button" class="btn btn-primary btn-block">反転する</button>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col">
-                <button type="button" class="btn btn-secondary">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-block">やめる</button>
               </div>
             </div>
           </div>
