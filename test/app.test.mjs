@@ -16,8 +16,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
 import http from 'node:http';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createApp } from '../app.mjs';
@@ -32,9 +33,26 @@ const seen = [];
 
 const LOG_DIR = fileURLToPath(new URL('../logs', import.meta.url));
 
+// logs/ が無いときは空として扱う。ここで落とすと before ごと崩れ、
+// 原因を言うべきテストではなく無関係なテストが一斉に落ちる。
+function accessLogs() {
+	if (false === existsSync(LOG_DIR)) {
+		return [];
+	}
+	return readdirSync(LOG_DIR).filter((name) => name.startsWith('access.log-'));
+}
+
+// 消すのは createApp() が出した access.log-<日付> だけ。⚠ logs/ 自体は消さない
+// —— 追跡されている logs/.gitkeep ごと消え、次の起動でログが書けなくなる。
+function removeAccessLogs() {
+	for (const name of accessLogs()) {
+		rmSync(join(LOG_DIR, name));
+	}
+}
+
 before(async () => {
-	// createApp() が自分で作ることを見るため、先に消しておく。
-	rmSync(LOG_DIR, { recursive: true, force: true });
+	// 前回のアクセスログを片付けておく。
+	removeAccessLogs();
 	emitter = new EventEmitter();
 	// emitter は app が emit するだけなので、記録しておいて後で見る。
 	emitter.on('action', (data) => seen.push(data));
@@ -295,10 +313,12 @@ describe('入場（ticket）', () => {
 });
 
 describe('既存ルートの回帰', () => {
-	it('⚠ logs/ が無ければ createApp() が作る', async () => {
-		// gitignore されているので fresh clone には無い。
-		// 作らないと morgan の書き込み先が開けず、アクセスログが黙って消える。
-		assert.equal(existsSync(LOG_DIR), true);
+	it('⚠ アクセスログが logs/ に開いている', async () => {
+		// createApp() は logs/ を作らない。追跡された logs/.gitkeep で
+		// clone した時点から在る状態にしてあるので、それが消えると
+		// morgan の書き込み先が開けず、エラーも出ないままログだけが残らなくなる。
+		assert.equal(existsSync(join(LOG_DIR, '.gitkeep')), true);
+		assert.equal(accessLogs().length, 1);
 	});
 
 	it('GET /version', async () => {

@@ -10,7 +10,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { createWriteStream, mkdirSync } from 'node:fs';
+import { createWriteStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import express from 'express';
@@ -208,14 +208,6 @@ export function createApp(emitter, options) {
 	const secret = options.secret ?? randomBytes(64).toString('hex');
 
 	logger(`secret "${secret}"`);
-
-	// logs/ は gitignore されているので fresh clone には無い。作ってから開く。
-	// 作れなくてもアクセスログが残らないだけなので、起動は止めない。
-	try {
-		mkdirSync(fileURLToPath(new URL('./logs', import.meta.url)), { recursive: true });
-	} catch (error) {
-		logger.error(error);
-	}
 
 	const stream = createWriteStream(fileURLToPath(new URL(`./logs/access.log-${getDateString()}`, import.meta.url)), { flags: 'a' });
 

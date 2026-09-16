@@ -1,6 +1,7 @@
 .env
 /node_modules
-/logs
+/logs/*
+!/logs/.gitkeep
 decks-*.tgz
 package-lock.json
 /public/spec.html

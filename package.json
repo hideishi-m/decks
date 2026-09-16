@@ -18,6 +18,7 @@
   "author": "Hidenori ISHIKAWA",
   "files": [
     "*.mjs",
+    "logs/.gitkeep",
     "public/**/*.css",
     "public/**/*.html",
     "public/**/*.js",
