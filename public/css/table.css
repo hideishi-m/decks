@@ -212,6 +212,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 		left: var(--x);
 		top: var(--y);
 		transform: translate(-50%, -50%);
+		/* auto だと使える幅が「卓の幅 − left」になり、右の席ほど狭くなって .fan が折り返す。 */
+		width: max-content;
 	}
 }
 
