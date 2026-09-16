@@ -6,84 +6,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <link rel="stylesheet" href="./css/app.css">
+  <link rel="stylesheet" href="./css/table.css">
 
   <title>Play</title>
 </head>
 <body>
   <div class="container">
-    <h1>Play</h1>
+    <div class="board-head">
+      <h1>Play</h1>
+      <span class="game-label">Game <span id="gameLabel"></span></span>
+    </div>
 
-    <div class="border p-2">
-      <h2>Game</h2>
-      <div class="row">
-        <div class="col-3">Game:</div>
-        <div id="gameLabel" class="col-9"></div>
-      </div>
-      <h2>Tarot</h2>
-      <div class="row">
-        <div class="col-3">Hand:</div>
-        <div id="tarotHandLabel" class="col-3"></div>
-        <div class="col-3">Pile:</div>
-        <div id="tarotPileLabel" class="col-3"></div>
-      </div>
-      <div class="row mb-3">
-        <div id="tarotHand" class="col-3">
-          <img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.webp">
+    <div id="felt" class="felt">
+      <div id="opponents" class="opponents"></div>
+
+      <div class="center">
+        <div class="cluster">
+          <div class="slot">
+            <span class="slot-label">山札</span>
+            <div id="deck" class="slot-card"></div>
+            <span id="deckLabel" class="slot-count"></span>
+          </div>
+          <div class="slot">
+            <span class="slot-label">捨て札</span>
+            <div id="pile" class="slot-card"></div>
+            <span id="pileLabel" class="slot-count"></span>
+          </div>
         </div>
-        <div class="col-3"></div>
-        <div id="tarotPile" class="col-3">
-          <img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.webp">
-        </div>
-        <div class="col-3"></div>
-      </div>
-      <h2>Hand</h2>
-      <div class="row">
-        <div class="col-3">Player:</div>
-        <div id="playerLabel" class="col-9"></div>
-      </div>
-      <div id="hand" class="row mb-3">
-        <div class="col">
-          <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#card-base" x="0" y="0" fill="red" /></svg>
-        </div>
-        <div class="col">
-          <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#card-base" x="0" y="0" fill="red" /></svg>
-        </div>
-        <div class="col">
-          <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#card-base" x="0" y="0" fill="red" /></svg>
-        </div>
-        <div class="col">
-          <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#card-base" x="0" y="0" fill="red" /></svg>
+        <div class="cluster">
+          <div class="slot">
+            <span class="slot-label">タロット山札</span>
+            <div id="tarotDeck" class="slot-card"></div>
+            <span id="tarotDeckLabel" class="slot-count"></span>
+          </div>
+          <div class="slot">
+            <span class="slot-label">タロット捨て札</span>
+            <div id="tarotPile" class="slot-card"></div>
+            <span id="tarotPileLabel" class="slot-count"></span>
+          </div>
         </div>
       </div>
-      <h2>Table</h2>
-      <div class="row">
-        <div class="col-3">Deck:</div>
-        <div id="deckLabel" class="col-3"></div>
-        <div class="col-3">Pile:</div>
-        <div id="pileLabel" class="col-3"></div>
-      </div>
-      <div class="row mb-3">
-        <div id="deck" class="col-3">
-          <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#card-base" x="0" y="0" fill="red" /></svg>
+
+      <div id="myseat" class="seat seat-me">
+        <div class="seat-name">
+          <span class="seat-role">YOU</span>
+          <span id="playerLabel"></span>
+          <span id="handLabel" class="seat-count"></span>
         </div>
-        <div class="col-3"></div>
-        <div id="pile" class="col-3">
-          <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#card-base" x="0" y="0" fill="red" /></svg>
-        </div>
-        <div class="col-3"></div>
-      </div>
-      <h2>Players</h2>
-      <div class="row mb-3">
-        <div class="col">
-          <div class="input-group">
-            <button id="pick" type="button" class="btn btn-primary">Pick from</button>
-            <select id="pickSelect" class="form-select">
-              <option selected>Select player</option>
-            </select>
+        <div class="hand-row">
+          <div id="hand" class="fan"></div>
+          <div class="tarot-slot">
+            <span class="slot-label">切り札</span>
+            <div id="tarotHand"></div>
           </div>
         </div>
       </div>
     </div>
+
+    <p class="hint-line">カードをクリックすると操作を選べる</p>
 
     <div class="border p-2">
       <h2>Log</h2>
@@ -108,209 +88,261 @@
 
   <!-- Modal: game -->
   <dialog id="gameModal">
-        <div class="modal-header">
-          <h5>Select game to join</h5>
-        </div>
-        <div class="modal-body">
-          <div class="container-fluid">
-            <div class="row">
-              <div class="col">
-                <div class="input-group">
-                  <button id="selectGame" class="btn btn-primary" type="button">Select game</button>
-                  <select id="selectGameSelect" class="form-select">
-                    <option selected>Select game</option>
-                  </select>
-                </div>
-              </div>
+    <div class="modal-header">
+      <h5>Select game to join</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col">
+            <div class="input-group">
+              <button id="selectGame" class="btn btn-primary" type="button">Select game</button>
+              <select id="selectGameSelect" class="form-select">
+                <option selected>Select game</option>
+              </select>
             </div>
           </div>
         </div>
+      </div>
+    </div>
   </dialog>
 
   <!-- Modal: player -->
   <dialog id="playerModal">
-        <div class="modal-header">
-          <h5>Select player to join</h5>
+    <div class="modal-header">
+      <h5>Select player to join</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col">
+            <div class="input-group">
+              <button id="selectPlayer" class="btn btn-primary" type="button">Select player</button>
+              <select id="selectPlayerSelect" class="form-select">
+                <option selected>Select player</option>
+              </select>
+            </div>
+          </div>
         </div>
-        <div class="modal-body">
-          <div class="container-fluid">
-            <div class="row">
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: hand -->
+  <dialog id="handModal">
+    <div class="modal-header">
+      <h5>Hand</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div id="handModalCard" class="col"></div>
+          <div class="col">
+            <div class="row mb-3">
+              <div class="col">
+                <button id="discardHand" type="button" class="btn btn-primary">Discard</button>
+              </div>
+            </div>
+            <div class="row mb-3">
               <div class="col">
                 <div class="input-group">
-                  <button id="selectPlayer" class="btn btn-primary" type="button">Select player</button>
-                  <select id="selectPlayerSelect" class="form-select">
+                  <button id="passHand" type="button" class="btn btn-primary">Pass to</button>
+                  <select id="passHandSelect" class="form-select">
                     <option selected>Select player</option>
                   </select>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-  </dialog>
-
-  <!-- Modal: hand -->
-  <dialog id="handModal">
-        <div class="modal-header">
-          <h5>Hand</h5>
-        </div>
-        <div class="modal-body">
-          <div class="container-fluid">
-            <div class="row">
-              <div id="handModalCard" class="col">
-                <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#card-base" x="0" y="0" fill="red" /></svg>
-              </div>
+            <div class="row mb-3">
               <div class="col">
-                <div class="row mb-3">
-                  <div class="col">
-                    <button id="discardHand" type="button" class="btn btn-primary">Discard</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <div class="input-group">
-                      <button id="passHand" type="button" class="btn btn-primary">Pass to</button>
-                      <select id="passHandSelect" class="form-select">
-                        <option selected>Select player</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <button type="button" class="btn btn-secondary">Cancel</button>
-                  </div>
-                </div>
+                <button type="button" class="btn btn-secondary">Cancel</button>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: seat -->
+  <dialog id="seatModal">
+    <div class="modal-header">
+      <h5 id="seatModalName">Player</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div id="seatModalCard" class="col"></div>
+          <div class="col">
+            <div class="row mb-3">
+              <div class="col">
+                <button id="pick" type="button" class="btn btn-primary">Pick a card</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <p id="seatModalNote" class="note"></p>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button type="button" class="btn btn-secondary">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </dialog>
 
   <!-- Modal: deck -->
   <dialog id="deckModal">
-        <div class="modal-header">
-          <h5>Deck</h5>
-        </div>
-        <div class="modal-body">
-          <div class="container-fluid">
-            <div class="row">
+    <div class="modal-header">
+      <h5>Deck</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div id="deckModalCard" class="col"></div>
+          <div class="col">
+            <div class="row mb-3">
               <div class="col">
-                <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#back" x="0" y="0" fill="red" /></svg>
+                <button id="drawDeck" type="button" class="btn btn-primary">Draw</button>
               </div>
+            </div>
+            <div class="row mb-3">
               <div class="col">
-                <div class="row mb-3">
-                  <div class="col">
-                    <button id="drawDeck" type="button" class="btn btn-primary">Draw</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <button id="discardDeck" type="button" class="btn btn-primary">Discard</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <button type="button" class="btn btn-secondary">Cancel</button>
-                  </div>
-                </div>
+                <button id="discardDeck" type="button" class="btn btn-primary">Discard</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button type="button" class="btn btn-secondary">Cancel</button>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
   </dialog>
 
   <!-- Modal: pile -->
   <dialog id="pileModal">
-        <div class="modal-header">
-          <h5>Pile</h5>
-        </div>
-        <div class="modal-body">
-          <div class="container-fluid">
-            <div class="row">
-              <div id="pileModalCard" class="col">
-                <svg viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ><use href="./images/svg-cards.svg#back" x="0" y="0" fill="red" /></svg>
-              </div>
+    <div class="modal-header">
+      <h5>Pile</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div id="pileModalCard" class="col"></div>
+          <div class="col">
+            <div class="row mb-3">
               <div class="col">
-                <div class="row mb-3">
-                  <div class="col">
-                    <button id="recycleHand" type="button" class="btn btn-primary">Recycle to hand</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <button id="recycleDeck" type="button" class="btn btn-primary">Recycle to deck</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <button id="shufflePile" type="button" class="btn btn-primary">Shuffle to deck</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <button type="button" class="btn btn-secondary">Cancel</button>
-                  </div>
-                </div>
+                <button id="recycleHand" type="button" class="btn btn-primary">Recycle to hand</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button id="recycleDeck" type="button" class="btn btn-primary">Recycle to deck</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button id="shufflePile" type="button" class="btn btn-primary">Shuffle to deck</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button type="button" class="btn btn-secondary">Cancel</button>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: tarotDeck -->
+  <dialog id="tarotDeckModal">
+    <div class="modal-header">
+      <h5>TarotDeck</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div id="tarotDeckModalCard" class="col"></div>
+          <div class="col">
+            <div class="row mb-3">
+              <div class="col">
+                <button id="discardTarotDeck" type="button" class="btn btn-primary">Discard</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <p id="tarotDeckModalNote" class="note"></p>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button type="button" class="btn btn-secondary">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </dialog>
 
   <!-- Modal: tarotHand -->
   <dialog id="tarotHandModal">
-        <div class="modal-header">
-          <h5>TarotHand</h5>
-        </div>
-        <div class="modal-body">
-          <div class="container-fluid">
-            <div class="row">
-              <div id="tarotHandModalCard" class="col">
-                <img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.webp">
-              </div>
+    <div class="modal-header">
+      <h5>TarotHand</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div id="tarotHandModalCard" class="col"></div>
+          <div class="col">
+            <div class="row mb-3">
               <div class="col">
-                <div class="row mb-3">
-                  <div class="col">
-                    <button id="discardTarotHand" type="button" class="btn btn-primary">Discard</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <button type="button" class="btn btn-secondary">Cancel</button>
-                  </div>
-                </div>
+                <button id="discardTarotHand" type="button" class="btn btn-primary">Discard</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button type="button" class="btn btn-secondary">Cancel</button>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
   </dialog>
 
   <!-- Modal: tarotPile -->
   <dialog id="tarotPileModal">
-        <div class="modal-header">
-          <h5>TarotPile</h5>
-        </div>
-        <div class="modal-body">
-          <div class="container-fluid">
-            <div class="row">
-              <div id="tarotPileModalCard" class="col">
-                <img style="max-width: 100%; height: auto;" src="./images/TNM_tarot/99.webp">
-              </div>
+    <div class="modal-header">
+      <h5>TarotPile</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div id="tarotPileModalCard" class="col"></div>
+          <div class="col">
+            <div class="row mb-3">
               <div class="col">
-                <div class="row mb-3">
-                  <div class="col">
-                    <button id="flipTarotPile" type="button" class="btn btn-primary">Flip</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col">
-                    <button type="button" class="btn btn-secondary">Cancel</button>
-                  </div>
-                </div>
+                <button id="flipTarotPile" type="button" class="btn btn-primary">Flip</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button type="button" class="btn btn-secondary">Cancel</button>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
   </dialog>
 
   <script src="./js/play.js" type="module"></script>

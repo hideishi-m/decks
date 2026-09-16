@@ -1,0 +1,348 @@
+/**
+Copyright (c) 2022-2024 Hidenori ISHIKAWA. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * 卓。他席の弧 / 場 / 自席 の 3 段。
+ * 自席は他席と同じ .seat で、面が表を向いていることだけが違う。
+ */
+
+:root {
+	--felt: #174137;
+	--felt-deep: #0f2c26;
+	--felt-edge: #0a1d19;
+	--felt-rim: #2a4f45;
+	--felt-ink: #e9efec;
+	--felt-dim: #8ba79d;
+	--brass: #d6a552;
+	--brass-dim: #7d6231;
+}
+
+.board-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.25rem 1rem;
+}
+
+.board-head h1 {
+	margin-bottom: 0;
+}
+
+.game-label {
+	font-size: 0.875rem;
+	color: #6c757d;
+}
+
+/* ---------- felt ---------- */
+
+.felt {
+	position: relative;
+	display: grid;
+	grid-template-rows: minmax(210px, 1fr) auto auto;
+	justify-items: center;
+	align-items: center;
+	gap: 0.875rem;
+	min-height: 560px;
+	margin-top: 1rem;
+	padding: 1.5rem 1.625rem 1.375rem;
+	border: 1px solid var(--felt-rim);
+	border-radius: 96px;
+	background: radial-gradient(112% 86% at 50% 44%,
+		var(--felt) 0%, var(--felt-deep) 66%, #0b241f 100%);
+	box-shadow: 0 0 0 7px var(--felt-edge), 0 0 0 8px var(--felt-rim),
+		0 16px 34px -18px rgba(0, 0, 0, 0.55);
+	color: var(--felt-ink);
+}
+
+.felt::after {
+	content: "";
+	position: absolute;
+	inset: 14px;
+	border: 1px solid rgba(214, 165, 82, 0.16);
+	border-radius: 84px;
+	pointer-events: none;
+}
+
+.opponents {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	min-height: 210px;
+}
+
+.hint-line {
+	margin: 0.75rem 0 1rem;
+	font-size: 0.8125rem;
+	color: #6c757d;
+	text-align: center;
+}
+
+/* ---------- 場 ---------- */
+
+.center {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: flex-end;
+	gap: 2rem;
+	min-height: 150px;
+}
+
+.cluster {
+	display: flex;
+	align-items: flex-end;
+	gap: 1.375rem;
+}
+
+.cluster + .cluster {
+	padding-left: 2rem;
+	border-left: 1px solid rgba(214, 165, 82, 0.2);
+}
+
+.slot {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.375rem;
+}
+
+.slot-label {
+	font-size: 0.6875rem;
+	letter-spacing: 0.08em;
+	color: var(--felt-dim);
+}
+
+.slot-count {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.75rem;
+	font-variant-numeric: tabular-nums;
+	color: var(--brass);
+}
+
+/* ---------- カード ---------- */
+
+.card {
+	display: block;
+	width: 64px;
+	height: 93px;
+	border-radius: 4px;
+	background-color: #fff;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+}
+
+.card-sm {
+	width: 44px;
+	height: 64px;
+}
+
+.card-lg {
+	width: 76px;
+	height: 110px;
+}
+
+.card-empty {
+	background: transparent;
+	border: 1px dashed rgba(214, 165, 82, 0.3);
+	box-shadow: none;
+}
+
+.clickable {
+	cursor: pointer;
+	transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.clickable:hover,
+.clickable:focus-visible {
+	transform: translateY(-8px);
+	box-shadow: 0 10px 18px rgba(0, 0, 0, 0.5);
+}
+
+.felt :focus-visible {
+	outline: 2px solid var(--brass);
+	outline-offset: 2px;
+}
+
+/* ---------- 席 ---------- */
+
+.seat {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.3125rem;
+	width: auto;
+	min-width: 150px;
+	max-width: 244px;
+	padding: 0.4375rem 0.5625rem 0.5625rem;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: rgba(6, 20, 17, 0.55);
+}
+
+@media (min-width: 901px) {
+	.opponents > .seat {
+		position: absolute;
+		left: var(--x);
+		top: var(--y);
+		transform: translate(-50%, -50%);
+	}
+}
+
+.seat-me {
+	min-width: 0;
+	max-width: none;
+	padding: 0.625rem 1.125rem 0.75rem;
+	border-top-color: rgba(214, 165, 82, 0.4);
+	background: rgba(8, 27, 23, 0.78);
+	box-shadow: 0 -7px 22px -12px rgba(214, 165, 82, 0.5);
+}
+
+.seat-name {
+	display: flex;
+	align-items: center;
+	gap: 0.4375rem;
+	font-size: 0.9375rem;
+	letter-spacing: 0.03em;
+}
+
+.seat-me .seat-name {
+	font-size: 1.0625rem;
+}
+
+.seat-count {
+	padding: 0 0.375rem;
+	border-radius: 9px;
+	background: var(--brass);
+	color: var(--felt-edge);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.6875rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.seat-role {
+	padding: 0 0.25rem;
+	border: 1px solid var(--brass-dim);
+	border-radius: 2px;
+	color: var(--brass);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.5625rem;
+	letter-spacing: 0.1em;
+}
+
+.seat-me .seat-role {
+	border-color: var(--brass);
+	background: var(--brass);
+	color: #1b1410;
+}
+
+.hand-row {
+	display: flex;
+	align-items: flex-end;
+	gap: 0.625rem;
+}
+
+.fan {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: center;
+	padding-left: 22px;
+	row-gap: 0.5rem;
+	min-height: 64px;
+}
+
+.fan > .card {
+	margin-left: -22px;
+}
+
+/* 自席は実寸なので重なりを浅くする。 */
+.seat-me .fan {
+	padding-left: 16px;
+}
+
+.seat-me .fan > .card {
+	margin-left: -16px;
+}
+
+.fan-clickable {
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.fan-clickable:hover > .card {
+	transform: translateY(-5px);
+}
+
+.fan-clickable > .card {
+	transition: transform 0.12s ease;
+}
+
+.tarot-slot {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.25rem;
+	padding-left: 0.625rem;
+	border-left: 1px solid rgba(214, 165, 82, 0.24);
+}
+
+/* ---------- 狭い画面 ---------- */
+
+@media (max-width: 900px) {
+	.felt {
+		display: block;
+		min-height: 0;
+		padding: 1rem;
+		border-radius: 34px;
+		box-shadow: 0 0 0 5px var(--felt-edge), 0 0 0 6px var(--felt-rim),
+			0 12px 24px -16px rgba(0, 0, 0, 0.55);
+	}
+
+	.felt::after {
+		display: none;
+	}
+
+	.opponents {
+		display: flex;
+		gap: 0.625rem;
+		height: auto;
+		min-height: 0;
+		padding-bottom: 0.375rem;
+		overflow-x: auto;
+	}
+
+	.opponents > .seat {
+		flex: none;
+	}
+
+	.center,
+	.seat-me {
+		margin-top: 1.125rem;
+	}
+
+	.cluster + .cluster {
+		padding-left: 0;
+		border-left: 0;
+	}
+}
+
+/* ---------- モーダルの補足 ---------- */
+
+.note {
+	margin: 0;
+	font-size: 0.8125rem;
+	color: #6c757d;
+}
+
+dialog .card {
+	margin-inline: auto;
+}
