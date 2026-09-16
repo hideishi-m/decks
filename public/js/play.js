@@ -21,6 +21,12 @@ let gid, pid, socket, token;
 let table;
 // 自分の切り札。面は自分にしか見えないので table からは引けない。
 let myTarot;
+// 直前に処理した action.seq。飛んでいたら取りこぼしなので卓を取り直す。
+let lastSeq;
+// 一度切れたか。切れた後に開いたときだけ取り直す（初回は参加時に取得済み）。
+let reopened = false;
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const gameModal = createDialog('gameModal', { persistent: true });
 const playerModal = createDialog('playerModal', { persistent: true });
@@ -63,9 +69,15 @@ function onOpen(event) {
 		pid: pid,
 		token: token,
 	}));
+	// 繋ぎ直した間の action は受け取れないので、開き直したら取り直す。
+	if (reopened) {
+		reopened = false;
+		resync();
+	}
 }
 
 function onClose(event) {
+	reopened = true;
 	socket.removeEventListener('message', onMessage);
 	socket.removeEventListener('open', onOpen);
 	socket.removeEventListener('close', onClose);
@@ -116,6 +128,18 @@ function describeAction(action) {
 	}
 }
 
+// 卓も手札も切り札も取り直す。action を取りこぼしたときと、繋ぎ直したとき。
+async function resync() {
+	try {
+		lastSeq = undefined;
+		await fetchTable();
+		await updateHand();
+		await fetchTarotHand();
+	} catch (error) {
+		updateStatus(`${error.name}: ${error.message}`);
+	}
+}
+
 async function onMessage(event) {
 	try {
 		if (ping === event.data) {
@@ -128,7 +152,27 @@ async function onMessage(event) {
 			return;
 		}
 		appendLog(describeAction(action));
+
+		// 番号が飛んでいたら、間の動きは追えない。卓ごと取り直して追いつく。
+		if (undefined !== lastSeq && action.seq !== lastSeq + 1) {
+			appendLog(`missed ${action.seq - lastSeq - 1} action(s), syncing`);
+			await resync();
+			lastSeq = action.seq;
+			return;
+		}
+		lastSeq = action.seq;
+
+		// 席は描き直しで作り変わるので、動く前の位置を先に押さえておく。
+		const [fromNode] = flightOf(action);
+		const fromRect = fromNode?.getBoundingClientRect();
 		updateTable(action.table);
+		const [, toNode] = flightOf(action);
+		fly(fromRect, toNode?.getBoundingClientRect(), action.card);
+		pulse(action.pid, verbOf(action));
+		if (null !== action.tid) {
+			pulse(action.tid, 'pick' === action.type ? '抜かれた' : '受け取った');
+		}
+
 		// 自分の手札の中身は action に載らないので、動いたときだけ取り直す。
 		if (pid === action.pid || pid === action.tid) {
 			await updateHand();
@@ -168,6 +212,120 @@ function createTarotCardImg(card, size) {
 
 function createEmptySlot(size) {
 	return el('div', { class: `card card-empty${size ? ' ' + size : ''}` });
+}
+
+function createCardNode(card, size) {
+	// タロットには suit が無い。
+	if (card && undefined === card.suit) {
+		return createTarotCardImg(card, size);
+	}
+	return createCardSvg(card, size);
+}
+
+// ---- 動きを見せる ----
+
+function seatNode(seatPid) {
+	return pid === seatPid
+		? qs('#myseat')
+		: qs(`#opponents .seat[data-pid="${seatPid}"]`);
+}
+
+function fanNode(seatPid) {
+	return seatNode(seatPid)?.querySelector('.fan');
+}
+
+function tarotNode(seatPid) {
+	return pid === seatPid
+		? qs('#tarotHand')
+		: seatNode(seatPid)?.querySelector('.tarot-slot');
+}
+
+// どこからどこへ飛ぶか。載っていない type は飛ばさない。
+function flightOf(action) {
+	switch (action.type) {
+		case 'draw':
+			return [ qs('#deck'), fanNode(action.pid) ];
+		case 'discard':
+			return [ fanNode(action.pid), qs('#pile') ];
+		case 'recycle':
+			return [ qs('#pile'), fanNode(action.pid) ];
+		case 'pass':
+			return [ fanNode(action.pid), fanNode(action.tid) ];
+		case 'pick':
+			return [ fanNode(action.tid), fanNode(action.pid) ];
+		case 'deck-discard':
+			return [ qs('#deck'), qs('#pile') ];
+		case 'deck-recycle':
+		case 'shuffle':
+			return [ qs('#pile'), qs('#deck') ];
+		case 'tarot-deck-discard':
+			return [ qs('#tarotDeck'), qs('#tarotPile') ];
+		case 'tarot-discard':
+			return [ tarotNode(action.pid), qs('#tarotPile') ];
+		default:
+			return [ null, null ];
+	}
+}
+
+function verbOf(action) {
+	switch (action.type) {
+		case 'draw':
+		case 'pick':
+			return '引いた';
+		case 'discard':
+			return '捨てた';
+		case 'recycle':
+			return '拾った';
+		case 'pass':
+			return '渡した';
+		case 'deck-discard':
+		case 'tarot-deck-discard':
+			return 'めくった';
+		case 'deck-recycle':
+			return '戻した';
+		case 'shuffle':
+			return '切った';
+		case 'tarot-discard':
+			return '切り札を切った';
+		case 'tarot-flip':
+			return '反転させた';
+		default:
+			return action.type;
+	}
+}
+
+function fly(fromRect, toRect, card) {
+	if (reduceMotion || undefined === fromRect || undefined === toRect) {
+		return;
+	}
+	const ghost = createCardNode(card);
+	ghost.classList.add('ghost');
+	ghost.style.width = `${toRect.width}px`;
+	ghost.style.height = `${toRect.height}px`;
+	const start = `translate(${fromRect.left + (fromRect.width - toRect.width) / 2}px, ${fromRect.top + (fromRect.height - toRect.height) / 2}px)`;
+	ghost.style.transform = `${start} scale(0.85)`;
+	document.body.append(ghost);
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => {
+			ghost.style.transform = `translate(${toRect.left}px, ${toRect.top}px) scale(1)`;
+			ghost.style.opacity = '0.15';
+		});
+	});
+	setTimeout(() => ghost.remove(), 500);
+}
+
+function pulse(seatPid, text) {
+	const node = seatNode(seatPid);
+	if (null === node || undefined === node) {
+		return;
+	}
+	node.classList.add('seat-acting');
+	const bubble = el('div', { class: 'bubble' }, text);
+	node.append(bubble);
+	setTimeout(() => {
+		node.classList.remove('seat-acting');
+		bubble.remove();
+	}, 1600);
 }
 
 // ---- 卓 ----

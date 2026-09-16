@@ -175,6 +175,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 /* ---------- 席 ---------- */
 
 .seat {
+	position: relative;
+	transition: border-color 0.25s, box-shadow 0.25s;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -293,6 +295,64 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	gap: 0.25rem;
 	padding-left: 0.625rem;
 	border-left: 1px solid rgba(214, 165, 82, 0.24);
+}
+
+/* ---------- 動きを見せる ---------- */
+
+/* 誰が動いたか。1.6 秒で消える。 */
+.seat-acting {
+	border-color: var(--brass);
+	box-shadow: 0 0 0 1px var(--brass), 0 0 20px -2px rgba(214, 165, 82, 0.55);
+}
+
+.bubble {
+	position: absolute;
+	left: 50%;
+	top: -10px;
+	transform: translate(-50%, -100%);
+	padding: 0.125rem 0.5rem;
+	border-radius: 4px;
+	background: var(--brass);
+	color: #1b1410;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.bubble::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: -4px;
+	transform: translateX(-50%);
+	border: 5px solid transparent;
+	border-bottom: 0;
+	border-top-color: var(--brass);
+}
+
+/* 発生元から宛先へ飛ぶ影武者。DOM から浮かせるので位置は fixed。 */
+.ghost {
+	position: fixed;
+	z-index: 60;
+	left: 0;
+	top: 0;
+	margin: 0;
+	pointer-events: none;
+	transition: transform 0.42s cubic-bezier(0.4, 0.05, 0.25, 1),
+		opacity 0.42s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ghost {
+		display: none;
+	}
+
+	.seat,
+	.clickable,
+	.fan-clickable > .card {
+		transition: none;
+	}
 }
 
 /* ---------- 狭い画面 ---------- */
