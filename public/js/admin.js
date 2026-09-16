@@ -25,7 +25,7 @@ function playUrl(ticket) {
 }
 
 // common
-// 一覧の 1 件をそのまま受け取る。POST /games も同じ形を返す。
+// GET /games/:gid の応答をそのまま受け取る。POST /games も同じ形を返す。
 function appendGame(game) {
 	const url = playUrl(game.ticket);
 	const link = el('a', {
@@ -124,7 +124,10 @@ async function deleteGame() {
 try {
 	const data = await ajax('./games', { method: 'GET' });
 	updateStatus(JSON.stringify(data, null, 2));
-	for (const game of data.games) {
+	// 一覧は gid だけなので、席と入場券は卓ごとに引く。直列に待たず一度に投げる。
+	const games = await Promise.all(data.games.map(
+		({ gid }) => ajax(`./games/${gid}`, { method: 'GET' })));
+	for (const game of games) {
 		appendGame(game);
 	}
 } catch (error) {

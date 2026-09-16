@@ -308,36 +308,46 @@ describe('既存ルートの回帰', () => {
 		assert.ok(body.version);
 	});
 
-	it('GET /games は卓・席・入場券を 1 回で返す（管理面）', async () => {
+	it('GET /games は gid だけを返す（管理面）', async () => {
 		const gid = await newGame();
 		const { status, body } = await call('GET', '/games');
 
 		assert.equal(status, 200);
 		const found = body.games.find((game) => game.gid === gid);
-		assert.deepEqual(Object.keys(found), [ 'gid', 'players', 'ticket' ]);
-		assert.deepEqual(found.players, [ 'マスター', ...PLAYERS ]);
-		assert.equal(found.ticket, ticketOf.get(gid));
+		// 席も入場券も載せない。応答が卓の中身に比例しないようにするため。
+		assert.deepEqual(Object.keys(found), [ 'gid' ]);
 	});
 
-	it('POST /games は一覧の 1 件と同じ形を返す', async () => {
+	it('GET /games は入場券を漏らさない', async () => {
+		await newGame();
+		const { body } = await call('GET', '/games');
+
+		const tickets = [ ...ticketOf.values() ];
+		const listed = JSON.stringify(body);
+		assert.ok(tickets.length > 0);
+		for (const ticket of tickets) {
+			assert.equal(listed.includes(ticket), false);
+		}
+	});
+
+	it('POST /games は GET /games/:gid と同じ形を返す', async () => {
 		const created = await call('POST', '/games', {
 			body: { players: PLAYERS, tarots: TAROTS },
 		});
-		const listed = await call('GET', '/games');
+		const got = await call('GET', `/games/${created.body.gid}`);
 
 		assert.deepEqual(Object.keys(created.body), [ 'gid', 'players', 'ticket' ]);
-		assert.deepEqual(created.body,
-			listed.body.games.find((game) => game.gid === created.body.gid));
+		assert.deepEqual(created.body, got.body);
 	});
 
-	it('GET /games/:gid は一覧の 1 件と同じ形を返す', async () => {
+	it('GET /games/:gid は席と入場券を返す', async () => {
 		const gid = await newGame();
 		const { status, body } = await call('GET', `/games/${gid}`);
-		const listed = await call('GET', '/games');
 
 		assert.equal(status, 200);
 		assert.deepEqual(Object.keys(body), [ 'gid', 'players', 'ticket' ]);
-		assert.deepEqual(body, listed.body.games.find((game) => game.gid === gid));
+		assert.deepEqual(body.players, [ 'マスター', ...PLAYERS ]);
+		assert.equal(body.ticket, ticketOf.get(gid));
 	});
 
 	it('消した卓は一覧から消える', async () => {

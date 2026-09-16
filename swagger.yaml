@@ -30,10 +30,11 @@ tags:
       Inside a table the ticket takes a token for any seat: seats are not
       protected from each other.
 
-      Nothing guards the admin calls, and `GET /games` hands back the tickets,
-      so put those and admin.html behind the proxy. Cover `/admin.html`,
-      `/js/admin.js`, `/games` and `/games/<digits>` — and nothing deeper,
-      since `/games/1/table` and the rest are what the players call.
+      Nothing guards the admin calls, and `POST /games` and `GET /games/{gid}`
+      hand back the tickets, so put those and admin.html behind the proxy.
+      Cover `/admin.html`, `/js/admin.js`, `/games` and `/games/<digits>` —
+      and nothing deeper, since `/games/1/table` and the rest are what the
+      players call.
   - name: websocket
     description: |
       Not an HTTP call. Connect a WebSocket to the same path as the page and
@@ -159,18 +160,15 @@ paths:
     get:
       tags:
         - admins
-        - players
       summary: retrieve all games
       operationId: getGames
       description: |
-        Lists every table with its seats and its ticket, so an admin page does
-        not have to ask per table.
-
-        ⚠ This returns tickets. Keep it behind the proxy together with
-        admin.html.
+        Lists the tables by id and nothing else, so the reply does not grow
+        with what each table holds. Ask `GET /games/{gid}` for the seats and
+        the ticket of the one you want.
       responses:
         200:
-          description: games with their seats and tickets
+          description: the game ids
           content:
             application/json:
               schema:
@@ -189,6 +187,9 @@ paths:
       description: |
         Creates a new game and issues the ticket that opens it. The ticket is
         returned here once and is not reissued; hand it out as a link.
+
+        ⚠ This returns a ticket. Keep it behind the proxy together with
+        admin.html.
       requestBody:
         description: game attributes
         content:
@@ -197,7 +198,7 @@ paths:
               $ref: '#/components/schemas/GameAttributes'
       responses:
         200:
-          description: the new game, in the same shape as one listing entry
+          description: the new game, in the same shape as GET /games/{gid}
           content:
             application/json:
               schema:
@@ -215,7 +216,9 @@ paths:
       summary: retrieve a game
       operationId: getGame
       description: |
-        One table, in the same shape as one entry of `GET /games`.
+        One table with its seats and its ticket. `GET /games` lists ids only,
+        so this is where an admin page reads the rest, one table at a time.
+        `POST /games` returns exactly this shape.
 
         ⚠ This returns the ticket. Keep it behind the proxy together with
         admin.html.
@@ -1146,7 +1149,8 @@ components:
       type: object
       description: |
         One table as the admin page sees it. `POST /games` returns exactly
-        this, so a caller does not have to tell the two apart.
+        this, so a caller does not have to tell the two apart. A listing does
+        not: `GET /games` carries ids alone.
       required:
         - gid
         - players
@@ -1160,13 +1164,16 @@ components:
           $ref: '#/components/schemas/Ticket'
     Games:
       type: object
+      description: |
+        The tables, by id only. `GET /games/{gid}` has the seats and the
+        ticket for one of them.
       required:
         - games
       properties:
         games:
           type: array
           items:
-            $ref: '#/components/schemas/Game'
+            $ref: '#/components/schemas/GameId'
     Player:
       type: string
       example: pc1

@@ -16,7 +16,7 @@
 **token** は席の権限。gid と pid に紐づいていて、`:gid` と `:pid` が
 トークンの中身と一致しないと 403 を返す。有効期限は 1 日。
 
-⚠️ 管理層には認証が無い。`GET /games` と `GET /games/:gid` は ticket を返すので、
+⚠️ 管理層には認証が無い。`POST /games` と `GET /games/:gid` は ticket を返すので、
 **前段（nginx 等）で管理層と `admin.html` を保護すること。** 覆うのは次の 4 つだけ。
 
     /admin.html
@@ -100,6 +100,8 @@ response: { token: "..." }
 
 ### 新規ゲーム作成
 
+⚠️ ticket を含むので、前段で保護すること。
+
 POST /games
 
 request: {
@@ -107,7 +109,7 @@ request: {
   tarots: [ "4", "18", "7" ]
 }
 
-一覧の 1 件と同じ形を返す。
+`GET /games/:gid` と同じ形を返す。
 
 response: {
   gid: "1",
@@ -121,25 +123,16 @@ response: {
 
 ### ゲーム一覧
 
-卓ごとに引き直さなくてよいよう、席と ticket もまとめて返す。
-
-⚠️ ticket を含むので、前段で保護すること。
+gid だけを返す。卓の中身を載せないので、応答は卓の数にしか比例しない。
+席と ticket は「ゲーム取得」で 1 卓ずつ引く。
 
 GET /games
 
-response: {
-  games: [
-    {
-      gid: "1",
-      players: [ "マスター", "pc1", "pc2", "pc3" ],
-      ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
-    }
-  ]
-}
+response: { games: [ { gid: "1" }, { gid: "2" } ] }
 
 ### ゲーム取得
 
-1 卓だけ引きたいとき。一覧の 1 件と同じ形を返す。
+1 卓ぶんの席と ticket。一覧は gid だけなので、卓の中身はここで引く。
 
 ⚠️ ticket を含むので、前段で保護すること。
 

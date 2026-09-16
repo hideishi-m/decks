@@ -363,30 +363,27 @@ export function createApp(emitter, options) {
 			});
 		});
 
-	// 管理面。1 回で卓の一覧・席・入場券が揃うので、卓ごとに引き直さなくてよい。
-	// ⚠ 入場券を返すので、前段（nginx 等）で保護すること。
+	// 管理面。一覧は gid だけを返す。卓の中身を載せないので、応答は卓の
+	// 数にしか比例しない。席と入場券は GET /games/:gid が 1 卓ずつ返す。
+	// ⚠ POST は入場券を返すので、前段（nginx 等）で保護すること。
 	app.route('/games')
 		.get((req, res, next) => {
-			const list = [];
+			const gids = [];
 			games.forEach((game, index) => {
 				if (undefined !== game) {
-					list.push({
-						gid: `${index}`,
-						players: game.getAllPlayers(),
-						ticket: tickets[index],
-					});
+					gids.push({ gid: `${index}` });
 				}
 			});
-			logger.log(`GET games ${list.map((game) => game.gid)}`);
+			logger.log(`GET games ${gids.map((game) => game.gid)}`);
 			res.statusJson(200, {
-				games: list,
+				games: gids,
 			});
 		})
 		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateArray, ['body', 'tarots']), (req, res, next) => {
 			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
 			tickets[gid] = createTicket();
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
-			// 一覧の 1 件と同じ形で返すので、呼ぶ側は場合分けせずに扱える。
+			// GET /games/:gid と同じ形で返すので、作った直後に引き直さなくてよい。
 			res.statusJson(200, {
 				gid: `${gid}`,
 				players: games[gid].getAllPlayers(),
@@ -394,8 +391,8 @@ export function createApp(emitter, options) {
 			});
 		});
 
-	// 1 卓だけ引きたいとき。一覧と同じ形を返す。
-	// ⚠ 入場券を返すので、GET /games と同じく前段で保護すること。
+	// 1 卓ぶん。一覧は gid だけなので、席と入場券はここで引く。
+	// ⚠ 入場券を返すので、前段で保護すること。
 	app.route('/games/:gid')
 		.get((req, res, next) => {
 			const game = games[req.params.gid];
