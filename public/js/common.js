@@ -21,19 +21,29 @@ export async function ajax(url, args) {
 	return await response.json();
 }
 
-export async function getToken(gid, pid) {
+// 卓は ticket が決めるので、クライアントは gid を送らない。
+export async function join(ticket) {
+	const data = await ajax('./join', {
+		method: 'GET',
+		headers: { 'Authorization': `Ticket ${ticket}` },
+		cache: 'no-cache',
+	});
+	updateStatus(JSON.stringify(data, null, 2));
+	return data;
+}
+
+export async function getToken(pid, ticket) {
 	const data = await ajax('./token', {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
+			'Authorization': `Ticket ${ticket}`,
 		},
 		cache: 'no-cache',
 		body: JSON.stringify({
-			gid: `${gid}`,
 			pid: `${pid}`,
 		}),
 	});
-	console.log(`{"gid":"${gid}","pid":"${pid}"}`);
 	updateStatus(JSON.stringify(data, null, 2));
 	return data.token;
 }

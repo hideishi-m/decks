@@ -463,6 +463,40 @@ details[open] > summary.btn {
 	margin-bottom: 0.75rem;
 }
 
+/* ---------- 入場できないとき ---------- */
+
+.gate {
+	margin-block: 1rem 0;
+	padding: 0.875rem 1rem;
+	border: 1px solid var(--red);
+	border-radius: 10px;
+	background: rgba(207, 81, 71, 0.08);
+	color: var(--ink);
+}
+
+/* ---------- 参加者へ配る URL ---------- */
+
+.invite-cell {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.invite {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow-wrap: anywhere;
+	font-family: var(--mono);
+	font-size: 0.75rem;
+}
+
+.copy-invite {
+	flex: 0 0 auto;
+	padding-block: 0.125rem;
+	font-size: 0.75rem;
+}
+
 /* ---------- log ---------- */
 
 .log {

@@ -9,10 +9,8 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ajax, getToken, updateStatus, appendOption, removeOption, parseDataValue, parseDataValuesEach, qs, qsa, el, fromHtml, delegate } from './common.js';
+import { ajax, updateStatus, appendOption, removeOption, parseDataValue, parseDataValuesEach, qs, qsa, el, fromHtml, delegate } from './common.js';
 import { tarotRanks } from './TNM_tarot.js';
-
-let token;
 
 for (const [rank, name] of tarotRanks.entries()) {
 	appendOption('select[name^=tarots]', rank, name);
@@ -21,26 +19,48 @@ for (const [rank, name] of tarotRanks.entries()) {
 // 新しい行を足す先。#players は 1 行目の .input-group なので、その親。
 const playersBox = qs('#players').parentElement;
 
-// common
-async function appendGame(gid) {
-	try {
-		const data = await ajax('./games/' + gid, { method: 'GET' });
-		updateStatus(JSON.stringify(data, null, 2));
-		qs('#game').append(
-			el('div', { class: 'col-3', 'data-gid': data.gid },
-				el('a', {
-					href: './play.html',
-					target: '_blank',
-					rel: 'noopener noreferrer',
-				}, data.gid)
-			),
-			el('div', { class: 'col-9', 'data-gid': data.gid }, String(data.players))
-		);
-		appendOption('#deleteGameSelect', data.gid, data.gid);
-	} catch (error) {
-		updateStatus(`${error.name}: ${error.message}`);
-	}
+// 参加者へ配る URL。ticket だけで卓が決まる。
+function playUrl(ticket) {
+	return new URL(`./play.html?ticket=${ticket}`, document.location.href).href;
 }
+
+// common
+// 一覧の 1 件をそのまま受け取る。POST /games も同じ形を返す。
+function appendGame(game) {
+	const url = playUrl(game.ticket);
+	const link = el('a', {
+		href: url,
+		target: '_blank',
+		rel: 'noopener noreferrer',
+		class: 'invite',
+	}, url);
+	const copy = el('button', {
+		type: 'button',
+		class: 'btn btn-secondary copy-invite',
+		'data-url': url,
+	}, 'コピー');
+	qs('#game').append(
+		el('div', { class: 'col-1', 'data-gid': game.gid }, game.gid),
+		el('div', { class: 'col-3', 'data-gid': game.gid }, String(game.players)),
+		el('div', { class: 'col-8 invite-cell', 'data-gid': game.gid }, link, copy)
+	);
+	appendOption('#deleteGameSelect', game.gid, game.gid);
+}
+
+// クリップボードに入れる。失敗したら選択しておいて手で写せるようにする。
+delegate(qs('#game'), '.copy-invite', 'click', function () {
+	const button = this;
+	navigator.clipboard.writeText(button.dataset.url).then(() => {
+		button.textContent = 'コピーした';
+		setTimeout(() => { button.textContent = 'コピー'; }, 1500);
+	}).catch(() => {
+		const range = document.createRange();
+		range.selectNodeContents(button.closest('.invite-cell').querySelector('.invite'));
+		const selection = window.getSelection();
+		selection.removeAllRanges();
+		selection.addRange(range);
+	});
+});
 
 // #newGame
 qs('#newGame').addEventListener('click', newGame);
@@ -65,7 +85,7 @@ async function newGame() {
 			}),
 		});
 		updateStatus(JSON.stringify(data, null, 2));
-		await appendGame(data.gid);
+		appendGame(data);
 	} catch (error) {
 		updateStatus(`${error.name}: ${error.message}`);
 	}
@@ -87,10 +107,8 @@ async function deleteGame() {
 		const params = parseDataValue({
 			gid: '#deleteGameSelect',
 		});
-		token = await getToken(params.gid, 0);
 		const data = await ajax('./games/' + params.gid, {
 			method: 'DELETE',
-			headers: { 'Authorization': `Bearer ${token}` },
 		} );
 		updateStatus(JSON.stringify(data, null, 2));
 		for (const node of qsa(`#game div[data-gid='${data.gid}']`)) {
@@ -106,8 +124,8 @@ async function deleteGame() {
 try {
 	const data = await ajax('./games', { method: 'GET' });
 	updateStatus(JSON.stringify(data, null, 2));
-	for (const {gid} of data.games) {
-		await appendGame(gid);
+	for (const game of data.games) {
+		appendGame(game);
 	}
 } catch (error) {
 	updateStatus(`${error.name}: ${error.message}`);

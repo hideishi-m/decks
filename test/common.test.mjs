@@ -29,7 +29,7 @@ const { document } = dom.window;
 globalThis.window = dom.window;
 globalThis.document = document;
 
-const { ajax, getToken, updateStatus, appendLog, appendOption, updateOptions,
+const { ajax, join, getToken, updateStatus, appendLog, appendOption, updateOptions,
 	removeOption, parseDataValue, parseDataValuesEach } =
 	await import('../public/js/common.js');
 
@@ -266,27 +266,46 @@ describe('ajax', () => {
 	});
 });
 
+describe('join', () => {
+	beforeEach(() => html('<div id="status"></div>'));
+
+	it('入場券を Ticket として送り、卓と席を返す', async () => {
+		let seen;
+		globalThis.fetch = async (url, args) => {
+			seen = { url: url, args: args };
+			return { ok: true, json: async () => ({ gid: '0', players: [ 'マスター' ] }) };
+		};
+
+		const data = await join('abc');
+		assert.equal(seen.url, './join');
+		assert.equal(seen.args.method, 'GET');
+		assert.equal(seen.args.headers.Authorization, 'Ticket abc');
+		assert.deepEqual(data, { gid: '0', players: [ 'マスター' ] });
+	});
+});
+
 describe('getToken', () => {
 	beforeEach(() => html('<div id="status"></div>'));
 
-	it('gid と pid を文字列で POST してトークンを返す', async () => {
+	it('⚠ pid だけを送る。卓を決めるのは入場券。', async () => {
 		let seen;
 		globalThis.fetch = async (url, args) => {
 			seen = { url: url, args: args };
 			return { ok: true, json: async () => ({ token: 'jwt' }) };
 		};
 
-		assert.equal(await getToken(0, 1), 'jwt');
+		assert.equal(await getToken(1, 'abc'), 'jwt');
 		assert.equal(seen.url, './token');
 		assert.equal(seen.args.method, 'POST');
+		assert.equal(seen.args.headers.Authorization, 'Ticket abc');
 		// 数値で呼ばれても文字列で送る（app.mjs の validateId が文字列を期待する）。
-		assert.deepEqual(JSON.parse(seen.args.body), { gid: '0', pid: '1' });
+		assert.deepEqual(JSON.parse(seen.args.body), { pid: '1' });
 	});
 
 	it('取得した内容を #status に出す', async () => {
 		globalThis.fetch = async () => ({ ok: true, json: async () => ({ token: 'jwt' }) });
 
-		await getToken(0, 1);
+		await getToken(1, 'abc');
 		assert.match(document.querySelector('#status').textContent, /jwt/);
 	});
 });

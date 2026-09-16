@@ -48,6 +48,9 @@ async function call(method, path, options) {
 	if (options?.token) {
 		headers.Authorization = `Bearer ${options.token}`;
 	}
+	if (options?.ticket) {
+		headers.Authorization = `Ticket ${options.ticket}`;
+	}
 	if (options?.body) {
 		headers['Content-Type'] = 'application/json';
 	}
@@ -59,16 +62,24 @@ async function call(method, path, options) {
 	return { status: response.status, body: await response.json() };
 }
 
+// 卓を 1 つ作る。gid と入場券をまとめて覚えておく。
+const ticketOf = new Map();
+
 async function newGame() {
 	const created = await call('POST', '/games', {
 		body: { players: PLAYERS, tarots: TAROTS },
 	});
 	assert.equal(created.status, 200);
+	assert.ok(created.body.ticket, '卓を作ったら入場券が返る');
+	ticketOf.set(created.body.gid, created.body.ticket);
 	return created.body.gid;
 }
 
 async function tokenFor(gid, pid) {
-	const got = await call('POST', '/token', { body: { gid: gid, pid: pid } });
+	const got = await call('POST', '/token', {
+		body: { pid: pid },
+		ticket: ticketOf.get(gid),
+	});
 	assert.equal(got.status, 200);
 	return got.body.token;
 }
@@ -164,12 +175,118 @@ describe('GET /games/:gid/table', () => {
 		assert.equal(status, 404);
 	});
 
+	it('⚠ トークン無しでは席の数も手札の枚数も測れない', async () => {
+		// app.param に席とカードの検査を置くと、404 と 401 の差で測れてしまう。
+		const gid = await newGame();
+
+		for (const path of [
+			`/games/${gid}/players/1`,
+			`/games/${gid}/players/9999`,
+			`/games/${gid}/players/1/cards/0`,
+			`/games/${gid}/players/1/cards/9999`,
+		]) {
+			const { status } = await call('GET', path);
+			assert.equal(status, 401, `${path} は 401 で揃うこと`);
+		}
+	});
+
 	it('gid の形式が不正なら 400', async () => {
 		const gid = await newGame();
 		const { status } = await call('GET', '/games/abc/table',
 			{ token: await tokenFor(gid, 1) });
 
 		assert.equal(status, 400);
+	});
+});
+
+describe('入場（ticket）', () => {
+	it('卓を作ると入場券が 1 つ返る', async () => {
+		const created = await call('POST', '/games', {
+			body: { players: PLAYERS, tarots: TAROTS },
+		});
+
+		assert.equal(created.status, 200);
+		assert.match(created.body.ticket, /^[\w-]{20,}$/);
+	});
+
+	it('入場券は卓ごとに違う', async () => {
+		const first = await call('POST', '/games', { body: { players: PLAYERS, tarots: [] } });
+		const second = await call('POST', '/games', { body: { players: PLAYERS, tarots: [] } });
+
+		assert.notEqual(first.body.ticket, second.body.ticket);
+	});
+
+	it('GET /join は入場券だけで卓と席を返す', async () => {
+		const gid = await newGame();
+		const { status, body } = await call('GET', '/join',
+			{ ticket: ticketOf.get(gid) });
+
+		assert.equal(status, 200);
+		assert.equal(body.gid, gid);
+		assert.deepEqual(body.players, [ 'マスター', ...PLAYERS ]);
+	});
+
+	it('入場券が無ければ 401', async () => {
+		const { status, body } = await call('GET', '/join');
+
+		assert.equal(status, 401);
+		assert.match(body.error.message, /ticket required/);
+	});
+
+	it('通らない入場券は 401', async () => {
+		const { status, body } = await call('GET', '/join', { ticket: 'not-a-ticket' });
+
+		assert.equal(status, 401);
+		assert.match(body.error.message, /ticket not accepted/);
+	});
+
+	it('⚠ Bearer を Ticket として使い回せない', async () => {
+		const gid = await newGame();
+		const token = await tokenFor(gid, 1);
+		const { status } = await call('GET', '/join', { token: token });
+
+		assert.equal(status, 401);
+	});
+
+	it('⚠ 入場券なしでは席のトークンを作れない', async () => {
+		const gid = await newGame();
+		const { status } = await call('POST', '/token', { body: { pid: '1' } });
+
+		assert.equal(status, 401);
+		// gid を添えても通らない（卓を決めるのは入場券だけ）。
+		const withGid = await call('POST', '/token', { body: { gid: gid, pid: '1' } });
+		assert.equal(withGid.status, 401);
+	});
+
+	it('別の卓の入場券では、その卓のトークンしか出ない', async () => {
+		const first = await newGame();
+		const second = await newGame();
+		const token = await tokenFor(second, 1);
+
+		// second の入場券で作ったトークンは first では通らない。
+		const { status } = await call('GET', `/games/${first}/table`, { token: token });
+		assert.equal(status, 403);
+	});
+
+	it('存在しない席のトークンは作れない', async () => {
+		const gid = await newGame();
+		const { status, body } = await call('POST', '/token', {
+			body: { pid: '9999' },
+			ticket: ticketOf.get(gid),
+		});
+
+		assert.equal(status, 404);
+		assert.match(body.error.message, /player not found for pid/);
+	});
+
+	it('卓を消すと入場券も通らなくなる', async () => {
+		const gid = await newGame();
+		const ticket = ticketOf.get(gid);
+
+		await call('DELETE', `/games/${gid}`);
+		const { status } = await call('GET', '/join', { ticket: ticket });
+
+		assert.equal(status, 401);
 	});
 });
 
@@ -181,12 +298,44 @@ describe('既存ルートの回帰', () => {
 		assert.ok(body.version);
 	});
 
-	it('GET /games/:gid は席の名前を返す', async () => {
+	it('GET /games は卓・席・入場券を 1 回で返す（管理面）', async () => {
 		const gid = await newGame();
-		const { status, body } = await call('GET', `/games/${gid}`);
+		const { status, body } = await call('GET', '/games');
 
 		assert.equal(status, 200);
-		assert.deepEqual(body.players, [ 'マスター', ...PLAYERS ]);
+		const found = body.games.find((game) => game.gid === gid);
+		assert.deepEqual(Object.keys(found), [ 'gid', 'players', 'ticket' ]);
+		assert.deepEqual(found.players, [ 'マスター', ...PLAYERS ]);
+		assert.equal(found.ticket, ticketOf.get(gid));
+	});
+
+	it('POST /games は一覧の 1 件と同じ形を返す', async () => {
+		const created = await call('POST', '/games', {
+			body: { players: PLAYERS, tarots: TAROTS },
+		});
+		const listed = await call('GET', '/games');
+
+		assert.deepEqual(Object.keys(created.body), [ 'gid', 'players', 'ticket' ]);
+		assert.deepEqual(created.body,
+			listed.body.games.find((game) => game.gid === created.body.gid));
+	});
+
+	it('GET /games/:gid は一覧の 1 件と同じ形を返す', async () => {
+		const gid = await newGame();
+		const { status, body } = await call('GET', `/games/${gid}`);
+		const listed = await call('GET', '/games');
+
+		assert.equal(status, 200);
+		assert.deepEqual(Object.keys(body), [ 'gid', 'players', 'ticket' ]);
+		assert.deepEqual(body, listed.body.games.find((game) => game.gid === gid));
+	});
+
+	it('消した卓は一覧から消える', async () => {
+		const gid = await newGame();
+		await call('DELETE', `/games/${gid}`);
+		const { body } = await call('GET', '/games');
+
+		assert.equal(body.games.find((game) => game.gid === gid), undefined);
 	});
 
 	it('⚠ 他人の pid の手札は 403 のまま', async () => {

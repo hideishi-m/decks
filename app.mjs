@@ -9,7 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -80,6 +80,45 @@ export function createApp(emitter, options) {
 		if (false === Array.isArray(value)) {
 			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
 		}
+		next();
+	}
+
+	// 卓への入場券。卓を作ったときに 1 つだけ発行し、以後は再発行しない。
+	// これを知っている人だけが席のトークンを取れる。
+	function createTicket() {
+		return randomBytes(16).toString('base64url');
+	}
+
+	// 合う卓の gid を返す。無ければ undefined。
+	function findTicket(ticket) {
+		const given = Buffer.from(ticket);
+		for (let gid = 0; gid < tickets.length; gid++) {
+			if (undefined === tickets[gid]) {
+				continue;
+			}
+			const known = Buffer.from(tickets[gid]);
+			// 長さが違うと timingSafeEqual は投げるので先に見る。
+			if (known.length === given.length && timingSafeEqual(known, given)) {
+				return `${gid}`;
+			}
+		}
+		return undefined;
+	}
+
+	// 入場の検査。通ったら req.gid にどの卓かを入れる。
+	// クライアントは gid を送らないので、卓を決めるのは ticket だけ。
+	function verifyTicket(req, res, next) {
+		const ticket = req.ticket();
+		if (undefined === ticket) {
+			res.set('WWW-Authenticate', 'Ticket realm="/join"');
+			throw new AppError(401, 'ticket required');
+		}
+		const gid = findTicket(ticket);
+		if (undefined === gid) {
+			res.set('WWW-Authenticate', 'Ticket realm="/join", error="invalid_ticket"');
+			throw new AppError(401, 'ticket not accepted');
+		}
+		req.gid = gid;
 		next();
 	}
 
@@ -160,6 +199,13 @@ export function createApp(emitter, options) {
 	const logger = getLogger(`${pkgJson.name}:app`);
 	const games = [];
 	const seqs = [];
+	const tickets = [];
+
+	// ⚠ 席とカードの検査は verifyToken の後ろに置く。app.param は認証より先に
+	//    走るため、param に置くと 404 と 401 の差で席数と手札の枚数を測られる。
+	const checkPlayer = partialReqKey(validatePlayer, ['params', 'pid']);
+	const checkTarget = partialReqKey(validatePlayer, ['params', 'tid']);
+	const checkCard = partialReqKey(validateCard, ['params', 'cid']);
 	const app = express();
 	const secret = options.secret ?? randomBytes(64).toString('hex');
 
@@ -216,6 +262,17 @@ export function createApp(emitter, options) {
 		}
 		return token;
 	};
+	app.request.ticket = function () {
+		const authorization = this.get('authorization');
+		if (undefined === authorization) {
+			return undefined;
+		}
+		const [scheme, ticket] = authorization.split(' ') ?? [];
+		if ('Ticket' !== scheme) {
+			return undefined;
+		}
+		return ticket;
+	};
 	app.response.statusJson = function (code, body) {
 		this.locals.route = this.req.route?.path;  // store to locals for logger.
 		this.locals.body = body;  // store to locals for logger.
@@ -259,14 +316,10 @@ export function createApp(emitter, options) {
 	app.param('gid', validateId);
 	app.param('gid', validateGame);
 
+	// 形だけを見る。存在の確認は各ルートの verifyToken の後ろで行う。
 	app.param('pid', validateId);
-	app.param('pid', validatePlayer);
-
 	app.param('cid', validateId);
-	app.param('cid', validateCard);
-
 	app.param('tid', validateId);
-	app.param('tid', validatePlayer);
 
 	app.route('/version')
 		.get((req, res, next) => {
@@ -275,39 +328,68 @@ export function createApp(emitter, options) {
 			});
 		});
 
+	app.route('/join')
+		.get(verifyTicket, (req, res, next) => {
+			const game = games[req.gid];
+			const players = game.getAllPlayers();
+			logger.log(`JOIN game ${req.gid} for players ${players}`);
+			res.statusJson(200, {
+				gid: req.gid,
+				players: players,
+			});
+		});
+
 	app.route('/token')
-		.post(partialReqKey(validateId, ['body', 'gid']), partialReqKey(validateId, ['body', 'pid']), (req, res, next) => {
+		.post(verifyTicket, partialReqKey(validateId, ['body', 'pid']), (req, res, next) => {
+			const game = games[req.gid];
+			if (undefined === game.getPlayer(req.body.pid)) {
+				throw new AppError(404, 'player not found for pid', { cause: {
+					pid: req.body.pid,
+				} });
+			}
 			const token = jwt.sign({
-				gid: `${req.body.gid}`,
+				gid: req.gid,
 				pid: `${req.body.pid}`,
 			}, secret, { expiresIn: '1d' });
-			logger.log(`POST token for player ${req.body.pid} in game ${req.body.gid}`);
+			logger.log(`POST token for player ${req.body.pid} in game ${req.gid}`);
 			res.statusJson(200, {
 				token: token,
 			});
 		});
 
+	// 管理面。1 回で卓の一覧・席・入場券が揃うので、卓ごとに引き直さなくてよい。
+	// ⚠ 入場券を返すので、前段（nginx 等）で保護すること。
 	app.route('/games')
 		.get((req, res, next) => {
-			const gids = [];
+			const list = [];
 			games.forEach((game, index) => {
 				if (undefined !== game) {
-					gids.push({ gid: `${index}` });
+					list.push({
+						gid: `${index}`,
+						players: game.getAllPlayers(),
+						ticket: tickets[index],
+					});
 				}
 			});
-			logger.log(`GET games ${gids.map((game) => game.gid)}`);
+			logger.log(`GET games ${list.map((game) => game.gid)}`);
 			res.statusJson(200, {
-				games: gids,
+				games: list,
 			});
 		})
 		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateArray, ['body', 'tarots']), (req, res, next) => {
 			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
+			tickets[gid] = createTicket();
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
+			// 一覧の 1 件と同じ形で返すので、呼ぶ側は場合分けせずに扱える。
 			res.statusJson(200, {
 				gid: `${gid}`,
+				players: games[gid].getAllPlayers(),
+				ticket: tickets[gid],
 			});
 		});
 
+	// 1 卓だけ引きたいとき。一覧と同じ形を返す。
+	// ⚠ 入場券を返すので、GET /games と同じく前段で保護すること。
 	app.route('/games/:gid')
 		.get((req, res, next) => {
 			const game = games[req.params.gid];
@@ -316,11 +398,13 @@ export function createApp(emitter, options) {
 			res.statusJson(200, {
 				gid: req.params.gid,
 				players: players,
+				ticket: tickets[req.params.gid],
 			});
 		})
-		.delete(verifyToken, (req, res, next) => {
+		.delete((req, res, next) => {
 			delete games[req.params.gid];
 			delete seqs[req.params.gid];
+			delete tickets[req.params.gid];
 			logger.log(`DELETE game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
@@ -408,7 +492,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/players/:pid')
-		.get(verifyToken, (req, res, next) => {
+		.get(verifyToken, checkPlayer, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -422,7 +506,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/players/:pid/draw')
-		.put(verifyToken, (req, res, next) => {
+		.put(verifyToken, checkPlayer, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -441,7 +525,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/players/:pid/recycle')
-		.put(verifyToken, (req, res, next) => {
+		.put(verifyToken, checkPlayer, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -461,7 +545,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/players/:pid/cards/:cid')
-		.get(verifyToken, (req, res, next) => {
+		.get(verifyToken, checkPlayer, checkCard, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -477,7 +561,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/players/:pid/cards/:cid/discard')
-		.put(verifyToken, (req, res, next) => {
+		.put(verifyToken, checkPlayer, checkCard, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -495,7 +579,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/players/:pid/cards/:cid/pass/:tid')
-		.put(verifyToken, (req, res, next) => {
+		.put(verifyToken, checkPlayer, checkCard, checkTarget, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -513,7 +597,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/players/:pid/pick/:tid')
-		.put(verifyToken, (req, res, next) => {
+		.put(verifyToken, checkPlayer, checkTarget, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getHandOfPlayer(req.params.pid);
@@ -581,7 +665,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/tarot/players/:pid')
-		.get(verifyToken, (req, res, next) => {
+		.get(verifyToken, checkPlayer, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getTarotHandOfPlayer(req.params.pid);
@@ -595,7 +679,7 @@ export function createApp(emitter, options) {
 		});
 
 	app.route('/games/:gid/tarot/players/:pid/discard')
-		.put(verifyToken, (req, res, next) => {
+		.put(verifyToken, checkPlayer, (req, res, next) => {
 			const game = games[req.params.gid];
 			const player = game.getPlayer(req.params.pid);
 			const hand = game.getTarotHandOfPlayer(req.params.pid);

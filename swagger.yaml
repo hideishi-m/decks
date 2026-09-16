@@ -17,6 +17,23 @@ tags:
     description: Calls for game players
   - name: admins
     description: Calls for game administrators
+  - name: entry
+    description: |
+      Getting into a table. A ticket is issued once when the table is created
+      and is not reissued; the master hands out a link carrying it:
+
+      ```
+      https://example.com/decks/play.html?ticket=kJ3nQ8vZ2pL7mR4tX1aB9c
+      ```
+
+      The ticket alone says which table it is, so a client never sends a gid.
+      Inside a table the ticket takes a token for any seat: seats are not
+      protected from each other.
+
+      Nothing guards the admin calls, and `GET /games` hands back the tickets,
+      so put those and admin.html behind the proxy. Cover `/admin.html`,
+      `/js/admin.js`, `/games` and `/games/<digits>` — and nothing deeper,
+      since `/games/1/table` and the rest are what the players call.
   - name: websocket
     description: |
       Not an HTTP call. Connect a WebSocket to the same path as the page and
@@ -72,14 +89,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /join:
+    get:
+      tags:
+        - entry
+      security:
+        - Ticket: []
+      summary: open a table with a ticket
+      operationId: getJoin
+      description: |
+        Says which table the ticket opens and lists its seats, so a client can
+        offer the seat picker after a single call.
+      responses:
+        200:
+          description: game ID and players
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GamePlayers'
+        401:
+          description: no ticket, or the ticket is not accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /token:
     post:
       tags:
-        - players
-        - admins
+        - entry
+      security:
+        - Ticket: []
       summary: retrieve an access token
       operationId: getToken
-      description: Retrieves an acess token
+      description: |
+        Retrieves a token for a seat at the table the ticket opens. The table
+        is decided by the ticket, so no gid is sent.
       requestBody:
         description: access token attributes
         content:
@@ -99,6 +143,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        401:
+          description: no ticket, or the ticket is not accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: no player for pid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /games:
     get:
       tags:
@@ -107,10 +163,14 @@ paths:
       summary: retrieve all games
       operationId: getGames
       description: |
-        Retrieves all games available
+        Lists every table with its seats and its ticket, so an admin page does
+        not have to ask per table.
+
+        ⚠ This returns tickets. Keep it behind the proxy together with
+        admin.html.
       responses:
         200:
-          description: game IDs
+          description: games with their seats and tickets
           content:
             application/json:
               schema:
@@ -126,7 +186,9 @@ paths:
         - admins
       summary: create a new game
       operationId: addGame
-      description: Creates a new game
+      description: |
+        Creates a new game and issues the ticket that opens it. The ticket is
+        returned here once and is not reissued; hand it out as a link.
       requestBody:
         description: game attributes
         content:
@@ -135,11 +197,11 @@ paths:
               $ref: '#/components/schemas/GameAttributes'
       responses:
         200:
-          description: game ID
+          description: the new game, in the same shape as one listing entry
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GameId'
+                $ref: '#/components/schemas/Game'
         400:
           description: invalid input, object invalid
           content:
@@ -150,11 +212,13 @@ paths:
     get:
       tags:
         - admins
-        - players
       summary: retrieve a game
       operationId: getGame
       description: |
-        Retrieves a game for gid
+        One table, in the same shape as one entry of `GET /games`.
+
+        ⚠ This returns the ticket. Keep it behind the proxy together with
+        admin.html.
       parameters:
         - name: gid
           in: path
@@ -164,11 +228,11 @@ paths:
             $ref: '#/components/schemas/Id'
       responses:
         200:
-          description: game ID and players
+          description: the game with its seats and ticket
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GamePlayers'
+                $ref: '#/components/schemas/Game'
         400:
           description: invalid input
           content:
@@ -184,8 +248,6 @@ paths:
     delete:
       tags:
         - admins
-      security:
-        - JWT: []
       summary: delete all game
       operationId: deleteGame
       description: |
@@ -1026,6 +1088,13 @@ paths:
                 $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
+    Ticket:
+      type: http
+      scheme: Ticket
+      description: |
+        The pass into a table, issued once when the table is created.
+        Whoever holds it can take a token for any seat at that table.
+
     JWT:
       description: JWT bearer token
       type: http
@@ -1045,11 +1114,8 @@ components:
     TokenAttributes:
       type: object
       required:
-        - gid
         - pid
       properties:
-        gid:
-          $ref: '#/components/schemas/Id'
         pid:
           $ref: '#/components/schemas/Id'
     Token:
@@ -1063,6 +1129,12 @@ components:
     Id:
       type: string
       example: '0'
+    Ticket:
+      type: string
+      description: |
+        The pass into a table. Issued once when the table is created and never
+        reissued. It is enough on its own to say which table it is.
+      example: kJ3nQ8vZ2pL7mR4tX1aB9c
     GameId:
       type: object
       required:
@@ -1070,6 +1142,22 @@ components:
       properties:
         gid:
           $ref: '#/components/schemas/Id'
+    Game:
+      type: object
+      description: |
+        One table as the admin page sees it. `POST /games` returns exactly
+        this, so a caller does not have to tell the two apart.
+      required:
+        - gid
+        - players
+        - ticket
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        players:
+          $ref: '#/components/schemas/Players'
+        ticket:
+          $ref: '#/components/schemas/Ticket'
     Games:
       type: object
       required:
@@ -1078,7 +1166,7 @@ components:
         games:
           type: array
           items:
-            $ref: '#/components/schemas/GameId'
+            $ref: '#/components/schemas/Game'
     Player:
       type: string
       example: pc1

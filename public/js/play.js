@@ -9,7 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ping, timeout, retryWait, ajax, getToken, updateStatus, appendLog, appendOption, updateOptions, removeOption, parseDataValue, qs, el, fromHtml, delegate, createDialog } from './common.js';
+import { ping, timeout, retryWait, ajax, join, getToken, updateStatus, appendLog, updateOptions, removeOption, parseDataValue, qs, el, fromHtml, delegate, createDialog } from './common.js';
 import { cardSuits, cardRanks, cardPositions } from './attr.js';
 import { tarotRanks } from './TNM_tarot.js';
 
@@ -18,6 +18,8 @@ const MASTER = '0';
 const FANNED = 5;
 
 let gid, pid, socket, token;
+// 卓への入場券。URL から受け取る。これが無ければ何も始まらない。
+const ticket = new URLSearchParams(document.location.search).get('ticket');
 let table;
 // 自分の切り札。面は自分にしか見えないので table からは引けない。
 let myTarot;
@@ -28,7 +30,6 @@ let reopened = false;
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const gameModal = createDialog('gameModal', { persistent: true });
 const playerModal = createDialog('playerModal', { persistent: true });
 const handModal = createDialog('handModal');
 const seatModal = createDialog('seatModal');
@@ -465,27 +466,7 @@ async function fetchTarotHand() {
 	node.replaceChildren(card);
 }
 
-// ---- ゲームと席の選択 ----
-
-delegate(gameModal.node, 'button', 'click', () => gameModal.toggle());
-
-qs('#selectGame').addEventListener('click', selectGame);
-async function selectGame() {
-	try {
-		const params = parseDataValue({
-			gid: '#selectGameSelect',
-		});
-		const data = await ajax('./games/' + params.gid, { method: 'GET' });
-		updateStatus(JSON.stringify(data, null, 2));
-		gid = data.gid;
-		qs('#gameLabel').textContent = data.gid;
-		updateOptions('#selectPlayerSelect', data.players);
-		updateOptions('#passHandSelect', data.players);
-		playerModal.toggle();
-	} catch (error) {
-		updateStatus(`${error.name}: ${error.message}`);
-	}
-}
+// ---- 席の選択 ----
 
 delegate(playerModal.node, 'button', 'click', () => playerModal.toggle());
 
@@ -495,7 +476,7 @@ async function selectPlayer() {
 		const params = parseDataValue({
 			pid: '#selectPlayerSelect',
 		});
-		token = await getToken(gid, params.pid);
+		token = await getToken(params.pid, ticket);
 		pid = params.pid;
 		removeOption('#passHandSelect', pid);
 		await fetchTable();
@@ -769,14 +750,22 @@ async function flipTarotPile() {
 
 // ---- ready ----
 
-try {
-	const data = await ajax('./games', { method: 'GET' });
-	updateStatus(JSON.stringify(data, null, 2));
-	qs('#selectGameSelect').replaceChildren();
-	for (const game of data.games) {
-		appendOption('#selectGameSelect', game.gid, game.gid);
+// ticket が無い／通らないときは、空の卓を描かずに理由を出して止める。
+if (null === ticket) {
+	qs('#gate').textContent = 'この URL では卓に入れない。マスターから渡された URL を開く。';
+	qs('#gate').hidden = false;
+	qs('#felt').hidden = true;
+} else {
+	try {
+		const data = await join(ticket);
+		gid = data.gid;
+		qs('#gameLabel').textContent = data.gid;
+		updateOptions('#selectPlayerSelect', data.players);
+		updateOptions('#passHandSelect', data.players);
+		playerModal.open();
+	} catch (error) {
+		qs('#gate').textContent = `卓に入れない（${error.message}）。`;
+		qs('#gate').hidden = false;
+		qs('#felt').hidden = true;
 	}
-	gameModal.toggle();
-} catch (error) {
-	updateStatus(`${error.name}: ${error.message}`);
 }

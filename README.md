@@ -2,9 +2,41 @@
 
 ## 約束事
 
-`/version`、`/token`、ゲームの一覧・作成・取得を除く全てのエンドポイントは
-`Authorization: Bearer <token>` を要求する。トークンは gid と pid に紐づいていて、
-`:gid` と `:pid` がトークンの中身と一致しないと 403 を返す。
+エンドポイントは 3 つの層に分かれる。
+
+| 層 | エンドポイント | 要求するもの |
+|---|---|---|
+| 管理 | `/version`、`GET /games`、`POST /games`、`GET /games/:gid`、`DELETE /games/:gid` | なし |
+| 入場 | `GET /join`、`POST /token` | `Authorization: Ticket <ticket>` |
+| 卓の中 | それ以外すべて | `Authorization: Bearer <token>` |
+
+**ticket** は卓への入場券。卓を作ったときに 1 つだけ発行され、以後は再発行されない。
+これを知っている人だけが席のトークンを取れる。卓を消すと通らなくなる。
+
+**token** は席の権限。gid と pid に紐づいていて、`:gid` と `:pid` が
+トークンの中身と一致しないと 403 を返す。有効期限は 1 日。
+
+⚠️ 管理層には認証が無い。`GET /games` と `GET /games/:gid` は ticket を返すので、
+**前段（nginx 等）で管理層と `admin.html` を保護すること。** 覆うのは次の 4 つだけ。
+
+    /admin.html
+    /js/admin.js
+    /games
+    /games/<数字>
+
+⚠️ **`/games/<数字>` より深いパスは覆わないこと。** `/games/1/table` や
+`/games/1/players/2` は参加者が使うので、`/games` 以下をまとめて覆うと
+参加者が締め出される。nginx なら末尾を `$` で止める。
+
+    location ~ ^/decks/(admin\.html|js/admin\.js|games(/[0-9]+)?)$ {
+        auth_basic "decks admin";
+        auth_basic_user_file /etc/nginx/.htpasswd-decks;
+        # location ~ は location ^~ /decks より優先されるので、
+        # root と try_files をここにも書く。
+    }
+
+⚠️ 同じ卓の中では、ticket があればどの席のトークンも取れる。
+卓の中で席を偽れないようにはなっていない。
 
 `card` は次の形。
 
@@ -35,16 +67,31 @@ GET /version
 response: { version: "1.6.0" }
 
 
-## 認証
+## 入場
+
+### 卓を開く
+
+ticket がどの卓のものかを返す。席の一覧も一緒に返るので、
+参加者はこれ 1 回で席を選べる。
+
+GET /join
+
+header: Authorization: Ticket <ticket>
+
+response: {
+  gid: "1",
+  players: [ "マスター", "pc1", "pc2", "pc3" ]
+}
 
 ### トークン取得
 
+どの卓かは ticket が決めるので、gid は送らない。
+
 POST /token
 
-request: {
-  gid: "1",
-  pid: "0"
-}
+header: Authorization: Ticket <ticket>
+
+request: { pid: "0" }
 
 response: { token: "..." }
 
@@ -60,21 +107,48 @@ request: {
   tarots: [ "4", "18", "7" ]
 }
 
-response: { gid: "1" }
+一覧の 1 件と同じ形を返す。
+
+response: {
+  gid: "1",
+  players: [ "マスター", "pc1", "pc2", "pc3" ],
+  ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
+}
+
+参加者にはこの ticket を付けた URL を配る。
+
+  https://example.com/decks/play.html?ticket=kJ3nQ8vZ2pL7mR4tX1aB9c
 
 ### ゲーム一覧
 
+卓ごとに引き直さなくてよいよう、席と ticket もまとめて返す。
+
+⚠️ ticket を含むので、前段で保護すること。
+
 GET /games
 
-response: { games: [ { gid: "1" }, { gid: "2" } ] }
+response: {
+  games: [
+    {
+      gid: "1",
+      players: [ "マスター", "pc1", "pc2", "pc3" ],
+      ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
+    }
+  ]
+}
 
 ### ゲーム取得
+
+1 卓だけ引きたいとき。一覧の 1 件と同じ形を返す。
+
+⚠️ ticket を含むので、前段で保護すること。
 
 GET /games/:gid
 
 response: {
   gid: "1",
-  players: [ "マスター", "pc1", "pc2", "pc3" ]
+  players: [ "マスター", "pc1", "pc2", "pc3" ],
+  ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
 }
 
 ### ゲーム終了
@@ -457,6 +531,10 @@ response: {
 }
 
 - 400 パスやリクエストの形式が不正
-- 401 トークンが無い、または検証できない
+- 401 ticket または token が無い、または検証できない
 - 403 トークンの gid / pid がパスと一致しない
 - 404 gid / pid / cid に対応するものが無い
+
+⚠️ 卓の中のエンドポイントは、トークンが無ければ席やカードの存在を確かめる前に
+401 を返す。存在しない pid でも 404 ではなく 401 になる（席の数や手札の枚数を
+401 と 404 の差で測れないようにするため）。
