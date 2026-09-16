@@ -48,8 +48,6 @@ export default [
 		languageOptions: {
 			globals: {
 				...globals.browser,
-				...globals.jquery,
-				bootstrap: "readonly",
 			},
 		},
 	}

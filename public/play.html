@@ -5,9 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="./css/app.css">
 
   <title>Play</title>
 </head>
@@ -100,22 +98,16 @@
 
     <div class="border p-2">
       <h2>Status</h2>
-      <div class="row mb-3">
-        <div class="col">
-          <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#status">collapse</button>
-        </div>
-      </div>
-      <div class="row">
-        <div id="status" class="col collapse"></div>
-      </div>
+      <details class="mb-3">
+        <summary class="btn btn-primary">collapse</summary>
+        <div id="status"></div>
+      </details>
     </div>
 
   </div>
 
   <!-- Modal: game -->
-  <div class="modal fade" id="gameModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
+  <dialog id="gameModal">
         <div class="modal-header">
           <h5>Select game to join</h5>
         </div>
@@ -133,14 +125,10 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+  </dialog>
 
   <!-- Modal: player -->
-  <div class="modal fade" id="playerModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
+  <dialog id="playerModal">
         <div class="modal-header">
           <h5>Select player to join</h5>
         </div>
@@ -158,14 +146,10 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+  </dialog>
 
   <!-- Modal: hand -->
-  <div class="modal fade" id="handModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
+  <dialog id="handModal">
         <div class="modal-header">
           <h5>Hand</h5>
         </div>
@@ -200,14 +184,10 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+  </dialog>
 
   <!-- Modal: deck -->
-  <div class="modal fade" id="deckModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
+  <dialog id="deckModal">
         <div class="modal-header">
           <h5>Deck</h5>
         </div>
@@ -237,14 +217,10 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+  </dialog>
 
   <!-- Modal: pile -->
-  <div class="modal fade" id="pileModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
+  <dialog id="pileModal">
         <div class="modal-header">
           <h5>Pile</h5>
         </div>
@@ -279,14 +255,10 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+  </dialog>
 
   <!-- Modal: tarotHand -->
-  <div class="modal fade" id="tarotHandModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
+  <dialog id="tarotHandModal">
         <div class="modal-header">
           <h5>TarotHand</h5>
         </div>
@@ -311,14 +283,10 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+  </dialog>
 
   <!-- Modal: tarotPile -->
-  <div class="modal fade" id="tarotPileModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
+  <dialog id="tarotPileModal">
         <div class="modal-header">
           <h5>TarotPile</h5>
         </div>
@@ -343,13 +311,8 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+  </dialog>
 
-  <!-- Bootstrap Bundle with Popper -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="./js/play.js" type="module"></script>
 </body>
 </html>
