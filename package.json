@@ -12,11 +12,13 @@
   },
   "scripts": {
     "start": "node --env-file=.env index.mjs",
+    "test": "node --test",
     "redocly": "node node_modules/.bin/redocly build-docs swagger.yaml -o public/spec.html"
   },
   "author": "Hidenori ISHIKAWA",
   "files": [
     "*.mjs",
+    "public/**/*.css",
     "public/**/*.html",
     "public/**/*.js",
     "public/**/*.svg"
@@ -38,7 +40,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.12.0",
-    "@redocly/cli": "^1.4.0",
-    "globals": "^16.0.0"
+    "@redocly/cli": "^2.26.0",
+    "globals": "^17.0.0",
+    "jsdom": "^25.0.0"
   }
 }

@@ -1,0 +1,383 @@
+/**
+Copyright (c) 2022-2024 Hidenori ISHIKAWA. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createGame } from '../game.mjs';
+
+// shuffles を 0 にすると山札の並びが決定的になるので、
+// 「どの札がどこへ動いたか」まで固定できる。並びは
+// スート クラブ,ダイヤ,ハート,スペード の順に、各 13 枚が 10,2..9,A,J,Q,K の順
+// （なぜ 10 が先頭かは「未シャッフルの並びは…」のテストを参照）。
+function plainGame(players, tarots) {
+	return createGame(players ?? [ 'p1', 'p2' ], tarots ?? [], 1, 0, 0, 0);
+}
+
+const MASTER = 0;
+
+// Cards は Array のサブクラスなので、deepStrictEqual に渡す前に素の配列へ均す。
+function names(cards) {
+	return [ ...cards.names() ];
+}
+
+describe('createGame', () => {
+	it('マスターを先頭に足して席を作る', () => {
+		const game = plainGame([ 'p1', 'p2' ]);
+		assert.deepEqual(game.getAllPlayers(), [ 'マスター', 'p1', 'p2' ]);
+		assert.equal(game.getPlayer(MASTER), 'マスター');
+		assert.equal(game.getPlayer(2), 'p2');
+	});
+
+	it('pid が文字列でも席を引ける', () => {
+		// app.mjs は req.params.pid を文字列のまま渡す。
+		const game = plainGame();
+		assert.equal(game.getPlayer('1'), 'p1');
+		assert.equal(game.getHandOfPlayer('1').toJson().length, 0);
+	});
+
+	it('山札は decks × 52 ＋ jokers', () => {
+		assert.equal(plainGame().getDeck().toJson().length, 52);
+		assert.equal(createGame([ 'p1' ], [], 2, 2, 0, 0).getDeck().toJson().length, 106);
+	});
+
+	it('draws の枚数だけ全員に配り、その分だけ山札が減る', () => {
+		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 4);
+		assert.equal(game.getDeck().toJson().length, 52 - 3 * 4);
+		for (const pid of [ 0, 1, 2 ]) {
+			assert.equal(game.getHandOfPlayer(pid).toJson().length, 4);
+		}
+	});
+
+	it('未シャッフルの並びは 10,2..9,A,J,Q,K の順になる', () => {
+		// ⚠ attr.js の ranks は素のオブジェクトリテラルで、'0'(=10) と '2'..'9' が
+		// 整数キーとして扱われる。JS のプロパティ順は整数キーが昇順で先に来るので、
+		// 'A' より '0' が前に出る。実戦ではシャッフルされるので影響しないが、
+		// 決定的なテストを書くときはこの並びが前提になる。
+		const game = createGame([], [], 1, 0, 0, 13);
+		assert.deepEqual(names(game.getHandOfPlayer(MASTER).toJson().cards), [
+			'クラブ 10 (0)', 'クラブ 2 (0)', 'クラブ 3 (0)', 'クラブ 4 (0)',
+			'クラブ 5 (0)', 'クラブ 6 (0)', 'クラブ 7 (0)', 'クラブ 8 (0)',
+			'クラブ 9 (0)', 'クラブ エース (0)', 'クラブ ジャック (0)',
+			'クラブ クイーン (0)', 'クラブ キング (0)',
+		]);
+	});
+
+	it('スートは クラブ,ダイヤ,ハート,スペード の順', () => {
+		const game = createGame([], [], 1, 0, 0, 14);
+		assert.equal(game.getHandOfPlayer(MASTER).at(13).name(), 'ダイヤ 10 (0)');
+	});
+
+	it('配る順は席順で、山札の先頭から取る', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 2);
+		assert.deepEqual(names(game.getHandOfPlayer(MASTER).toJson().cards),
+			[ 'クラブ 10 (0)', 'クラブ 2 (0)' ]);
+		assert.deepEqual(names(game.getHandOfPlayer(1).toJson().cards),
+			[ 'クラブ 3 (0)', 'クラブ 4 (0)' ]);
+	});
+
+	it('山札が尽きたら配れるところまでで止める', () => {
+		// createHandCards() にガードが無いと undefined が手札に混ざる。
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 30);
+
+		assert.equal(game.getDeck().toJson().length, 0);
+		assert.equal(game.getHandOfPlayer(MASTER).toJson().length, 30);
+		assert.equal(game.getHandOfPlayer(1).toJson().length, 22);
+		for (const pid of [ 0, 1 ]) {
+			const cards = game.getHandOfPlayer(pid).toJson().cards;
+			assert.equal(cards.filter((card) => undefined === card).length, 0);
+		}
+	});
+
+	it('山札が空の席は手札 0 枚になる', () => {
+		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 52);
+
+		assert.equal(game.getHandOfPlayer(MASTER).toJson().length, 52);
+		assert.equal(game.getHandOfPlayer(1).toJson().length, 0);
+		assert.equal(game.getHandOfPlayer(2).toJson().length, 0);
+	});
+
+	it('捨て札は空で始まる', () => {
+		assert.deepEqual(plainGame().getPile().toJson(), { length: 0, card: undefined });
+	});
+
+	it('既定値は decks=2 jokers=2 shuffles=10 draws=4', () => {
+		const game = createGame([ 'p1', 'p2' ]);
+		assert.equal(game.getDeck().toJson().length, 2 * 52 + 2 - 3 * 4);
+		assert.equal(game.getHandOfPlayer(MASTER).toJson().length, 4);
+	});
+});
+
+describe('タロット', () => {
+	it('配った切り札はタロット山札から除かれる', () => {
+		// tarotRanks は 28 種。指定した 2 種が山札から抜ける。
+		const game = plainGame([ 'p1', 'p2' ], [ '4', '18' ]);
+		assert.equal(game.getTarotDeck().toJson().length, 26);
+	});
+
+	it('切り札は players の並び順に配られ、マスターは持たない', () => {
+		const game = plainGame([ 'p1', 'p2' ], [ '4', '18' ]);
+		assert.deepEqual(game.getTarotHandOfPlayer(MASTER).toJson(),
+			{ length: 0, card: undefined });
+		assert.equal(game.getTarotHandOfPlayer(1).toJson().card.rank, '4');
+		assert.equal(game.getTarotHandOfPlayer(2).toJson().card.rank, '18');
+	});
+
+	it('未知の rank を指定した席は切り札なしになる', () => {
+		const game = plainGame([ 'p1' ], [ 'このrankは無い' ]);
+		assert.equal(game.getTarotHandOfPlayer(1).toJson().length, 0);
+		assert.equal(game.getTarotDeck().toJson().length, 28);
+	});
+
+	it('切り札は既定で正位置', () => {
+		const game = plainGame([ 'p1' ], [ '4' ]);
+		const card = game.getTarotHandOfPlayer(1).toJson().card;
+		assert.equal(card.position, 'U');
+		assert.equal(card.name(), 'カブト 正位置');
+	});
+
+	it('TarotPile.flip() は正逆を入れ替える', () => {
+		const game = plainGame([ 'p1' ], [ '4' ]);
+		game.getTarotHandOfPlayer(1).discard(0);
+		const pile = game.getTarotPile();
+
+		assert.equal(pile.toJson().card.position, 'U');
+		pile.flip();
+		assert.equal(pile.toJson().card.position, 'R');
+		assert.equal(pile.toJson().card.name(), 'カブト 逆位置');
+		pile.flip();
+		assert.equal(pile.toJson().card.position, 'U');
+	});
+
+	it('TarotPile.flip() は捨て札が空でも落ちない', () => {
+		const game = plainGame();
+		assert.doesNotThrow(() => game.getTarotPile().flip());
+	});
+
+	it('TarotHand.toJson() は cards ではなく card を返す', () => {
+		const json = plainGame([ 'p1' ], [ '4' ]).getTarotHandOfPlayer(1).toJson();
+		assert.deepEqual(Object.keys(json), [ 'length', 'card' ]);
+	});
+});
+
+describe('Deck', () => {
+	it('discard() は山札から抜いて捨て札の先頭へ積む', () => {
+		const game = plainGame();
+		const deck = game.getDeck();
+		const pile = game.getPile();
+
+		deck.discard(0);
+		assert.equal(deck.toJson().length, 51);
+		assert.equal(pile.toJson().length, 1);
+		assert.equal(pile.toJson().card.name(), 'クラブ 10 (0)');
+
+		deck.discard(0);
+		// 後から捨てた方が先頭に来る。
+		assert.equal(pile.toJson().card.name(), 'クラブ 2 (0)');
+		assert.equal(pile.toJson().length, 2);
+	});
+
+	it('discard() は範囲外の index では何もしない', () => {
+		const game = plainGame();
+		const deck = game.getDeck();
+
+		deck.discard(999);
+		assert.equal(deck.toJson().length, 52);
+		assert.equal(game.getPile().toJson().length, 0);
+	});
+
+	it('recycle() は捨て札の先頭を山札の先頭へ戻す', () => {
+		const game = plainGame();
+		const deck = game.getDeck();
+
+		deck.discard(0);
+		deck.discard(0);
+		deck.recycle();
+
+		assert.equal(deck.toJson().length, 51);
+		assert.equal(game.getPile().toJson().card.name(), 'クラブ 10 (0)');
+		// 末尾ではなく先頭に戻るので、次に引くのは戻した札。
+		const hand = game.getHandOfPlayer(MASTER);
+		hand.draw();
+		assert.equal(hand.at(0).name(), 'クラブ 2 (0)');
+	});
+
+	it('recycle() は捨て札が空なら何もしない', () => {
+		const game = plainGame();
+		const deck = game.getDeck();
+
+		deck.recycle();
+		assert.equal(deck.toJson().length, 52);
+	});
+});
+
+describe('Pile', () => {
+	it('shuffle() は捨て札を全て山札へ戻す', () => {
+		const game = plainGame();
+		const deck = game.getDeck();
+		const pile = game.getPile();
+
+		deck.discard(0);
+		deck.discard(0);
+		deck.discard(0);
+		assert.equal(pile.toJson().length, 3);
+
+		pile.shuffle();
+		assert.equal(pile.toJson().length, 0);
+		assert.equal(deck.toJson().length, 52);
+	});
+
+	it('shuffle() は札を失わない', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 0);
+		const deck = game.getDeck();
+		const before = new Set(game.toJson().deck);
+
+		for (let i = 0; i < 10; i++) {
+			deck.discard(0);
+		}
+		game.getPile().shuffle();
+
+		assert.deepEqual(new Set(game.toJson().deck), before);
+	});
+
+	it('toJson() の card は一番上の 1 枚だけ', () => {
+		const game = plainGame();
+		game.getDeck().discard(0);
+		const json = game.getPile().toJson();
+
+		assert.deepEqual(Object.keys(json), [ 'length', 'card' ]);
+		assert.equal(json.length, 1);
+	});
+});
+
+describe('Hand', () => {
+	it('draw() は山札の先頭を手札の末尾へ', () => {
+		const game = plainGame();
+		const hand = game.getHandOfPlayer(1);
+
+		hand.draw();
+		hand.draw();
+		assert.deepEqual(names(hand.toJson().cards),
+			[ 'クラブ 10 (0)', 'クラブ 2 (0)' ]);
+		assert.equal(game.getDeck().toJson().length, 50);
+	});
+
+	it('draw() は山札が空なら何もしない', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 26);
+		const hand = game.getHandOfPlayer(1);
+		assert.equal(game.getDeck().toJson().length, 0);
+
+		hand.draw();
+		assert.equal(hand.toJson().length, 26);
+	});
+
+	it('discard() は手札から抜いて捨て札の先頭へ', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 3);
+		const hand = game.getHandOfPlayer(1);
+
+		hand.discard(1);
+		assert.deepEqual(names(hand.toJson().cards),
+			[ 'クラブ 4 (0)', 'クラブ 6 (0)' ]);
+		assert.equal(game.getPile().toJson().card.name(), 'クラブ 5 (0)');
+	});
+
+	it('discard() は範囲外の index では何もしない', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 3);
+		const hand = game.getHandOfPlayer(1);
+
+		hand.discard(999);
+		assert.equal(hand.toJson().length, 3);
+		assert.equal(game.getPile().toJson().length, 0);
+	});
+
+	it('recycle() は捨て札の先頭を手札の末尾へ', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 2);
+		const hand = game.getHandOfPlayer(1);
+
+		hand.discard(0);
+		hand.recycle();
+		assert.deepEqual(names(hand.toJson().cards),
+			[ 'クラブ 4 (0)', 'クラブ 3 (0)' ]);
+		assert.equal(game.getPile().toJson().length, 0);
+	});
+
+	it('passTo() は相手の手札の末尾へ渡す', () => {
+		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 2);
+		const from = game.getHandOfPlayer(1);
+		const to = game.getHandOfPlayer(2);
+
+		from.passTo(0, 2);
+		assert.equal(from.toJson().length, 1);
+		assert.equal(to.toJson().length, 3);
+		assert.equal(to.at(2).name(), 'クラブ 3 (0)');
+	});
+
+	it('passTo() は範囲外の index では何もしない', () => {
+		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 2);
+		const from = game.getHandOfPlayer(1);
+
+		from.passTo(999, 2);
+		assert.equal(from.toJson().length, 2);
+		assert.equal(game.getHandOfPlayer(2).toJson().length, 2);
+	});
+
+	it('pickFrom() は相手から 1 枚抜いて自分の末尾へ', () => {
+		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 2);
+		const mine = game.getHandOfPlayer(1);
+		const theirs = game.getHandOfPlayer(2);
+		const candidates = theirs.toJson().cards.names();
+
+		mine.pickFrom(2);
+		assert.equal(mine.toJson().length, 3);
+		assert.equal(theirs.toJson().length, 1);
+		// どの 1 枚かは乱数で決まるので、相手が持っていた札のいずれかであること。
+		assert.ok(candidates.includes(mine.at(2).name()));
+	});
+
+	it('pickFrom() は相手の手札が空なら何もしない', () => {
+		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 0);
+		const mine = game.getHandOfPlayer(1);
+
+		mine.pickFrom(2);
+		assert.equal(mine.toJson().length, 0);
+	});
+
+	it('at() は手札の 1 枚を返し、範囲外は undefined', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 1);
+		const hand = game.getHandOfPlayer(1);
+
+		assert.equal(hand.at(0).name(), 'クラブ 2 (0)');
+		assert.equal(hand.at(1), undefined);
+	});
+
+	it('at() は文字列の index でも引ける', () => {
+		// app.mjs は req.params.cid を文字列のまま渡す。
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 2);
+		assert.equal(game.getHandOfPlayer(1).at('1').name(), 'クラブ 4 (0)');
+	});
+});
+
+describe('Game.toJson', () => {
+	it('全ての山と席を名前の配列で出す', () => {
+		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 1);
+		const json = game.toJson();
+
+		assert.deepEqual(Object.keys(json),
+			[ 'deck', 'pile', 'players', 'tarotDeck', 'tarotPile' ]);
+		assert.equal(json.deck.length, 50);
+		assert.deepEqual([ ...json.pile ], []);
+		assert.equal(json.players.length, 2);
+		assert.equal(json.players[1].player, 'p1');
+		assert.deepEqual([ ...json.players[1].hand ], [ 'クラブ 2 (0)' ]);
+		assert.deepEqual([ ...json.players[1].tarotHand ], [ 'カブト 正位置' ]);
+		assert.equal(json.tarotDeck.length, 27);
+	});
+});
