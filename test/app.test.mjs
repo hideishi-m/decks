@@ -33,9 +33,7 @@ const seen = [];
 before(async () => {
 	emitter = new EventEmitter();
 	// emitter は app が emit するだけなので、記録しておいて後で見る。
-	for (const type of [ 'deck', 'pile', 'hand', 'tarot' ]) {
-		emitter.on(type, (data) => seen.push({ type: type, data: data }));
-	}
+	emitter.on('action', (data) => seen.push(data));
 	server = http.createServer(createApp(emitter, { secret: 'test-secret' }));
 	await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 	origin = `http://127.0.0.1:${server.address().port}`;
@@ -213,18 +211,181 @@ describe('既存ルートの回帰', () => {
 		assert.ok(body.hand.cards[0].suit);
 	});
 
-	it('手札を捨てると pile イベントが飛ぶ', async () => {
+});
+
+describe('WebSocket へ流す action', () => {
+	// 1 操作 = 1 メッセージ。呼び出しの直後に積まれたものだけを見る。
+	async function actionOf(method, path, token) {
+		const before = seen.length;
+		const response = await call(method, path, { token: token });
+		const emitted = seen.slice(before);
+		assert.equal(emitted.length, 1, `${path} が 1 件だけ emit すること`);
+		return { action: emitted[0], response: response };
+	}
+
+	it('1 操作につき 1 件だけ流す', async () => {
+		// 旧実装は deck/discard で deck と pile の 2 件を飛ばしていた。
+		const gid = await newGame();
+		const token = await tokenFor(gid, 0);
+
+		await actionOf('PUT', `/games/${gid}/deck/discard`, token);
+		await actionOf('PUT', `/games/${gid}/deck/recycle`, token);
+		await actionOf('PUT', `/games/${gid}/pile/shuffle`, token);
+	});
+
+	it('封筒は seq / at / type / gid / pid / player / tid / target / card / table', async () => {
+		const gid = await newGame();
+		const token = await tokenFor(gid, 1);
+		const { action } = await actionOf('PUT',
+			`/games/${gid}/players/1/cards/0/discard`, token);
+
+		assert.deepEqual(Object.keys(action), [
+			'seq', 'at', 'type', 'gid', 'pid', 'player',
+			'tid', 'target', 'card', 'table',
+		]);
+		assert.equal(action.type, 'discard');
+		assert.equal(action.gid, gid);
+		assert.equal(action.pid, '1');
+		assert.equal(action.player, 'p1');
+		assert.equal(action.tid, null);
+		assert.equal(action.target, null);
+		assert.ok(Date.parse(action.at));
+	});
+
+	it('seq はゲームごとに 1 から増える', async () => {
+		const first = await newGame();
+		const second = await newGame();
+		const firstToken = await tokenFor(first, 0);
+		const secondToken = await tokenFor(second, 0);
+
+		const a = await actionOf('PUT', `/games/${first}/deck/discard`, firstToken);
+		const b = await actionOf('PUT', `/games/${first}/deck/discard`, firstToken);
+		const c = await actionOf('PUT', `/games/${second}/deck/discard`, secondToken);
+
+		assert.equal(a.action.seq, 1);
+		assert.equal(b.action.seq, 2);
+		// 別のゲームの操作で番号が飛ばない（飛びを欠落の合図に使えるように）。
+		assert.equal(c.action.seq, 1);
+	});
+
+	it('table は GET /table と同じ内容', async () => {
+		const gid = await newGame();
+		const token = await tokenFor(gid, 1);
+		const { action } = await actionOf('PUT',
+			`/games/${gid}/players/1/cards/0/discard`, token);
+		const { body } = await call('GET', `/games/${gid}/table`, { token: token });
+
+		const table = { ...body };
+		delete table.gid;
+		// emitter には生の Card が乗る。WebSocket は送信時に JSON へ直すので、
+		// ワイヤ上の形に揃えてから比べる（sendToWebSockets の JSON.stringify 相当）。
+		assert.deepEqual(JSON.parse(JSON.stringify(action.table)), table);
+	});
+
+	it('トークンだけの操作でも誰がやったか分かる', async () => {
+		// deck/discard は :pid を取らないので、旧実装では player が出なかった。
+		const gid = await newGame();
+		const { action } = await actionOf('PUT', `/games/${gid}/deck/discard`,
+			await tokenFor(gid, 2));
+
+		assert.equal(action.pid, '2');
+		assert.equal(action.player, 'p2');
+	});
+
+	it('pass と pick は相手を載せる', async () => {
+		const gid = await newGame();
+		const pass = await actionOf('PUT', `/games/${gid}/players/1/cards/0/pass/2`,
+			await tokenFor(gid, 1));
+		assert.equal(pass.action.type, 'pass');
+		assert.equal(pass.action.tid, '2');
+		assert.equal(pass.action.target, 'p2');
+
+		const pick = await actionOf('PUT', `/games/${gid}/players/1/pick/2`,
+			await tokenFor(gid, 1));
+		assert.equal(pick.action.type, 'pick');
+		assert.equal(pick.action.tid, '2');
+		assert.equal(pick.action.target, 'p2');
+	});
+
+	it('⚠ 伏せたままの札は card に載せない', async () => {
+		const gid = await newGame();
+		const token = await tokenFor(gid, 1);
+
+		// 引く・渡す・抜く・山札へ戻す は札が見えないままなので card は null。
+		const draw = await actionOf('PUT', `/games/${gid}/players/1/draw`, token);
+		assert.equal(draw.action.card, null);
+
+		const pass = await actionOf('PUT', `/games/${gid}/players/1/cards/0/pass/2`, token);
+		assert.equal(pass.action.card, null);
+
+		const pick = await actionOf('PUT', `/games/${gid}/players/1/pick/2`, token);
+		assert.equal(pick.action.card, null);
+
+		await call('PUT', `/games/${gid}/deck/discard`, { token: token });
+		const back = await actionOf('PUT', `/games/${gid}/deck/recycle`, token);
+		assert.equal(back.action.card, null);
+	});
+
+	it('場に表で出た札は card に載せる', async () => {
+		const gid = await newGame();
+		const token = await tokenFor(gid, 1);
+
+		const discard = await actionOf('PUT',
+			`/games/${gid}/players/1/cards/0/discard`, token);
+		assert.ok(discard.action.card.suit);
+		assert.deepEqual(discard.action.card, discard.action.table.pile.card);
+
+		const flipped = await actionOf('PUT', `/games/${gid}/deck/discard`, token);
+		assert.deepEqual(flipped.action.card, flipped.action.table.pile.card);
+
+		const taken = await actionOf('PUT', `/games/${gid}/players/1/recycle`, token);
+		assert.equal(taken.action.type, 'recycle');
+		assert.ok(taken.action.card.suit);
+	});
+
+	it('recycle は捨て札を実際に手札へ移す', async () => {
+		// emit を足すときに hand.recycle() を落としかけた箇所。
+		const gid = await newGame();
+		const token = await tokenFor(gid, 1);
+
+		await call('PUT', `/games/${gid}/players/1/cards/0/discard`, { token: token });
+		const before = await call('GET', `/games/${gid}/table`, { token: token });
+		const { body } = await call('PUT', `/games/${gid}/players/1/recycle`,
+			{ token: token });
+
+		assert.equal(before.body.seats[1].hand.length, 3);
+		assert.equal(body.hand.length, 4);
+		assert.equal(body.pile.length, 0);
+	});
+
+	it('タロットの 3 操作も action になる', async () => {
+		const gid = await newGame();
+		const master = await tokenFor(gid, 0);
+
+		const discarded = await actionOf('PUT', `/games/${gid}/tarot/players/1/discard`,
+			await tokenFor(gid, 1));
+		assert.equal(discarded.action.type, 'tarot-discard');
+		assert.equal(discarded.action.card.rank, '4');
+		assert.equal(discarded.action.table.seats[1].tarot.length, 0);
+
+		const flipped = await actionOf('PUT', `/games/${gid}/tarot/pile/flip`, master);
+		assert.equal(flipped.action.type, 'tarot-flip');
+		assert.equal(flipped.action.card.position, 'R');
+
+		const turned = await actionOf('PUT', `/games/${gid}/tarot/deck/discard`, master);
+		assert.equal(turned.action.type, 'tarot-deck-discard');
+		assert.ok(turned.action.card.rank);
+	});
+
+	it('GET は何も流さない', async () => {
 		const gid = await newGame();
 		const token = await tokenFor(gid, 1);
 		const before = seen.length;
 
-		await call('PUT', `/games/${gid}/players/1/cards/0/discard`, { token: token });
+		await call('GET', `/games/${gid}/table`, { token: token });
+		await call('GET', `/games/${gid}/deck`, { token: token });
+		await call('GET', `/games/${gid}/players/1`, { token: token });
 
-		const emitted = seen.slice(before);
-		assert.equal(emitted.length, 1);
-		assert.equal(emitted[0].type, 'pile');
-		assert.equal(emitted[0].data.gid, gid);
-		assert.equal(emitted[0].data.pid, '1');
-		assert.equal(emitted[0].data.player, 'p1');
+		assert.equal(seen.length, before);
 	});
 });

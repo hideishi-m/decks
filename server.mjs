@@ -47,24 +47,9 @@ export function createServer(emitter, options) {
 	const wsServer = new WebSocketServer({ server: server });
 	const wsMap = new Map();
 
-	emitter.on('deck', (data) => {
-		logger('emitter', { deck: data });
-		sendToWebSockets(data, 'deck');
-	});
-
-	emitter.on('pile', (data) => {
-		logger('emitter', { pile: data });
-		sendToWebSockets(data, 'pile');
-	});
-
-	emitter.on('hand', (data) => {
-		logger('emitter', { hand: data });
-		sendToWebSockets(data, 'hand');
-	});
-
-	emitter.on('tarot', (data) => {
-		logger('emitter', { tarot: data });
-		sendToWebSockets(data, 'tarot');
+	emitter.on('action', (data) => {
+		logger('emitter', { action: data });
+		sendToWebSockets(data, 'action');
 	});
 
 	emitter.on('close', () => {

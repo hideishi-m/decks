@@ -55,6 +55,48 @@ function onClose(event) {
 	}, retryWait);
 }
 
+function cardName(card) {
+	if (undefined === card || null === card) {
+		return '';
+	}
+	if (undefined !== card.suit) {
+		return ` - ${cardRanks.get(card.rank)} of ${cardSuits.get(card.suit)}`;
+	}
+	return ` - ${tarotRanks.get(card.rank)} ${cardPositions.get(card.position)}`;
+}
+
+// action は自己記述的なので、1 件から 1 行のログを組み立てられる。
+function describeAction(action) {
+	const who = action.player;
+	const card = cardName(action.card);
+	switch (action.type) {
+		case 'draw':
+			return `${who} drew a card`;
+		case 'discard':
+			return `${who} discarded a card${card}`;
+		case 'recycle':
+			return `${who} took a card from the pile${card}`;
+		case 'pass':
+			return `${who} passed a card to ${action.target}`;
+		case 'pick':
+			return `${who} picked a card from ${action.target}`;
+		case 'deck-discard':
+			return `${who} turned the deck over${card}`;
+		case 'deck-recycle':
+			return `${who} put a card back on the deck`;
+		case 'shuffle':
+			return `${who} shuffled the pile into the deck`;
+		case 'tarot-deck-discard':
+			return `${who} turned the tarot deck over${card}`;
+		case 'tarot-discard':
+			return `${who} discarded a tarot card${card}`;
+		case 'tarot-flip':
+			return `${who} flipped the tarot pile${card}`;
+		default:
+			return `${who} did ${action.type}`;
+	}
+}
+
 async function onMessage(event) {
 	try {
 		if (ping === event.data) {
@@ -62,54 +104,20 @@ async function onMessage(event) {
 		}
 		console.log(event.data);
 		const data = JSON.parse(event.data) ?? {};
-		// hand: gid,pid,player,tid
-		if (data.hand) {
-			if (data.hand.player && data.hand.playerTo) {
-				appendLog(`${data.hand.player} passed a card to ${data.hand.playerTo}`);
-			} else if (data.hand.player && data.hand.playerFrom) {
-				appendLog(`${data.hand.player} picked a card from ${data.hand.playerFrom}`);
-			} else {
-				appendLog('hand was updated');
-			}
-			if (pid === data.hand.tid) {
-				await updateHand();
-			}
+		const action = data.action;
+		if (undefined === action) {
+			return;
 		}
-		// deck: gid,pid,player
-		// deck: gid
-		else if (data.deck) {
-			if (data.deck.player) {
-				appendLog(`${data.deck.player} drew a card`);
-			} else {
-				appendLog('deck was updated');
-			}
-			if (pid !== data.deck.pid) {
-				await updateDeck();
-			}
+		appendLog(describeAction(action));
+		// 自分の操作は HTTP の応答で既に反映済みなので描き直さない。
+		if (pid !== action.pid) {
+			await updateDeck(action.table.deck);
+			await updatePile(action.table.pile);
+			await updateTarotPile(action.table.tarotPile);
 		}
-		// pile: gid,pid,player
-		// pile: gid
-		else if (data.pile) {
-			if (data.pile.player) {
-				appendLog(`${data.pile.player} discarded a card`);
-			} else {
-				appendLog('pile was updated');
-			}
-			if (pid !== data.pile.pid) {
-				await updatePile();
-			}
-		}
-		// tarot: gid,pid,player
-		// tarot: gid
-		else if (data.tarot) {
-			if (data.tarot.player) {
-				appendLog(`${data.tarot.player} discarded a tarot card`);
-			} else {
-				appendLog('tarot pile was updated');
-			}
-			if (pid !== data.tarot.pid) {
-				await updateTarotPile();
-			}
+		// 渡された・抜かれたときだけ自分の手札を取り直す（中身は action に載らない）。
+		if (pid === action.tid) {
+			await updateHand();
 		}
 	} catch (error) {
 		updateStatus(`${error.name}: ${error.message}`);

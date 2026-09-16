@@ -383,6 +383,58 @@ response: {
 }
 
 
+## WebSocket
+
+ページと同じパスへ接続し、最初に gid / pid / token を送る。検証に通らなければ切断される。
+
+send: {
+  gid: "1",
+  pid: "0",
+  token: "..."
+}
+
+以降、そのゲームの操作が1つにつき1通流れてくる。自分の操作も返ってくる。
+table は「卓」と同じ内容なので、受け取った側は改めて取得せずに描き直せる。
+
+receive: {
+  action: {
+    seq: 4,
+    at: "2026-09-16T02:42:29.306Z",
+    type: "pass",
+    gid: "1",
+    pid: "1",
+    player: "pc1",
+    tid: "2",
+    target: "pc2",
+    card: null,
+    table: table
+  }
+}
+
+- seq はゲームごとに 1 から増える。飛んでいたら取りこぼしなので「卓」を取り直す。
+- tid と target は pass と pick のときだけ入る。それ以外は null。
+- card は場に表で出た札だけ。伏せたままのときは null。
+- table は「卓」の応答から gid を除いたもの。
+
+type と、そのとき card に入るもの。
+
+| type | 操作 | card |
+|---|---|---|
+| draw | 山札から引く | null |
+| discard | 手札を捨て札にする | 捨てた札 |
+| recycle | 捨て札を手札に戻す | 戻した札 |
+| pass | 手札を別のプレーヤーに渡す | null |
+| pick | 別のプレーヤーから手札を引く | null |
+| deck-discard | 山札をめくる | めくれた札 |
+| deck-recycle | 捨て札を山札に戻す | null |
+| shuffle | 捨て札を全て山札に戻す | null |
+| tarot-deck-discard | タロットをめくる | めくれた札 |
+| tarot-discard | 切り札を捨て札にする | 捨てた札 |
+| tarot-flip | タロット捨て札を反転する | 反転後の札 |
+
+空文字列は生存確認に使う。受け取ったらそのまま返す。
+
+
 ## デバッグ
 
 ### ダンプ

@@ -136,8 +136,30 @@ export function createApp(emitter, options) {
 		return new Date().toLocaleDateString('sv-SV').replaceAll('-', '');
 	}
 
+	// WebSocket へ流す 1 アクション。受け取った側が再フェッチせずに
+	// 卓を描き直せるよう、公開状態（table）を丸ごと載せる。
+	// ⚠ card に入れてよいのは「場に表で出た札」だけ。伏せたままの札は載せない。
+	function emitAction(req, type, extra) {
+		const gid = req.params.gid;
+		const game = games[gid];
+		seqs[gid] = (seqs[gid] ?? 0) + 1;
+		emitter.emit('action', {
+			seq: seqs[gid],
+			at: new Date().toISOString(),
+			type: type,
+			gid: gid,
+			pid: req.params.pid ?? req.decoded.pid,
+			player: game.getPlayer(req.params.pid ?? req.decoded.pid),
+			tid: req.params.tid ?? null,
+			target: undefined !== req.params.tid ? game.getPlayer(req.params.tid) : null,
+			card: extra?.card ?? null,
+			table: game.getTable().toJson(),
+		});
+	}
+
 	const logger = getLogger(`${pkgJson.name}:app`);
 	const games = [];
+	const seqs = [];
 	const app = express();
 	const secret = options.secret ?? randomBytes(64).toString('hex');
 
@@ -298,6 +320,7 @@ export function createApp(emitter, options) {
 		})
 		.delete(verifyToken, (req, res, next) => {
 			delete games[req.params.gid];
+			delete seqs[req.params.gid];
 			logger.log(`DELETE game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,
@@ -334,14 +357,7 @@ export function createApp(emitter, options) {
 			const pile = game.getPile();
 			deck.discard(0);
 			logger.log(`DISCARD card 0 for deck in game ${req.params.gid}`);
-			emitter.emit('deck', {
-				gid: req.params.gid,
-				pid: req.decoded.pid,
-			});
-			emitter.emit('pile', {
-				gid: req.params.gid,
-				pid: req.decoded.pid,
-			});
+			emitAction(req, 'deck-discard', { card: pile.toJson().card });
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
@@ -356,14 +372,8 @@ export function createApp(emitter, options) {
 			const pile = game.getPile();
 			deck.recycle();
 			logger.log(`RECYCLE for deck in game ${req.params.gid}`);
-			emitter.emit('deck', {
-				gid: req.params.gid,
-				pid: req.decoded.pid,
-			});
-			emitter.emit('pile', {
-				gid: req.params.gid,
-				pid: req.decoded.pid,
-			});
+			// 戻した札は伏せに戻るので card は載せない。
+			emitAction(req, 'deck-recycle');
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
@@ -389,14 +399,7 @@ export function createApp(emitter, options) {
 			const deck = game.getDeck();
 			pile.shuffle();
 			logger.log(`SHUFFLE pile in game ${req.params.gid}`);
-			emitter.emit('deck', {
-				gid: req.params.gid,
-				pid: req.decoded.pid,
-			});
-			emitter.emit('pile', {
-				gid: req.params.gid,
-				pid: req.decoded.pid,
-			});
+			emitAction(req, 'shuffle');
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
@@ -426,11 +429,8 @@ export function createApp(emitter, options) {
 			const deck = game.getDeck();
 			hand.draw();
 			logger.log(`DRAW for player ${req.params.pid} ${player} in game ${req.params.gid}`);
-			emitter.emit('deck', {
-				gid: req.params.gid,
-				pid: req.params.pid,
-				player: player,
-			});
+			// 引いた札は手札に入るので card は載せない。
+			emitAction(req, 'draw');
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -447,12 +447,10 @@ export function createApp(emitter, options) {
 			const hand = game.getHandOfPlayer(req.params.pid);
 			const pile = game.getPile();
 			hand.recycle();
+			const taken = hand.at(hand.toJson().length - 1);
 			logger.log(`RECYCLE for player ${req.params.pid} ${player} in ${req.params.gid}`);
-			emitter.emit('pile', {
-				gid: req.params.gid,
-				pid: req.params.pid,
-				player: player,
-			});
+			// 捨て札の一番上は全員が見ていた札なので、そのまま載せてよい。
+			emitAction(req, 'recycle', { card: taken });
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -486,11 +484,7 @@ export function createApp(emitter, options) {
 			const pile = game.getPile();
 			hand.discard(req.params.cid);
 			logger.log(`DISCARD card ${req.params.cid} for player ${req.params.pid} ${player} in game ${req.params.gid}`);
-			emitter.emit('pile', {
-				gid: req.params.gid,
-				pid: req.params.pid,
-				player: player,
-			});
+			emitAction(req, 'discard', { card: pile.toJson().card });
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -508,13 +502,8 @@ export function createApp(emitter, options) {
 			const playerTo = game.getPlayer(req.params.tid);
 			hand.passTo(req.params.cid, req.params.tid);
 			logger.log(`PASS card ${req.params.cid} for player ${req.params.pid} ${player} to ${req.params.tid} ${playerTo} in game ${req.params.gid}`);
-			emitter.emit('hand', {
-				gid: req.params.gid,
-				pid: req.params.pid,
-				player: player,
-				tid: req.params.tid,
-				playerTo: playerTo,
-			});
+			// 渡した札は相手の手札に入るので card は載せない。
+			emitAction(req, 'pass');
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -531,13 +520,8 @@ export function createApp(emitter, options) {
 			const playerFrom = game.getPlayer(req.params.tid);
 			hand.pickFrom(req.params.tid);
 			logger.log(`PICK for player ${req.params.pid} ${player} from ${req.params.tid} ${playerFrom} in game ${req.params.gid}`);
-			emitter.emit('hand', {
-				gid: req.params.gid,
-				pid: req.params.pid,
-				player: player,
-				tid: req.params.tid,
-				playerFrom: playerFrom,
-			});
+			// 抜いた札は自分の手札に入るので card は載せない。
+			emitAction(req, 'pick');
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
@@ -564,10 +548,7 @@ export function createApp(emitter, options) {
 			const pile = game.getTarotPile();
 			deck.discard(0);
 			logger.log(`DISCARD card 0 for tarot in game ${req.params.gid}`);
-			emitter.emit('tarot', {
-				gid: req.params.gid,
-				pid: req.decoded.pid,
-			});
+			emitAction(req, 'tarot-deck-discard', { card: pile.toJson().card });
 			res.statusJson(200, {
 				gid: req.params.gid,
 				deck: deck.toJson(),
@@ -592,10 +573,7 @@ export function createApp(emitter, options) {
 			const pile = game.getTarotPile();
 			pile.flip();
 			logger.log(`FLIP tarot pile in game ${req.params.gid}`);
-			emitter.emit('tarot', {
-				gid: req.params.gid,
-				pid: req.decoded.pid,
-			});
+			emitAction(req, 'tarot-flip', { card: pile.toJson().card });
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pile: pile.toJson(),
@@ -624,11 +602,7 @@ export function createApp(emitter, options) {
 			const pile = game.getTarotPile();
 			logger.log(`DISCARD card 0 for tarot for player ${req.params.pid} ${player} in game ${req.params.gid}`);
 			hand.discard(0);
-			emitter.emit('tarot', {
-				gid: req.params.gid,
-				pid: req.params.pid,
-				player: player,
-			});
+			emitAction(req, 'tarot-discard', { card: pile.toJson().card });
 			res.statusJson(200, {
 				gid: req.params.gid,
 				pid: req.params.pid,
