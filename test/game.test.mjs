@@ -365,6 +365,74 @@ describe('Hand', () => {
 	});
 });
 
+describe('Table', () => {
+	it('全席と場の枚数を 1 つにまとめる', () => {
+		const game = createGame([ 'p1', 'p2' ], [ '4', '18' ], 1, 0, 0, 3);
+		const json = game.getTable().toJson();
+
+		assert.deepEqual(Object.keys(json),
+			[ 'seats', 'deck', 'pile', 'tarotDeck', 'tarotPile' ]);
+		assert.equal(json.deck.length, 52 - 3 * 3);
+		assert.deepEqual(json.pile, { length: 0, card: undefined });
+		assert.equal(json.tarotDeck.length, 26);
+		assert.deepEqual(json.tarotPile, { length: 0, card: undefined });
+	});
+
+	it('席は pid・名前・手札の枚数・切り札の有無', () => {
+		const game = createGame([ 'p1', 'p2' ], [ '4', '18' ], 1, 0, 0, 3);
+
+		assert.deepEqual(game.getTable().toJson().seats, [
+			{ pid: '0', player: 'マスター', hand: { length: 3 }, tarot: { length: 0 } },
+			{ pid: '1', player: 'p1', hand: { length: 3 }, tarot: { length: 1 } },
+			{ pid: '2', player: 'p2', hand: { length: 3 }, tarot: { length: 1 } },
+		]);
+	});
+
+	it('⚠ 手札の中身を出さない', () => {
+		// 表示側で隠すだけだと DevTools から読めるので、ここで止める。
+		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 3);
+		const json = JSON.stringify(game.getTable().toJson());
+
+		assert.equal(json.includes('suit'), false);
+		assert.equal(json.includes('rank'), false);
+		for (const seat of game.getTable().toJson().seats) {
+			assert.deepEqual(Object.keys(seat.hand), [ 'length' ]);
+			assert.deepEqual(Object.keys(seat.tarot), [ 'length' ]);
+		}
+	});
+
+	it('捨て札の一番上だけは表で出す', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 0);
+		game.getDeck().discard(0);
+		const pile = game.getTable().toJson().pile;
+
+		assert.equal(pile.length, 1);
+		assert.equal(pile.card.name(), 'クラブ 10 (0)');
+	});
+
+	it('タロット捨て札の一番上も表で出す', () => {
+		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 0);
+		game.getTarotHandOfPlayer(1).discard(0);
+		const json = game.getTable().toJson();
+
+		assert.equal(json.tarotPile.card.name(), 'カブト 正位置');
+		assert.equal(json.seats[1].tarot.length, 0);
+	});
+
+	it('場が動いたら数字が追随する', () => {
+		const game = createGame([ 'p1' ], [], 1, 0, 0, 2);
+		const hand = game.getHandOfPlayer(1);
+
+		hand.discard(0);
+		hand.draw();
+		const json = game.getTable().toJson();
+
+		assert.equal(json.seats[1].hand.length, 2);
+		assert.equal(json.pile.length, 1);
+		assert.equal(json.deck.length, 52 - 2 * 2 - 1);
+	});
+});
+
 describe('Game.toJson', () => {
 	it('全ての山と席を名前の配列で出す', () => {
 		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 1);

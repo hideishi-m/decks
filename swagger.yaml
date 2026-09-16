@@ -194,6 +194,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /games/{gid}/table:
+    get:
+      tags:
+        - players
+      security:
+        - JWT: []
+      summary: retrieve table
+      operationId: getTable
+      description: |
+        Retrieves the public state of the table in a single call: every seat
+        with the number of cards it holds, and the shared piles.
+        Face-down cards are reported by count only; their contents are never
+        returned. Use GET /games/{gid}/players/{pid} for your own hand.
+      parameters:
+        - name: gid
+          in: path
+          description: Game ID
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        200:
+          description: game ID, seats and shared piles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameTable'
+        400:
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /games/{gid}/deck:
     get:
       tags:
@@ -1063,6 +1102,48 @@ components:
       properties:
         length:
           $ref: '#/components/schemas/Length'
+    Seat:
+      type: object
+      required:
+        - pid
+        - player
+        - hand
+        - tarot
+      properties:
+        pid:
+          $ref: '#/components/schemas/Id'
+        player:
+          $ref: '#/components/schemas/Player'
+        hand:
+          $ref: '#/components/schemas/Deck'
+        tarot:
+          $ref: '#/components/schemas/Deck'
+    Seats:
+      type: array
+      items:
+        $ref: '#/components/schemas/Seat'
+    GameTable:
+      type: object
+      required:
+        - gid
+        - seats
+        - deck
+        - pile
+        - tarotDeck
+        - tarotPile
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        seats:
+          $ref: '#/components/schemas/Seats'
+        deck:
+          $ref: '#/components/schemas/Deck'
+        pile:
+          $ref: '#/components/schemas/Pile'
+        tarotDeck:
+          $ref: '#/components/schemas/Deck'
+        tarotPile:
+          $ref: '#/components/schemas/TarotPile'
     GameDeck:
       type: object
       required:

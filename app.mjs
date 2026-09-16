@@ -304,6 +304,18 @@ export function createApp(emitter, options) {
 			});
 		});
 
+	app.route('/games/:gid/table')
+		.get(verifyToken, (req, res, next) => {
+			// :pid を含まないので verifyToken は gid だけを照合する。
+			const game = games[req.params.gid];
+			const table = game.getTable();
+			logger.log(`GET table in game ${req.params.gid}`);
+			res.statusJson(200, {
+				gid: req.params.gid,
+				...table.toJson(),
+			});
+		});
+
 	app.route('/games/:gid/deck')
 		.get(verifyToken, (req, res, next) => {
 			const game = games[req.params.gid];

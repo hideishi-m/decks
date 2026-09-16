@@ -58,6 +58,10 @@ class Game {
 		return this.playerNames[player];
 	}
 
+	getTable() {
+		return new Table(this);
+	}
+
 	getDeck() {
 		return new Deck({
 			deck: this.deck,
@@ -104,6 +108,40 @@ class Game {
 		}, player);
 	}
 }
+
+// 卓の公開状態。全員が同じものを見る。
+// ⚠ 伏せられている札は length だけを出す。中身をクライアントへ渡さない
+//    （表示側で隠すだけだと DevTools から読める）。
+class Table {
+	constructor(game) {
+		this.game = game;
+	}
+
+	toJson() {
+		const game = this.game;
+		return {
+			seats: game.playerNames.map((player, index) => {
+				return {
+					pid: `${index}`,
+					player: player,
+					hand: { length: game.hands[index].length },
+					tarot: { length: game.tarotHands[index].length },
+				};
+			}),
+			deck: { length: game.deck.length },
+			pile: {
+				length: game.pile.length,
+				card: game.pile[0],
+			},
+			tarotDeck: { length: game.tarotDeck.length },
+			tarotPile: {
+				length: game.tarotPile.length,
+				card: game.tarotPile[0],
+			},
+		};
+	}
+}
+
 
 class Deck {
 	constructor(game) {
