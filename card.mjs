@@ -104,7 +104,11 @@ export function createHandCards(deckCards, draws) {
 	const cards = new Cards();
 	if (deckCards) {
 		for (let i = 0; i < draws; i++) {
-			cards.push(deckCards.shift());
+			const card = deckCards.shift();
+			if (undefined === card) {
+				break;  // 山札が尽きたら配れるところまでで止める。
+			}
+			cards.push(card);
 		}
 	}
 	return cards;
