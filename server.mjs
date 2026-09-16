@@ -23,19 +23,25 @@ import pkgJson from './package.json' with { type: 'json' };
 
 export function createServer(emitter, options) {
 
+	// 卓に入れた接続には gid / pid / who が付く。付いていないものは配信対象外。
+	// ⚠ 接続を identity で束ねない。同じ席を 2 つ開いても両方に届くようにするため。
 	function sendToWebSockets(data, type) {
 		const gid = data.gid;
-		wsMap.forEach((value, key) => {
-			if (undefined !== gid && JSON.parse(key)?.gid === gid) {
-				if (wsServer.clients.has(value)) {
-					value.send(JSON.stringify({ [type]: data }));
-					logger.log(`${type.toUpperCase()} to ${key}`);
-				} else {
-					wsMap.delete(key);
-					logger.log(`delete ${key}`);
-				}
+		if (undefined === gid) {
+			return;
+		}
+		wsServer.clients.forEach((ws) => {
+			if (gid === ws.gid && ws.OPEN === ws.readyState) {
+				ws.send(JSON.stringify({ [type]: data }));
+				logger.log(`${type.toUpperCase()} to ${ws.who}`);
 			}
 		});
+	}
+
+	function connected() {
+		return [ ...wsServer.clients ]
+			.filter((ws) => undefined !== ws.gid)
+			.map((ws) => ws.who);
 	}
 
 	const logger = getLogger(`${pkgJson.name}:server`);
@@ -45,7 +51,6 @@ export function createServer(emitter, options) {
 		cert: options.cert,
 	}, app) : http.createServer(app);
 	const wsServer = new WebSocketServer({ server: server });
-	const wsMap = new Map();
 
 	emitter.on('action', (data) => {
 		logger('emitter', { action: data });
@@ -86,26 +91,22 @@ export function createServer(emitter, options) {
 				}
 
 				logger.log(`welcome player ${pid} for game ${gid} from ${ip}`);
-				const key = JSON.stringify({
+				ws.gid = gid;
+				ws.pid = pid;
+				ws.who = JSON.stringify({
 					gid: gid,
 					pid: pid,
 					ip: ip,
 				});
-				wsMap.set(key, ws);
-				logger.log(`set ${key}`);
-				logger.log([ ...wsMap.keys() ]);
+				logger.log(`set ${ws.who}`);
+				logger.log(connected());
 			});
 		});
 
 		ws.on('close', () => {
+			// clients からは ws 自身が外れるので、こちらで消すものは無い。
 			logger('ws', `closed from ${ip}`);
-			wsMap.forEach((value, key, map) => {
-				if (ws === value) {
-					map.delete(key);
-					logger.log(`delete ${key}`);
-				}
-			});
-			logger.log([ ...wsMap.keys() ]);
+			logger.log(connected());
 		});
 
 		ws.on('error', (err) => {

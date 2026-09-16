@@ -11,14 +11,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 /**
  * HTTP レベルの検査。supertest は使わず、素の http サーバをポート 0 で起こして fetch で叩く。
- * createApp() は logs/access.log-* を開くが、ディレクトリが無くても
- * stream の error listener が握るので、テスト側で用意する必要はない。
  */
 
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { existsSync, rmSync } from 'node:fs';
 import http from 'node:http';
+import { fileURLToPath } from 'node:url';
 
 import { createApp } from '../app.mjs';
 
@@ -30,7 +30,11 @@ let origin;
 let emitter;
 const seen = [];
 
+const LOG_DIR = fileURLToPath(new URL('../logs', import.meta.url));
+
 before(async () => {
+	// createApp() が自分で作ることを見るため、先に消しておく。
+	rmSync(LOG_DIR, { recursive: true, force: true });
 	emitter = new EventEmitter();
 	// emitter は app が emit するだけなので、記録しておいて後で見る。
 	emitter.on('action', (data) => seen.push(data));
@@ -291,6 +295,12 @@ describe('入場（ticket）', () => {
 });
 
 describe('既存ルートの回帰', () => {
+	it('⚠ logs/ が無ければ createApp() が作る', async () => {
+		// gitignore されているので fresh clone には無い。
+		// 作らないと morgan の書き込み先が開けず、アクセスログが黙って消える。
+		assert.equal(existsSync(LOG_DIR), true);
+	});
+
 	it('GET /version', async () => {
 		const { status, body } = await call('GET', '/version');
 

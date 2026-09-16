@@ -10,7 +10,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import express from 'express';
@@ -33,11 +33,9 @@ class AppError extends Error {
 export function createApp(emitter, options) {
 
 	function validateId(req, res, next, value, key) {
+		// \d は ASCII の 0-9 だけなので、通れば必ず 0 以上。範囲の検査は要らない。
 		if (false === /^\d+$/.test(value)) {
 			throw new AppError(400, `invalid format for ${key}`, { cause: { [key]: value } });
-		}
-		if (0 > parseInt(value)) {
-			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
 		}
 		next();
 	}
@@ -210,6 +208,14 @@ export function createApp(emitter, options) {
 	const secret = options.secret ?? randomBytes(64).toString('hex');
 
 	logger(`secret "${secret}"`);
+
+	// logs/ は gitignore されているので fresh clone には無い。作ってから開く。
+	// 作れなくてもアクセスログが残らないだけなので、起動は止めない。
+	try {
+		mkdirSync(fileURLToPath(new URL('./logs', import.meta.url)), { recursive: true });
+	} catch (error) {
+		logger.error(error);
+	}
 
 	const stream = createWriteStream(fileURLToPath(new URL(`./logs/access.log-${getDateString()}`, import.meta.url)), { flags: 'a' });
 
