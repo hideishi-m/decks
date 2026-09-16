@@ -622,9 +622,11 @@ export function createApp(emitter, options) {
 			});
 		});
 
+	// 本番は nginx が try_files で public/ を直接返す（expires 1d はそちらで付く）。
+	// ここが効くのは直起動したときだけなので、キャッシュさせない。
+	// maxAge を付けると、変更した js/css が古いまま読まれて原因が分かりにくくなる。
 	app.use(express.static(fileURLToPath(new URL('./public', import.meta.url)), {
 		index: false,
-		maxAge: '1d',
 		redirect: false,
 	}));
 	app.use((req, res, next) => {
