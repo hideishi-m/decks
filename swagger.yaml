@@ -17,6 +17,28 @@ tags:
     description: Calls for game players
   - name: admins
     description: Calls for game administrators
+  - name: websocket
+    description: |
+      Not an HTTP call. Connect a WebSocket to the same path as the page and
+      send the handshake first; the connection is dropped if it does not
+      verify.
+
+      ```json
+      { "gid": "1", "pid": "0", "token": "..." }
+      ```
+
+      After that every operation in that game arrives as one message, your own
+      included. `table` is what `GET /games/{gid}/table` returns without `gid`,
+      so a client redraws from the message alone and does not have to ask
+      again.
+
+      `seq` counts from 1 per game. A number that is not the previous one plus
+      one means a message was lost, so fetch the table again. Do the same after
+      reconnecting, since the operations during the gap are not replayed.
+
+      An empty string is the keep-alive. Send it back as it is.
+
+      <SchemaDefinition schemaRef="#/components/schemas/ActionMessage" />
 
 servers:
   - url: http://127.0.0.1:8080
@@ -1122,18 +1144,18 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Seat'
-    GameTable:
+    Table:
       type: object
+      description: |
+        The public state of the table. Face-down cards are reported by count
+        only; their contents are never included.
       required:
-        - gid
         - seats
         - deck
         - pile
         - tarotDeck
         - tarotPile
       properties:
-        gid:
-          $ref: '#/components/schemas/Id'
         seats:
           $ref: '#/components/schemas/Seats'
         deck:
@@ -1144,6 +1166,90 @@ components:
           $ref: '#/components/schemas/Deck'
         tarotPile:
           $ref: '#/components/schemas/TarotPile'
+    GameTable:
+      allOf:
+        - type: object
+          required:
+            - gid
+          properties:
+            gid:
+              $ref: '#/components/schemas/Id'
+        - $ref: '#/components/schemas/Table'
+    ActionType:
+      type: string
+      description: |
+        What happened. `card` is filled in only for the operations that put a
+        card face up on the table.
+      enum:
+        - draw
+        - discard
+        - recycle
+        - pass
+        - pick
+        - deck-discard
+        - deck-recycle
+        - shuffle
+        - tarot-deck-discard
+        - tarot-discard
+        - tarot-flip
+    Action:
+      type: object
+      required:
+        - seq
+        - at
+        - type
+        - gid
+        - pid
+        - player
+        - tid
+        - target
+        - card
+        - table
+      properties:
+        seq:
+          type: integer
+          minimum: 1
+          description: Counts from 1 per game. A gap means a lost message.
+          example: 4
+        at:
+          type: string
+          format: date-time
+        type:
+          $ref: '#/components/schemas/ActionType'
+        gid:
+          $ref: '#/components/schemas/Id'
+        pid:
+          $ref: '#/components/schemas/Id'
+        player:
+          $ref: '#/components/schemas/Player'
+        tid:
+          type: string
+          nullable: true
+          description: The other seat, for pass and pick. Null otherwise.
+          example: '2'
+        target:
+          type: string
+          nullable: true
+          description: The name of that seat. Null otherwise.
+          example: pc2
+        card:
+          type: object
+          nullable: true
+          description: |
+            Only a card that is now face up on the table. Null while it stays
+            face down, which is draw, pass, pick and deck-recycle.
+          oneOf:
+            - $ref: '#/components/schemas/Card'
+            - $ref: '#/components/schemas/TarotCard'
+        table:
+          $ref: '#/components/schemas/Table'
+    ActionMessage:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          $ref: '#/components/schemas/Action'
     GameDeck:
       type: object
       required:
