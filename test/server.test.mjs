@@ -17,6 +17,7 @@ import { after, before, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
+import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -249,5 +250,35 @@ describe('WebSocket の配信', () => {
 		assert.equal(await pong, '');
 
 		socket.terminate();
+	});
+});
+
+describe('終了', () => {
+	it('要求を送り終えていない接続が残っていても close で止まる', async () => {
+		// server.close() は要求の途中の接続が終わるのを待つ。ブラウザが先回りして
+		// 開いた接続が残ると、SIGTERM を受けてもプロセスが終わらなくなる。
+		const own = new EventEmitter();
+		const target = createServer(own, { secret: 'test-secret' });
+		await new Promise((resolve) => target.listen(0, '127.0.0.1', resolve));
+		const sockets = [];
+		for (const head of [ '', 'GET /version HTTP/1.1\r\n' ]) {
+			const socket = net.connect(target.address().port, '127.0.0.1');
+			socket.on('error', () => {});
+			await new Promise((resolve) => socket.on('connect', resolve));
+			socket.write(head);
+			sockets.push(socket);
+		}
+		await settle();
+
+		const closed = new Promise((resolve) => target.on('close', () => resolve('closed')));
+		own.emit('close');
+		const result = await Promise.race([ closed, settle(2000).then(() => 'still open') ]);
+		// 止まらなかったときも、テストのプロセスが終われるように片付ける。
+		target.closeAllConnections();
+		for (const socket of sockets) {
+			socket.destroy();
+		}
+
+		assert.equal(result, 'closed');
 	});
 });
