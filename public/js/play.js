@@ -17,8 +17,8 @@ import { epitaphRanks } from './LRQ_epitaph.js';
 const MASTER = '0';
 // 他席の扇に並べる伏せ札の上限。これを超えたら重ねたままにする。
 const FANNED = 5;
-// 場のエピタフを 1 段に並べる枚数の上限。山札と同じ大きさで、山札の右に並ぶのは 4 枚まで。
-const EPITAPH_COLUMNS = 4;
+// 卓の種類ごとの名前。見出しとタブに出す。
+const TABLE_NAMES = { tarot: 'トーキョー・ナイトメア', epitaph: 'ラストレクイエム', none: '卓' };
 
 let gid, pid, socket, token;
 // 卓への入場券。URL から受け取る。これが無ければ何も始まらない。
@@ -36,6 +36,9 @@ let lastSeq;
 let reopened = false;
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// 場の幅が変わったら、エピタフの置き方を決め直す。
+new ResizeObserver(() => layoutEpitaphs()).observe(qs('.center'));
 
 const playerModal = createDialog('playerModal', { persistent: true });
 const handModal = createDialog('handModal');
@@ -56,9 +59,12 @@ function tableMode() {
 	return table?.mode;
 }
 
-// 卓の種類で見た目を切り替える（タロットの卓は mode-tarot.css）。
+// 卓の種類で見た目と名前を切り替える（タロットの卓は mode-tarot.css）。
 function applyMode(mode) {
 	document.documentElement.dataset.mode = mode;
+	const name = TABLE_NAMES[mode] ?? TABLE_NAMES.none;
+	qs('#tableName').textContent = name;
+	document.title = name;
 }
 
 function usesTarot() {
@@ -485,12 +491,8 @@ function updateTable(next) {
 }
 
 // 場のエピタフ。裏の札は、プレーヤーには裏面で、マスターには絵柄を暗くして見せる。
-// 段ごとの枚数が揃うよう列の数を決めて CSS に渡す（7 枚なら 4+3、9 枚なら 3+3+3）。
 function updateEpitaphs() {
 	const box = qs('#epitaphs');
-	const count = table.epitaphs.length;
-	const rows = Math.max(1, Math.ceil(count / EPITAPH_COLUMNS));
-	box.style.setProperty('--epitaph-columns', Math.max(1, Math.ceil(count / rows)));
 	box.replaceChildren();
 	table.epitaphs.forEach((epitaph, index) => {
 		const rank = epitaph.rank ?? myEpitaphs[index]?.rank;
@@ -498,9 +500,55 @@ function updateEpitaphs() {
 		node.dataset.eid = `${index}`;
 		box.append(node);
 	});
-	if (0 === count) {
+	if (0 === table.epitaphs.length) {
 		box.append(createEmptySlot('card-lg'));
 	}
+	layoutEpitaphs();
+}
+
+// エピタフを山札の右に置くか下の行に置くかと、段の数を、場の幅から決める。
+// 下の行は山札の行の分だけ高くなるので、山札の右の段数が下の行の段数 + 1 までなら山札の右に置く。
+function layoutEpitaphs() {
+	if (false === usesEpitaphs()) {
+		return;
+	}
+	const center = qs('.center');
+	const cluster = qs('#epitaphCluster');
+	const box = qs('#epitaphs');
+	// 並べる札（0 枚なら空の枠）。段に分けた後も、この順で拾える。
+	const nodes = [ ...box.querySelectorAll('.epitaph, .card-empty') ];
+	const count = nodes.length;
+	if (0 === count) {
+		return;
+	}
+	// 山札の右に置いたときの余白と線を測るので、下の行の印をいったん外す。
+	delete cluster.dataset.placement;
+	const clusterStyle = getComputedStyle(cluster);
+	const card = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-lg-width'));
+	const gap = parseFloat(getComputedStyle(box).columnGap);
+	const width = center.getBoundingClientRect().width;
+	const beside = width
+		- qs('.center > .cluster').getBoundingClientRect().width
+		- parseFloat(getComputedStyle(center).columnGap)
+		- parseFloat(clusterStyle.paddingLeft)
+		- parseFloat(clusterStyle.borderLeftWidth);
+	const fit = (space) => Math.floor((space + gap) / (card + gap));
+	const besideRows = 0 < fit(beside) ? Math.ceil(count / fit(beside)) : Infinity;
+	const belowRows = Math.ceil(count / Math.max(1, fit(width)));
+	const below = besideRows > belowRows + 1;
+	if (below) {
+		cluster.dataset.placement = 'below';
+	}
+	// 段ごとの枚数を揃え、余りは前の段から 1 枚ずつ足す（7 枚を 3 段なら 3+2+2）。
+	// 折り返しに任せると前の段から詰まり、3+3+1 になる。
+	const rows = below ? belowRows : besideRows;
+	const size = Math.floor(count / rows);
+	const extra = count % rows;
+	box.replaceChildren(...Array.from({ length: rows }, (_, row) => {
+		const start = row * size + Math.min(row, extra);
+		return el('div', { class: 'epitaph-row' },
+			...nodes.slice(start, start + size + (row < extra ? 1 : 0)));
+	}));
 }
 
 // マスターだけ、裏の札の番号を取っておく。

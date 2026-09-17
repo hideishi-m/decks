@@ -105,7 +105,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	align-items: center;
 }
 
-/* 卓の字を、金の縁の墨の箱に入れる。 */
+/* 卓の名前を、金の縁の墨の箱に入れる。 */
 [data-mode="epitaph"] .head h1 {
 	padding: 0 0.5rem;
 	border: 1px solid var(--gold);
@@ -330,10 +330,5 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 		box-shadow:
 			inset 0 0 0 4px var(--felt), inset 0 0 0 5px var(--gold),
 			0 10px 20px -14px rgba(58, 44, 18, 0.7);
-	}
-
-	/* 場が折り返して縦に並ぶので、区切りの線は引かない。 */
-	[data-mode="epitaph"] .cluster + .cluster {
-		border-left: 0;
 	}
 }
