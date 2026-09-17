@@ -186,6 +186,43 @@ describe('WebSocket の配信', () => {
 		assert.equal(socket.readyState, WebSocket.CLOSED);
 	});
 
+	it('JSON でない名乗りは切られ、サーバは動き続ける', async () => {
+		// JSON.parse の例外を拾わないと、未捕捉のままプロセスごと落ちる。
+		// 入場券もトークンも要らないので、誰でも全卓を消せてしまう。
+		const socket = new WebSocket(`ws://127.0.0.1:${port}`);
+		await new Promise((resolve) => socket.on('open', resolve));
+		socket.send('not json');
+		await settle();
+
+		assert.equal(socket.readyState, WebSocket.CLOSED);
+
+		const game = await newGame();
+		const listener = await connect(game.gid, '1', await seat(game, '1'));
+		await settle();
+
+		assert.equal(listener.readyState, WebSocket.OPEN);
+
+		listener.terminate();
+	});
+
+	it('上限を超える名乗りは切られる', async () => {
+		// 正しいトークンでも、大きすぎるメッセージは読む前に ws が切る（1009）。
+		const game = await newGame();
+		const socket = new WebSocket(`ws://127.0.0.1:${port}`);
+		const code = new Promise((resolve) => socket.on('close', resolve));
+		await new Promise((resolve) => socket.on('open', resolve));
+		socket.send(JSON.stringify({
+			gid: game.gid,
+			pid: '1',
+			token: await seat(game, '1'),
+			padding: 'x'.repeat(4 * 1024),
+		}));
+		await settle();
+
+		assert.equal(socket.readyState, WebSocket.CLOSED);
+		assert.equal(await code, 1009);
+	});
+
 	it('空文字は生存確認としてそのまま返る', async () => {
 		const game = await newGame();
 		const socket = await connect(game.gid, '1', await seat(game, '1'));

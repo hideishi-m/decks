@@ -21,6 +21,10 @@ import { ping } from './public/js/common.js';
 
 import pkgJson from './package.json' with { type: 'json' };
 
+// クライアントが送るのは名乗り（gid / pid / token）と生存確認だけで、数百バイトに収まる。
+// ws の既定は 100 MiB なので、名乗りに十分な大きさまで絞る。超えた接続は ws が切る。
+const MAX_PAYLOAD = 4 * 1024;
+
 export function createServer(emitter, options) {
 
 	// 卓に入れた接続には gid / pid / who が付く。付いていないものは配信対象外。
@@ -50,7 +54,10 @@ export function createServer(emitter, options) {
 		key: options.key,
 		cert: options.cert,
 	}, app) : http.createServer(app);
-	const wsServer = new WebSocketServer({ server: server });
+	const wsServer = new WebSocketServer({
+		server: server,
+		maxPayload: MAX_PAYLOAD,
+	});
 
 	emitter.on('action', (data) => {
 		logger('emitter', { action: data });
@@ -75,7 +82,13 @@ export function createServer(emitter, options) {
 				return ws.send(ping);
 			}
 
-			data = JSON.parse(data) ?? {};
+			try {
+				data = JSON.parse(data) ?? {};
+			} catch (error) {
+				// 名乗りの形になっていない。通らないトークンと同じく切る。
+				logger('ws', `${error.name}: ${error.message}`);
+				return ws.terminate();
+			}
 			logger('ws', { message: data });
 			const gid = data.gid;
 			const pid = data.pid;
