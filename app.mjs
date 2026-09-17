@@ -151,18 +151,6 @@ export function createApp(emitter, options) {
 		next();
 	}
 
-	// 卓の脇に置く札を、createGame の引数の形にする（game.mjs の modeOf と対）。
-	function sideOf(body) {
-		switch (body.mode) {
-			case 'none':
-				return false;
-			case 'epitaph':
-				return { epitaphs: body.epitaphs };
-			default:  // tarot（validateMode を通った後なので 3 つのどれか）
-				return body.tarots;
-		}
-	}
-
 	// 管理面で 1 卓を表す形。POST /games と GET /games/:gid が同じものを返す。
 	// 入場券と、裏のものも含めたエピタフを返すので、前段で保護すること。
 	function describeGame(gid) {
@@ -555,7 +543,12 @@ export function createApp(emitter, options) {
 			});
 		})
 		.post(partialReqKey(validatePlayers, ['body', 'players']), partialReqKey(validateMode, ['body', 'mode']), partialReqKey(validateTarots, ['body', 'tarots']), partialReqKey(validateEpitaphs, ['body', 'epitaphs']), (req, res, next) => {
-			const gid = games.push(createGame(req.body.players, sideOf(req.body))) - 1;
+			// 卓の設定は、上で検査したキーだけを渡す。createGame は mode に合う札だけを見る。
+			const gid = games.push(createGame(req.body.players, {
+				mode: req.body.mode,
+				tarots: req.body.tarots,
+				epitaphs: req.body.epitaphs,
+			})) - 1;
 			tickets[gid] = createTicket();
 			uids[gid] = createUid();
 			logger.log(`POST game ${gid} for players ${req.body.players}`);

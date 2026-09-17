@@ -16,30 +16,15 @@ import { restoreDeckCards, restoreTarotCards, restoreTarotPileCards, restoreEpit
 // 卓の脇に置く札の種類。
 export const MODES = [ 'tarot', 'epitaph', 'none' ];
 
-// 卓の脇に置く札の種類を、createGame の 2 番目の引数の形から決める。
-//   配列（省略を含む）: tarot   … 配列は席ごとの切り札
-//   false:              none    … 何も置かない
-//   { epitaphs }:       epitaph … 配列は場に置くエピタフ
-function modeOf(side) {
-	if (false === side) {
-		return 'none';
-	}
-	if (undefined !== side?.epitaphs) {
-		return 'epitaph';
-	}
-	return 'tarot';
-}
-
-
 // 席 0 の名前。席名の重複を見るとき（app.mjs）にも使う。
 export const MASTER_NAME = 'マスター';
 
 // 新しい卓の部品を作って配る。
 // タロットの卓でなければ、タロット山札も切り札も空で作る。
 // API を直に叩いても札は 1 枚も出てこない。
-function deal(players, side, decks, jokers, shuffles, draws) {
-	const mode = modeOf(side);
-	const tarots = 'tarot' === mode ? side : [];
+function deal(players, setup, decks, jokers, shuffles, draws) {
+	const mode = setup.mode;
+	const tarots = 'tarot' === mode ? (setup.tarots ?? []) : [];
 	const deck = createDeckCards(decks, jokers, shuffles);
 	const parts = {
 		mode: mode,
@@ -52,7 +37,7 @@ function deal(players, side, decks, jokers, shuffles, draws) {
 			: createTarotHandCards(),  // 空の TarotCards
 		tarotPile: createPileCards(),
 		tarotHands: [],
-		epitaphs: createEpitaphCards('epitaph' === mode ? side.epitaphs : []),
+		epitaphs: createEpitaphCards('epitaph' === mode ? setup.epitaphs : []),
 		shuffles: shuffles,
 	};
 
@@ -384,18 +369,21 @@ class Epitaphs {
 }
 
 
-// side の形は modeOf を参照。
-export function createGame(players, side, decks, jokers, shuffles, draws) {
-	players = players ? [ ...players ] : [];
-	// 省略は「タロットを使うが誰にも配らない」。false（使わない）とは別物。
-	if ('tarot' === modeOf(side)) {
-		side = side ? [ ...side ] : [];
+// setup は卓の設定。mode で卓の脇に置く札の種類を決め、その種類の札だけを見る。
+// 形から種類を推し量らないので、mode が無い・知らない値なら投げる。
+//   { mode: 'tarot', tarots }     … tarots は席ごとの切り札。省略すると誰にも配らない
+//   { mode: 'epitaph', epitaphs } … epitaphs は場に置くエピタフ。省略すると 0 枚
+//   { mode: 'none' }              … 何も置かない
+export function createGame(players, setup, decks, jokers, shuffles, draws) {
+	if (false === MODES.includes(setup?.mode)) {
+		throw new TypeError(`invalid mode: ${setup?.mode}`);
 	}
+	players = players ? [ ...players ] : [];
 	decks = decks ?? 2;
 	jokers = jokers ?? 2;
 	shuffles = shuffles ?? 10;
 	draws = draws ?? 4;
-	return new Game(deal(players, side, decks, jokers, shuffles, draws));
+	return new Game(deal(players, setup, decks, jokers, shuffles, draws));
 }
 
 // toState の値から卓を戻す。形が合わなければ投げる（読めない保存では起動させない）。

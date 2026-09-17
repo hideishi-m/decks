@@ -18,9 +18,20 @@ import { createGame, restoreGame } from '../game.mjs';
 // 「どの札がどこへ動いたか」まで固定できる。並びは
 // スート クラブ,ダイヤ,ハート,スペード の順に、各 13 枚が 10,2..9,A,J,Q,K の順
 // （なぜ 10 が先頭かは「未シャッフルの並びは…」のテストを参照）。
-function plainGame(players, tarots) {
-	return createGame(players ?? [ 'p1', 'p2' ], tarots ?? [], 1, 0, 0, 0);
+function plainGame(players, setup) {
+	return createGame(players ?? [ 'p1', 'p2' ], setup ?? tarot(), 1, 0, 0, 0);
 }
+
+// createGame に渡す卓の設定（setup）を作る。
+function tarot(...tarots) {
+	return { mode: 'tarot', tarots: tarots };
+}
+
+function epitaph(...epitaphs) {
+	return { mode: 'epitaph', epitaphs: epitaphs };
+}
+
+const NONE = { mode: 'none' };
 
 const MASTER = 0;
 
@@ -46,11 +57,11 @@ describe('createGame', () => {
 
 	it('山札は decks × 52 ＋ jokers', () => {
 		assert.equal(plainGame().getDeck().toJson().length, 52);
-		assert.equal(createGame([ 'p1' ], [], 2, 2, 0, 0).getDeck().toJson().length, 106);
+		assert.equal(createGame([ 'p1' ], tarot(), 2, 2, 0, 0).getDeck().toJson().length, 106);
 	});
 
 	it('draws の枚数だけ全員に配り、その分だけ山札が減る', () => {
-		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 4);
+		const game = createGame([ 'p1', 'p2' ], tarot(), 1, 0, 0, 4);
 		assert.equal(game.getDeck().toJson().length, 52 - 3 * 4);
 		for (const pid of [ 0, 1, 2 ]) {
 			assert.equal(game.getHandOfPlayer(pid).toJson().length, 4);
@@ -62,7 +73,7 @@ describe('createGame', () => {
 		// 整数キーとして扱われる。JS のプロパティ順は整数キーが昇順で先に来るので、
 		// 'A' より '0' が前に出る。実戦ではシャッフルされるので影響しないが、
 		// 決定的なテストを書くときはこの並びが前提になる。
-		const game = createGame([], [], 1, 0, 0, 13);
+		const game = createGame([], tarot(), 1, 0, 0, 13);
 		assert.deepEqual(names(game.getHandOfPlayer(MASTER).toJson().cards), [
 			'クラブ 10 (0)', 'クラブ 2 (0)', 'クラブ 3 (0)', 'クラブ 4 (0)',
 			'クラブ 5 (0)', 'クラブ 6 (0)', 'クラブ 7 (0)', 'クラブ 8 (0)',
@@ -72,12 +83,12 @@ describe('createGame', () => {
 	});
 
 	it('スートは クラブ,ダイヤ,ハート,スペード の順', () => {
-		const game = createGame([], [], 1, 0, 0, 14);
+		const game = createGame([], tarot(), 1, 0, 0, 14);
 		assert.equal(game.getHandOfPlayer(MASTER).at(13).name(), 'ダイヤ 10 (0)');
 	});
 
 	it('配る順は席順で、山札の先頭から取る', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 2);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 2);
 		assert.deepEqual(names(game.getHandOfPlayer(MASTER).toJson().cards),
 			[ 'クラブ 10 (0)', 'クラブ 2 (0)' ]);
 		assert.deepEqual(names(game.getHandOfPlayer(1).toJson().cards),
@@ -86,7 +97,7 @@ describe('createGame', () => {
 
 	it('山札が尽きたら配れるところまでで止める', () => {
 		// createHandCards() にガードが無いと undefined が手札に混ざる。
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 30);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 30);
 
 		assert.equal(game.getDeck().toJson().length, 0);
 		assert.equal(game.getHandOfPlayer(MASTER).toJson().length, 30);
@@ -98,7 +109,7 @@ describe('createGame', () => {
 	});
 
 	it('山札が空の席は手札 0 枚になる', () => {
-		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 52);
+		const game = createGame([ 'p1', 'p2' ], tarot(), 1, 0, 0, 52);
 
 		assert.equal(game.getHandOfPlayer(MASTER).toJson().length, 52);
 		assert.equal(game.getHandOfPlayer(1).toJson().length, 0);
@@ -110,27 +121,57 @@ describe('createGame', () => {
 	});
 
 	it('既定値は decks=2 jokers=2 shuffles=10 draws=4', () => {
-		const game = createGame([ 'p1', 'p2' ]);
+		const game = createGame([ 'p1', 'p2' ], tarot());
 		assert.equal(game.getDeck().toJson().length, 2 * 52 + 2 - 3 * 4);
 		assert.equal(game.getHandOfPlayer(MASTER).toJson().length, 4);
 	});
 
 	it('tarots を省略してもタロットは使う（誰にも配らないだけ）', () => {
-		const game = createGame([ 'p1', 'p2' ]);
+		const game = createGame([ 'p1', 'p2' ], { mode: 'tarot' });
 		assert.equal(game.getMode(), 'tarot');
 		assert.equal(game.getTarotDeck().toJson().length, 28);
+	});
+});
+
+describe('卓の設定（setup）', () => {
+	it('mode で卓の種類が決まる', () => {
+		assert.equal(plainGame([ 'p1' ], tarot()).getMode(), 'tarot');
+		assert.equal(plainGame([ 'p1' ], NONE).getMode(), 'none');
+		assert.equal(plainGame([ 'p1' ], epitaph()).getMode(), 'epitaph');
+	});
+
+	it('mode が無い・知らない値なら投げる', () => {
+		// 以前の形（配列、false、{ epitaphs }）からも種類を推し量らない。
+		for (const setup of [ undefined, null, {}, { mode: 'poker' }, [], [ '4' ], false, { epitaphs: [] } ]) {
+			assert.throws(() => createGame([ 'p1' ], setup), TypeError, JSON.stringify(setup));
+		}
+	});
+
+	it('mode に合わない札の指定は使わない', () => {
+		const cards = { tarots: [ '4' ], epitaphs: [ '1' ] };
+		const none = createGame([ 'p1' ], { mode: 'none', ...cards }, 1, 0, 0, 0);
+		const epitaphs = createGame([ 'p1' ], { mode: 'epitaph', ...cards }, 1, 0, 0, 0);
+		const tarots = createGame([ 'p1' ], { mode: 'tarot', ...cards }, 1, 0, 0, 0);
+
+		assert.equal(none.getTarotDeck().toJson().length, 0);
+		assert.equal(none.getTarotHandOfPlayer(1).toJson().length, 0);
+		assert.deepEqual(none.getEpitaphs().ranks(), []);
+		assert.equal(epitaphs.getTarotHandOfPlayer(1).toJson().length, 0);
+		assert.deepEqual(epitaphs.getEpitaphs().ranks(), [ '1' ]);
+		assert.equal(tarots.getTarotHandOfPlayer(1).toJson().card.rank, '4');
+		assert.deepEqual(tarots.getEpitaphs().ranks(), []);
 	});
 });
 
 describe('タロット', () => {
 	it('配った切り札はタロット山札から除かれる', () => {
 		// tarotRanks は 28 種。指定した 2 種が山札から抜ける。
-		const game = plainGame([ 'p1', 'p2' ], [ '4', '18' ]);
+		const game = plainGame([ 'p1', 'p2' ], tarot('4', '18'));
 		assert.equal(game.getTarotDeck().toJson().length, 26);
 	});
 
 	it('切り札は players の並び順に配られ、マスターは持たない', () => {
-		const game = plainGame([ 'p1', 'p2' ], [ '4', '18' ]);
+		const game = plainGame([ 'p1', 'p2' ], tarot('4', '18'));
 		assert.deepEqual(game.getTarotHandOfPlayer(MASTER).toJson(),
 			{ length: 0, card: undefined });
 		assert.equal(game.getTarotHandOfPlayer(1).toJson().card.rank, '4');
@@ -138,20 +179,20 @@ describe('タロット', () => {
 	});
 
 	it('未知の rank を指定した席は切り札なしになる', () => {
-		const game = plainGame([ 'p1' ], [ 'このrankは無い' ]);
+		const game = plainGame([ 'p1' ], tarot('このrankは無い'));
 		assert.equal(game.getTarotHandOfPlayer(1).toJson().length, 0);
 		assert.equal(game.getTarotDeck().toJson().length, 28);
 	});
 
 	it('切り札は既定で正位置', () => {
-		const game = plainGame([ 'p1' ], [ '4' ]);
+		const game = plainGame([ 'p1' ], tarot('4'));
 		const card = game.getTarotHandOfPlayer(1).toJson().card;
 		assert.equal(card.position, 'U');
 		assert.equal(card.name(), 'カブト 正位置');
 	});
 
 	it('TarotPile.flip() は正逆を入れ替える', () => {
-		const game = plainGame([ 'p1' ], [ '4' ]);
+		const game = plainGame([ 'p1' ], tarot('4'));
 		game.getTarotHandOfPlayer(1).discard(0);
 		const pile = game.getTarotPile();
 
@@ -169,21 +210,15 @@ describe('タロット', () => {
 	});
 
 	it('TarotHand.toJson() は cards ではなく card を返す', () => {
-		const json = plainGame([ 'p1' ], [ '4' ]).getTarotHandOfPlayer(1).toJson();
+		const json = plainGame([ 'p1' ], tarot('4')).getTarotHandOfPlayer(1).toJson();
 		assert.deepEqual(Object.keys(json), [ 'length', 'card' ]);
 	});
 });
 
 describe('タロットを使わない卓', () => {
-	it('2 番目の引数の形で卓の種類が決まる', () => {
-		assert.equal(plainGame([ 'p1' ], []).getMode(), 'tarot');
-		assert.equal(plainGame([ 'p1' ], false).getMode(), 'none');
-		assert.equal(plainGame([ 'p1' ], { epitaphs: [] }).getMode(), 'epitaph');
-	});
-
 	it('タロット山札・捨て札・切り札を空で作る', () => {
 		// 画面で隠すだけでなく札そのものを作らない。API を直に叩いても出てこない。
-		const game = plainGame([ 'p1', 'p2' ], false);
+		const game = plainGame([ 'p1', 'p2' ], NONE);
 
 		assert.equal(game.getTarotDeck().toJson().length, 0);
 		assert.deepEqual(game.getTarotPile().toJson(), { length: 0, card: undefined });
@@ -193,7 +228,7 @@ describe('タロットを使わない卓', () => {
 	});
 
 	it('タロットの操作をしても何も起きない', () => {
-		const game = plainGame([ 'p1' ], false);
+		const game = plainGame([ 'p1' ], NONE);
 
 		game.getTarotDeck().discard(0);
 		game.getTarotHandOfPlayer(1).discard(0);
@@ -205,14 +240,14 @@ describe('タロットを使わない卓', () => {
 	});
 
 	it('トランプは使う卓と同じに配る', () => {
-		const game = plainGame([ 'p1', 'p2' ], false);
+		const game = plainGame([ 'p1', 'p2' ], NONE);
 		assert.equal(game.getDeck().toJson().length, 52);
-		assert.equal(createGame([ 'p1', 'p2' ], false, 1, 0, 0, 4).getDeck().toJson().length,
+		assert.equal(createGame([ 'p1', 'p2' ], NONE, 1, 0, 0, 4).getDeck().toJson().length,
 			52 - 3 * 4);
 	});
 
 	it('卓の公開状態と dump に mode が載る', () => {
-		const game = plainGame([ 'p1' ], false);
+		const game = plainGame([ 'p1' ], NONE);
 		const table = game.getTable().toJson();
 
 		assert.equal(table.mode, 'none');
@@ -225,7 +260,7 @@ describe('タロットを使わない卓', () => {
 
 describe('エピタフの卓', () => {
 	function epitaphGame(epitaphs) {
-		return plainGame([ 'p1', 'p2' ], { epitaphs: epitaphs });
+		return plainGame([ 'p1', 'p2' ], epitaph(...epitaphs));
 	}
 
 	it('表の番号順に、すべて裏で並べる（シャッフルしない）', () => {
@@ -361,7 +396,7 @@ describe('Pile', () => {
 	});
 
 	it('shuffle() は札を失わない', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 0);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 0);
 		const deck = game.getDeck();
 		const before = new Set(game.toJson().deck);
 
@@ -396,7 +431,7 @@ describe('Hand', () => {
 	});
 
 	it('draw() は山札が空なら何もしない', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 26);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 26);
 		const hand = game.getHandOfPlayer(1);
 		assert.equal(game.getDeck().toJson().length, 0);
 
@@ -405,7 +440,7 @@ describe('Hand', () => {
 	});
 
 	it('discard() は手札から抜いて捨て札の先頭へ', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 3);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 3);
 		const hand = game.getHandOfPlayer(1);
 
 		hand.discard(1);
@@ -415,7 +450,7 @@ describe('Hand', () => {
 	});
 
 	it('discard() は範囲外の index では何もしない', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 3);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 3);
 		const hand = game.getHandOfPlayer(1);
 
 		hand.discard(999);
@@ -424,7 +459,7 @@ describe('Hand', () => {
 	});
 
 	it('recycle() は捨て札の先頭を手札の末尾へ', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 2);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 2);
 		const hand = game.getHandOfPlayer(1);
 
 		hand.discard(0);
@@ -435,7 +470,7 @@ describe('Hand', () => {
 	});
 
 	it('passTo() は相手の手札の末尾へ渡す', () => {
-		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 2);
+		const game = createGame([ 'p1', 'p2' ], tarot(), 1, 0, 0, 2);
 		const from = game.getHandOfPlayer(1);
 		const to = game.getHandOfPlayer(2);
 
@@ -446,7 +481,7 @@ describe('Hand', () => {
 	});
 
 	it('passTo() は範囲外の index では何もしない', () => {
-		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 2);
+		const game = createGame([ 'p1', 'p2' ], tarot(), 1, 0, 0, 2);
 		const from = game.getHandOfPlayer(1);
 
 		from.passTo(999, 2);
@@ -455,7 +490,7 @@ describe('Hand', () => {
 	});
 
 	it('pickFrom() は相手から 1 枚抜いて自分の末尾へ', () => {
-		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 2);
+		const game = createGame([ 'p1', 'p2' ], tarot(), 1, 0, 0, 2);
 		const mine = game.getHandOfPlayer(1);
 		const theirs = game.getHandOfPlayer(2);
 		const candidates = theirs.toJson().cards.names();
@@ -468,7 +503,7 @@ describe('Hand', () => {
 	});
 
 	it('pickFrom() は相手の手札が空なら何もしない', () => {
-		const game = createGame([ 'p1', 'p2' ], [], 1, 0, 0, 0);
+		const game = createGame([ 'p1', 'p2' ], tarot(), 1, 0, 0, 0);
 		const mine = game.getHandOfPlayer(1);
 
 		mine.pickFrom(2);
@@ -476,7 +511,7 @@ describe('Hand', () => {
 	});
 
 	it('at() は手札の 1 枚を返し、範囲外は undefined', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 1);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 1);
 		const hand = game.getHandOfPlayer(1);
 
 		assert.equal(hand.at(0).name(), 'クラブ 2 (0)');
@@ -485,14 +520,14 @@ describe('Hand', () => {
 
 	it('at() は文字列の index でも引ける', () => {
 		// app.mjs は req.params.cid を文字列のまま渡す。
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 2);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 2);
 		assert.equal(game.getHandOfPlayer(1).at('1').name(), 'クラブ 4 (0)');
 	});
 });
 
 describe('Table', () => {
 	it('全席と場の枚数を 1 つにまとめる', () => {
-		const game = createGame([ 'p1', 'p2' ], [ '4', '18' ], 1, 0, 0, 3);
+		const game = createGame([ 'p1', 'p2' ], tarot('4', '18'), 1, 0, 0, 3);
 		const json = game.getTable().toJson();
 
 		assert.deepEqual(Object.keys(json),
@@ -506,7 +541,7 @@ describe('Table', () => {
 	});
 
 	it('席は pid・名前・手札の枚数・切り札の有無', () => {
-		const game = createGame([ 'p1', 'p2' ], [ '4', '18' ], 1, 0, 0, 3);
+		const game = createGame([ 'p1', 'p2' ], tarot('4', '18'), 1, 0, 0, 3);
 
 		assert.deepEqual(game.getTable().toJson().seats, [
 			{ pid: '0', player: 'マスター', hand: { length: 3 }, tarot: { length: 0 } },
@@ -517,7 +552,7 @@ describe('Table', () => {
 
 	it('手札の中身を出さない', () => {
 		// 表示側で隠すだけだと DevTools から読めるので、ここで止める。
-		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 3);
+		const game = createGame([ 'p1' ], tarot('4'), 1, 0, 0, 3);
 		const json = JSON.stringify(game.getTable().toJson());
 
 		assert.equal(json.includes('suit'), false);
@@ -529,7 +564,7 @@ describe('Table', () => {
 	});
 
 	it('捨て札の一番上だけは表で出す', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 0);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 0);
 		game.getDeck().discard(0);
 		const pile = game.getTable().toJson().pile;
 
@@ -538,7 +573,7 @@ describe('Table', () => {
 	});
 
 	it('タロット捨て札の一番上も表で出す', () => {
-		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 0);
+		const game = createGame([ 'p1' ], tarot('4'), 1, 0, 0, 0);
 		game.getTarotHandOfPlayer(1).discard(0);
 		const json = game.getTable().toJson();
 
@@ -547,7 +582,7 @@ describe('Table', () => {
 	});
 
 	it('場が動いたら数字が追随する', () => {
-		const game = createGame([ 'p1' ], [], 1, 0, 0, 2);
+		const game = createGame([ 'p1' ], tarot(), 1, 0, 0, 2);
 		const hand = game.getHandOfPlayer(1);
 
 		hand.discard(0);
@@ -562,7 +597,7 @@ describe('Table', () => {
 
 describe('Game.toJson', () => {
 	it('全ての山と席を名前の配列で出す', () => {
-		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 1);
+		const game = createGame([ 'p1' ], tarot('4'), 1, 0, 0, 1);
 		const json = game.toJson();
 
 		assert.deepEqual(Object.keys(json),
@@ -584,7 +619,7 @@ describe('保存と復元', () => {
 	}
 
 	it('山札の並び・手札・捨て札・切り札の向きまで戻る', () => {
-		const game = createGame([ 'p1', 'p2' ], [ '4', '18' ], 2, 2, 3, 4);
+		const game = createGame([ 'p1', 'p2' ], tarot('4', '18'), 2, 2, 3, 4);
 		game.getHandOfPlayer(1).discard(0);
 		game.getTarotDeck().discard(0);
 		game.getTarotPile().flip();
@@ -598,7 +633,7 @@ describe('保存と復元', () => {
 	});
 
 	it('エピタフの表裏が戻る', () => {
-		const game = plainGame([ 'p1' ], { epitaphs: [ '1', '12' ] });
+		const game = plainGame([ 'p1' ], epitaph('1', '12'));
 		game.getEpitaphs().open(1);
 
 		const restored = roundTrip(game);
@@ -610,7 +645,7 @@ describe('保存と復元', () => {
 	});
 
 	it('タロットを使わない卓はそのまま戻る', () => {
-		const restored = roundTrip(plainGame([ 'p1' ], false));
+		const restored = roundTrip(plainGame([ 'p1' ], NONE));
 
 		assert.equal(restored.getMode(), 'none');
 		assert.equal(restored.getTarotDeck().toJson().length, 0);
@@ -618,7 +653,7 @@ describe('保存と復元', () => {
 
 	it('戻した卓もそのまま遊べる', () => {
 		// 入れ物と札のクラスが作ったときと揃っていないと、flip や shuffle が無くなる。
-		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 1);
+		const game = createGame([ 'p1' ], tarot('4'), 1, 0, 0, 1);
 		const restored = roundTrip(game);
 
 		for (const key of [ 'deck', 'pile', 'tarotDeck', 'tarotPile', 'epitaphs' ]) {
@@ -639,7 +674,7 @@ describe('保存と復元', () => {
 
 	it('席名の形は見ない', () => {
 		// 入力検証を入れる前に保存した卓を、戻せなくしないこと。
-		const game = createGame([ { a: 1 }, null ], []);
+		const game = createGame([ { a: 1 }, null ], tarot());
 
 		assert.deepEqual(roundTrip(game).getAllPlayers(), [ 'マスター', { a: 1 }, null ]);
 	});
@@ -660,7 +695,7 @@ describe('保存と復元', () => {
 			[ 'エピタフの表裏', (state) => { state.epitaphs = [ { rank: '1', open: 'yes' } ]; } ],
 		];
 		for (const [ label, breakIt ] of broken) {
-			const state = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 1).toState();
+			const state = createGame([ 'p1' ], tarot('4'), 1, 0, 0, 1).toState();
 			breakIt(state);
 			assert.throws(() => restoreGame(state), TypeError, label);
 		}
