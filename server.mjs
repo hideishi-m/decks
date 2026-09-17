@@ -71,6 +71,8 @@ export function createServer(emitter, options) {
 		});
 		wsServer.close();
 		server.close();
+		// 要求を送り終えていない接続（ブラウザが先回りして開くもの）は close() では切れず、終了を止める。
+		server.closeAllConnections();
 	});
 
 	wsServer.on('connection', (ws, req) => {
