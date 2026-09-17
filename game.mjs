@@ -12,27 +12,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { createDeckCards, createPileCards, createHandCards, createTarotDeckCards, createTarotHandCards, createEpitaphCards } from './card.mjs';
 
 
-// 卓の脇に置く札の種類を、createGame の 2 番目の引数の形から決める。
-//   配列（省略を含む）: tarot   … 配列は席ごとの切り札
-//   false:              none    … 何も置かない
-//   { epitaphs }:       epitaph … 配列は場に置くエピタフ
-function modeOf(side) {
-	if (false === side) {
-		return 'none';
-	}
-	if (undefined !== side?.epitaphs) {
-		return 'epitaph';
-	}
-	return 'tarot';
-}
+// 卓の脇に置く札の種類。
+export const MODES = [ 'tarot', 'epitaph', 'none' ];
 
 
 class Game {
-	constructor(players, side, decks, jokers, shuffles, draws) {
+	constructor(players, setup, decks, jokers, shuffles, draws) {
 		// タロットの卓でなければ、タロット山札も切り札も空で作る。
 		// API を直に叩いても札は 1 枚も出てこない。
-		this.mode = modeOf(side);
-		const tarots = 'tarot' === this.mode ? side : [];
+		this.mode = setup.mode;
+		const tarots = 'tarot' === this.mode ? (setup.tarots ?? []) : [];
 		this.playerNames = [];
 		this.deck = createDeckCards(decks, jokers, shuffles);
 		this.pile = createPileCards();
@@ -42,7 +31,7 @@ class Game {
 			: createTarotHandCards();  // 空の TarotCards
 		this.tarotPile = createPileCards();
 		this.tarotHands = [];
-		this.epitaphs = createEpitaphCards('epitaph' === this.mode ? side.epitaphs : []);
+		this.epitaphs = createEpitaphCards('epitaph' === this.mode ? setup.epitaphs : []);
 		this.shuffles = shuffles;
 
 		[ 'マスター', ...players ].forEach((player, index) => {
@@ -340,16 +329,19 @@ class Epitaphs {
 }
 
 
-// side の形は modeOf を参照。
-export function createGame(players, side, decks, jokers, shuffles, draws) {
-	players = players ? [ ...players ] : [];
-	// 省略は「タロットを使うが誰にも配らない」。false（使わない）とは別物。
-	if ('tarot' === modeOf(side)) {
-		side = side ? [ ...side ] : [];
+// setup は卓の設定。mode で卓の脇に置く札の種類を決め、その種類の札だけを見る。
+// 形から種類を推し量らないので、mode が無い・知らない値なら投げる。
+//   { mode: 'tarot', tarots }     … tarots は席ごとの切り札。省略すると誰にも配らない
+//   { mode: 'epitaph', epitaphs } … epitaphs は場に置くエピタフ。省略すると 0 枚
+//   { mode: 'none' }              … 何も置かない
+export function createGame(players, setup, decks, jokers, shuffles, draws) {
+	if (false === MODES.includes(setup?.mode)) {
+		throw new TypeError(`invalid mode: ${setup?.mode}`);
 	}
+	players = players ? [ ...players ] : [];
 	decks = decks ?? 2;
 	jokers = jokers ?? 2;
 	shuffles = shuffles ?? 10;
 	draws = draws ?? 4;
-	return new Game(players, side, decks, jokers, shuffles, draws);
+	return new Game(players, setup, decks, jokers, shuffles, draws);
 }

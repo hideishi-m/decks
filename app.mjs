@@ -18,15 +18,13 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import jwt from 'jsonwebtoken';
 
-import { createGame } from './game.mjs';
+import { MODES, createGame } from './game.mjs';
 import { getLogger } from './logger.mjs';
 import { epitaphRanks } from './public/js/LRQ_epitaph.js';
 
 import pkgJson from './package.json' with { type: 'json' };
 
 const MASTER = '0';
-// 卓の脇に置く札の種類。POST /games では必須で、既定値は無い。
-const MODES = [ 'tarot', 'epitaph', 'none' ];
 
 class AppError extends Error {
 	constructor(code = 500, message, options) {
@@ -86,7 +84,7 @@ export function createApp(emitter, options) {
 		next();
 	}
 
-	// 省略も 400。
+	// POST /games の mode は必須で、既定値は無い。省略も 400。
 	function validateMode(req, res, next, value, key) {
 		if (false === MODES.includes(value)) {
 			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
@@ -125,18 +123,6 @@ export function createApp(emitter, options) {
 			} });
 		}
 		next();
-	}
-
-	// 卓の脇に置く札を、createGame の引数の形にする（game.mjs の modeOf と対）。
-	function sideOf(body) {
-		switch (body.mode) {
-			case 'none':
-				return false;
-			case 'epitaph':
-				return { epitaphs: body.epitaphs };
-			default:  // tarot（validateMode を通った後なので 3 つのどれか）
-				return body.tarots;
-		}
 	}
 
 	// 管理面で 1 卓を表す形。POST /games と GET /games/:gid が同じものを返す。
@@ -455,7 +441,12 @@ export function createApp(emitter, options) {
 			});
 		})
 		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateMode, ['body', 'mode']), partialReqKey(validateTarots, ['body', 'tarots']), partialReqKey(validateEpitaphs, ['body', 'epitaphs']), (req, res, next) => {
-			const gid = games.push(createGame(req.body.players, sideOf(req.body))) - 1;
+			// 卓の設定は、上で検査したキーだけを渡す。createGame は mode に合う札だけを見る。
+			const gid = games.push(createGame(req.body.players, {
+				mode: req.body.mode,
+				tarots: req.body.tarots,
+				epitaphs: req.body.epitaphs,
+			})) - 1;
 			tickets[gid] = createTicket();
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
 			// GET /games/:gid と同じ形で返すので、作った直後に引き直さなくてよい。
