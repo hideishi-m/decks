@@ -188,6 +188,9 @@ paths:
         Creates a new game and issues the ticket that opens it. The ticket is
         returned here once and is not reissued; hand it out as a link.
 
+        With `useTarot: false` the table has no tarot: its tarot deck, pile
+        and trumps are all created empty, and `tarots` may be left out.
+
         ⚠ This returns a ticket. Keep it behind the proxy together with
         admin.html.
       requestBody:
@@ -1154,12 +1157,15 @@ components:
       required:
         - gid
         - players
+        - useTarot
         - ticket
       properties:
         gid:
           $ref: '#/components/schemas/Id'
         players:
           $ref: '#/components/schemas/Players'
+        useTarot:
+          $ref: '#/components/schemas/UseTarot'
         ticket:
           $ref: '#/components/schemas/Ticket'
     Games:
@@ -1188,16 +1194,29 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/TarotRank'
+    UseTarot:
+      type: boolean
+      description: |
+        Whether the table uses tarot. A table without it has an empty tarot
+        deck, pile and trumps from the start.
+      example: true
     GameAttributes:
       type: object
       required:
         - players
-        - tarots
       properties:
         players:
           $ref: '#/components/schemas/Players'
         tarots:
-          $ref: '#/components/schemas/Tarots'
+          allOf:
+            - $ref: '#/components/schemas/Tarots'
+          description: |
+            One trump per player, in the order of `players`. Required unless
+            `useTarot` is false, and ignored when it is.
+        useTarot:
+          allOf:
+            - $ref: '#/components/schemas/UseTarot'
+          default: true
     GamePlayers:
       type: object
       required:
@@ -1245,12 +1264,15 @@ components:
         The public state of the table. Face-down cards are reported by count
         only; their contents are never included.
       required:
+        - useTarot
         - seats
         - deck
         - pile
         - tarotDeck
         - tarotPile
       properties:
+        useTarot:
+          $ref: '#/components/schemas/UseTarot'
         seats:
           $ref: '#/components/schemas/Seats'
         deck:

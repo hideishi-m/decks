@@ -162,6 +162,8 @@ svg {
 .p-2 { padding: 0.5rem; }
 .mb-3 { margin-bottom: 1rem; }
 .d-none { display: none; }
+/* UA の [hidden] は作者 CSS の display に負けるので、display を持つ要素でも消えるようにする。 */
+[hidden] { display: none !important; }
 .overflow-scroll { overflow: auto; }
 
 /* ---------- panel ---------- */
@@ -214,6 +216,19 @@ svg {
 }
 
 /* ---------- forms ---------- */
+
+.form-check {
+	display: flex;
+	width: fit-content;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.75rem;
+	cursor: pointer;
+}
+
+.form-check input {
+	accent-color: var(--brass);
+}
 
 .form-label {
 	display: inline-block;

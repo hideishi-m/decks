@@ -114,6 +114,12 @@ describe('createGame', () => {
 		assert.equal(game.getDeck().toJson().length, 2 * 52 + 2 - 3 * 4);
 		assert.equal(game.getHandOfPlayer(MASTER).toJson().length, 4);
 	});
+
+	it('tarots を省略してもタロットは使う（誰にも配らないだけ）', () => {
+		const game = createGame([ 'p1', 'p2' ]);
+		assert.equal(game.usesTarot(), true);
+		assert.equal(game.getTarotDeck().toJson().length, 28);
+	});
 });
 
 describe('タロット', () => {
@@ -165,6 +171,53 @@ describe('タロット', () => {
 	it('TarotHand.toJson() は cards ではなく card を返す', () => {
 		const json = plainGame([ 'p1' ], [ '4' ]).getTarotHandOfPlayer(1).toJson();
 		assert.deepEqual(Object.keys(json), [ 'length', 'card' ]);
+	});
+});
+
+describe('タロットを使わない卓', () => {
+	it('tarots に false を渡すと使わない', () => {
+		assert.equal(plainGame([ 'p1' ], false).usesTarot(), false);
+		assert.equal(plainGame([ 'p1' ], []).usesTarot(), true);
+	});
+
+	it('⚠ タロット山札・捨て札・切り札を空で作る', () => {
+		// 画面で隠すだけでなく札そのものを作らない。API を直に叩いても出てこない。
+		const game = plainGame([ 'p1', 'p2' ], false);
+
+		assert.equal(game.getTarotDeck().toJson().length, 0);
+		assert.deepEqual(game.getTarotPile().toJson(), { length: 0, card: undefined });
+		for (const pid of [ MASTER, 1, 2 ]) {
+			assert.equal(game.getTarotHandOfPlayer(pid).toJson().length, 0);
+		}
+	});
+
+	it('タロットの操作をしても何も起きない', () => {
+		const game = plainGame([ 'p1' ], false);
+
+		game.getTarotDeck().discard(0);
+		game.getTarotHandOfPlayer(1).discard(0);
+		game.getTarotPile().flip();
+		game.getTarotPile().shuffle();
+
+		assert.equal(game.getTarotDeck().toJson().length, 0);
+		assert.equal(game.getTarotPile().toJson().length, 0);
+	});
+
+	it('トランプは使う卓と同じに配る', () => {
+		const game = plainGame([ 'p1', 'p2' ], false);
+		assert.equal(game.getDeck().toJson().length, 52);
+		assert.equal(createGame([ 'p1', 'p2' ], false, 1, 0, 0, 4).getDeck().toJson().length,
+			52 - 3 * 4);
+	});
+
+	it('卓の公開状態と dump に useTarot が載る', () => {
+		const game = plainGame([ 'p1' ], false);
+		const table = game.getTable().toJson();
+
+		assert.equal(table.useTarot, false);
+		assert.equal(table.tarotDeck.length, 0);
+		assert.deepEqual(table.seats.map((seat) => seat.tarot.length), [ 0, 0 ]);
+		assert.equal(game.toJson().useTarot, false);
 	});
 });
 
@@ -371,7 +424,8 @@ describe('Table', () => {
 		const json = game.getTable().toJson();
 
 		assert.deepEqual(Object.keys(json),
-			[ 'seats', 'deck', 'pile', 'tarotDeck', 'tarotPile' ]);
+			[ 'useTarot', 'seats', 'deck', 'pile', 'tarotDeck', 'tarotPile' ]);
+		assert.equal(json.useTarot, true);
 		assert.equal(json.deck.length, 52 - 3 * 3);
 		assert.deepEqual(json.pile, { length: 0, card: undefined });
 		assert.equal(json.tarotDeck.length, 26);
@@ -439,7 +493,7 @@ describe('Game.toJson', () => {
 		const json = game.toJson();
 
 		assert.deepEqual(Object.keys(json),
-			[ 'deck', 'pile', 'players', 'tarotDeck', 'tarotPile' ]);
+			[ 'useTarot', 'deck', 'pile', 'players', 'tarotDeck', 'tarotPile' ]);
 		assert.equal(json.deck.length, 50);
 		assert.deepEqual([ ...json.pile ], []);
 		assert.equal(json.players.length, 2);

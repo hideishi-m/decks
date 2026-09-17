@@ -39,9 +39,10 @@ function appendGame(game) {
 		class: 'btn btn-secondary copy-invite',
 		'data-url': url,
 	}, 'コピー');
+	const players = String(game.players) + (false === game.useTarot ? '（タロットなし）' : '');
 	qs('#game').append(
 		el('div', { class: 'col-1', 'data-gid': game.gid }, game.gid),
-		el('div', { class: 'col-3', 'data-gid': game.gid }, String(game.players)),
+		el('div', { class: 'col-3', 'data-gid': game.gid }, players),
 		el('div', { class: 'col-8 invite-cell', 'data-gid': game.gid }, link, copy)
 	);
 	appendOption('#deleteGameSelect', game.gid, game.gid);
@@ -66,12 +67,17 @@ delegate(qs('#game'), '.copy-invite', 'click', function () {
 qs('#newGame').addEventListener('click', newGame);
 async function newGame() {
 	try {
-		const params = parseDataValuesEach({
+		const useTarot = qs('#useTarot').checked;
+		// 使わない卓には tarots を送らない。
+		const params = parseDataValuesEach(useTarot ? {
 			players: 'input[name^=players]',
 			tarots: 'select[name^=tarots]',
+		} : {
+			players: 'input[name^=players]',
 		});
-		for (const [i, value] of params.tarots.entries()) {
-			params.tarots[i] = tarotRanks.has(value) ? value : null;
+		const body = { players: params.players, useTarot: useTarot };
+		if (useTarot) {
+			body.tarots = params.tarots.map((value) => tarotRanks.has(value) ? value : null);
 		}
 		const data = await ajax('./games', {
 			method: 'POST',
@@ -79,10 +85,7 @@ async function newGame() {
 				'Content-Type': 'application/json',
 			},
 			cache: 'no-cache',
-			body: JSON.stringify({
-				players: params.players,
-				tarots: params.tarots,
-			}),
+			body: JSON.stringify(body),
 		});
 		updateStatus(JSON.stringify(data, null, 2));
 		appendGame(data);
@@ -90,6 +93,15 @@ async function newGame() {
 		updateStatus(`${error.name}: ${error.message}`);
 	}
 }
+
+// #useTarot
+// 使わない卓では席ごとの切り札を選ばせない。行を足す雛型（.copy）の select も
+// 一緒に隠すので、後から足した行も同じ状態で出てくる。
+qs('#useTarot').addEventListener('change', function () {
+	for (const select of qsa('select[name^=tarots]')) {
+		select.hidden = false === this.checked;
+	}
+});
 
 // #players
 qs('.add').addEventListener('click', function () {

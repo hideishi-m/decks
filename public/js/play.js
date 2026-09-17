@@ -43,6 +43,11 @@ function isMaster() {
 	return MASTER === pid;
 }
 
+// タロットを使わない卓か。useTarot が無ければ API の既定と同じく使うものとする。
+function usesTarot() {
+	return false !== table?.useTarot;
+}
+
 function seatOf(seatPid) {
 	return table?.seats?.find((seat) => seat.pid === seatPid);
 }
@@ -261,9 +266,9 @@ function flightOf(action) {
 		case 'shuffle':
 			return [ qs('#pile'), qs('#deck') ];
 		case 'tarot-deck-discard':
-			return [ qs('#tarotDeck'), qs('#tarotPile') ];
+			return usesTarot() ? [ qs('#tarotDeck'), qs('#tarotPile') ] : [ null, null ];
 		case 'tarot-discard':
-			return [ tarotNode(action.pid), qs('#tarotPile') ];
+			return usesTarot() ? [ tarotNode(action.pid), qs('#tarotPile') ] : [ null, null ];
 		default:
 			return [ null, null ];
 	}
@@ -363,12 +368,15 @@ function createSeat(seat) {
 		fan.append(createEmptySlot('card-sm'));
 	}
 
-	const tarot = el('div', { class: 'tarot-slot' },
-		el('span', { class: 'slot-label' }, '切り札'),
-		// ⚠ 他席の切り札は非公開。持っているかどうかだけが分かる。
-		0 < seat.tarot.length ? createTarotCardImg(null, 'card-sm') : createEmptySlot('card-sm'));
+	const row = el('div', { class: 'hand-row' }, fan);
+	if (usesTarot()) {
+		row.append(el('div', { class: 'tarot-slot' },
+			el('span', { class: 'slot-label' }, '切り札'),
+			// ⚠ 他席の切り札は非公開。持っているかどうかだけが分かる。
+			0 < seat.tarot.length ? createTarotCardImg(null, 'card-sm') : createEmptySlot('card-sm')));
+	}
 
-	node.append(name, el('div', { class: 'hand-row' }, fan, tarot));
+	node.append(name, row);
 	return node;
 }
 
@@ -392,13 +400,18 @@ function updateTable(next) {
 	qs('#pile').replaceChildren(
 		table.pile.card ? createCardSvg(table.pile.card, 'card-lg') : createEmptySlot('card-lg'));
 
-	qs('#tarotDeckLabel').textContent = table.tarotDeck.length;
-	qs('#tarotDeck').replaceChildren(
-		0 < table.tarotDeck.length ? createTarotCardImg(null, 'card-lg') : createEmptySlot('card-lg'));
+	// タロットを使わない卓では、場のタロットも自席の切り札も出さない。
+	qs('#tarotCluster').hidden = false === usesTarot();
+	qs('#myTarot').hidden = false === usesTarot();
+	if (usesTarot()) {
+		qs('#tarotDeckLabel').textContent = table.tarotDeck.length;
+		qs('#tarotDeck').replaceChildren(
+			0 < table.tarotDeck.length ? createTarotCardImg(null, 'card-lg') : createEmptySlot('card-lg'));
 
-	qs('#tarotPileLabel').textContent = table.tarotPile.length;
-	qs('#tarotPile').replaceChildren(
-		table.tarotPile.card ? createTarotCardImg(table.tarotPile.card, 'card-lg') : createEmptySlot('card-lg'));
+		qs('#tarotPileLabel').textContent = table.tarotPile.length;
+		qs('#tarotPile').replaceChildren(
+			table.tarotPile.card ? createTarotCardImg(table.tarotPile.card, 'card-lg') : createEmptySlot('card-lg'));
+	}
 
 	const mine = seatOf(pid);
 	if (mine) {
@@ -448,6 +461,10 @@ async function updateHand(hand) {
 // 手放すのは自分が捨てたときだけなので、卓の更新では触らない。
 async function fetchTarotHand() {
 	myTarot = undefined;
+	// 使わない卓では取りに行かない（切り札の欄ごと隠れている）。
+	if (false === usesTarot()) {
+		return;
+	}
 	if (false === isMaster()) {
 		const data = await ajax('./games/' + gid + '/tarot/players/' + pid, {
 			method: 'GET',

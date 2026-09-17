@@ -106,7 +106,16 @@ POST /games
 
 request: {
   players: [ "pc1", "pc2", "pc3" ],
-  tarots: [ "4", "18", "7" ]
+  tarots: [ "4", "18", "7" ],
+  useTarot: true
+}
+
+useTarot は省略すると true。false の卓はタロットを使わず、タロット山札・捨て札・
+切り札を空で作る。このとき tarots は省略してよく、送られても使わない。
+
+request: {
+  players: [ "pc1", "pc2", "pc3" ],
+  useTarot: false
 }
 
 `GET /games/:gid` と同じ形を返す。
@@ -114,6 +123,7 @@ request: {
 response: {
   gid: "1",
   players: [ "マスター", "pc1", "pc2", "pc3" ],
+  useTarot: true,
   ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
 }
 
@@ -141,6 +151,7 @@ GET /games/:gid
 response: {
   gid: "1",
   players: [ "マスター", "pc1", "pc2", "pc3" ],
+  useTarot: true,
   ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
 }
 
@@ -156,12 +167,13 @@ response: { gid: "1" }
 ### 卓
 
 全席の公開状態を1回で取得する。伏せられている札は枚数だけを返し、中身は返さない。
-自分の手札は「手札一覧」で取る。
+自分の手札は「手札一覧」で取る。useTarot が false の卓では、タロットの枚数はすべて 0。
 
 GET /games/:gid/table
 
 response: {
   gid: "1",
+  useTarot: true,
   seats: [
     {
       pid: "0",

@@ -81,6 +81,22 @@ export function createApp(emitter, options) {
 		next();
 	}
 
+	// 省略は許す。省略時の値は呼ぶ側で決める。
+	function validateOptionalBoolean(req, res, next, value, key) {
+		if (undefined !== value && 'boolean' !== typeof value) {
+			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
+		}
+		next();
+	}
+
+	// タロットを使わない卓では tarots を見ない。省略してよく、送られても使わない。
+	function validateTarots(req, res, next, value, key) {
+		if (false === req.body?.useTarot) {
+			return next();
+		}
+		return validateArray(req, res, next, value, key);
+	}
+
 	// 卓への入場券。卓を作ったときに 1 つだけ発行し、以後は再発行しない。
 	// これを知っている人だけが席のトークンを取れる。
 	function createTicket() {
@@ -371,14 +387,16 @@ export function createApp(emitter, options) {
 				games: gids,
 			});
 		})
-		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateArray, ['body', 'tarots']), (req, res, next) => {
-			const gid = games.push(createGame(req.body.players, req.body.tarots)) - 1;
+		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateOptionalBoolean, ['body', 'useTarot']), partialReqKey(validateTarots, ['body', 'tarots']), (req, res, next) => {
+			const tarots = false === req.body.useTarot ? false : req.body.tarots;
+			const gid = games.push(createGame(req.body.players, tarots)) - 1;
 			tickets[gid] = createTicket();
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
 			// GET /games/:gid と同じ形で返すので、作った直後に引き直さなくてよい。
 			res.statusJson(200, {
 				gid: `${gid}`,
 				players: games[gid].getAllPlayers(),
+				useTarot: games[gid].usesTarot(),
 				ticket: tickets[gid],
 			});
 		});
@@ -393,6 +411,7 @@ export function createApp(emitter, options) {
 			res.statusJson(200, {
 				gid: req.params.gid,
 				players: players,
+				useTarot: game.usesTarot(),
 				ticket: tickets[req.params.gid],
 			});
 		})

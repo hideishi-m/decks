@@ -14,11 +14,16 @@ import { createDeckCards, createPileCards, createHandCards, createTarotDeckCards
 
 class Game {
 	constructor(players, tarots, decks, jokers, shuffles, draws) {
+		// tarots が false の卓はタロットを使わない。タロット山札も切り札も空で作るので、
+		// API を直に叩いても札は 1 枚も出てこない。
+		this.useTarot = false !== tarots;
 		this.playerNames = [];
 		this.deck = createDeckCards(decks, jokers, shuffles);
 		this.pile = createPileCards();
 		this.hands = [];
-		this.tarotDeck = createTarotDeckCards(shuffles, tarots);
+		this.tarotDeck = this.useTarot
+			? createTarotDeckCards(shuffles, tarots)
+			: createTarotHandCards();  // 空の TarotCards
 		this.tarotPile = createPileCards();
 		this.tarotHands = [];
 		this.shuffles = shuffles;
@@ -26,7 +31,7 @@ class Game {
 		[ 'マスター', ...players ].forEach((player, index) => {
 			this.playerNames.push(player);
 			this.hands.push(createHandCards(this.deck, draws));
-			if (0 === index) {
+			if (0 === index || false === this.useTarot) {
 				this.tarotHands.push(createTarotHandCards());
 			} else {
 				this.tarotHands.push(createTarotHandCards([tarots[index - 1]]));
@@ -36,6 +41,7 @@ class Game {
 
 	toJson() {
 		return {
+			useTarot: this.useTarot,
 			deck: this.deck.names(),
 			pile: this.pile.names(),
 			players: this.playerNames.map((player, index) => {
@@ -48,6 +54,10 @@ class Game {
 			tarotDeck: this.tarotDeck.names(),
 			tarotPile: this.tarotPile.names(),
 		};
+	}
+
+	usesTarot() {
+		return this.useTarot;
 	}
 
 	getAllPlayers() {
@@ -120,6 +130,7 @@ class Table {
 	toJson() {
 		const game = this.game;
 		return {
+			useTarot: game.useTarot,
 			seats: game.playerNames.map((player, index) => {
 				return {
 					pid: `${index}`,
@@ -273,7 +284,10 @@ class TarotHand extends Hand {
 
 export function createGame(players, tarots, decks, jokers, shuffles, draws) {
 	players = players ? [ ...players ] : [];
-	tarots = tarots ? [ ...tarots ] : [];
+	// false はタロットを使わない卓。省略は「使うが誰にも配らない」で、別物として扱う。
+	if (false !== tarots) {
+		tarots = tarots ? [ ...tarots ] : [];
+	}
 	decks = decks ?? 2;
 	jokers = jokers ?? 2;
 	shuffles = shuffles ?? 10;
