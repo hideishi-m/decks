@@ -17,6 +17,8 @@ import { epitaphRanks } from './LRQ_epitaph.js';
 const MASTER = '0';
 // 他席の扇に並べる伏せ札の上限。これを超えたら重ねたままにする。
 const FANNED = 5;
+// 場のエピタフを 1 段に並べる枚数の上限。山札と同じ大きさで、山札の右に並ぶのは 4 枚まで。
+const EPITAPH_COLUMNS = 4;
 
 let gid, pid, socket, token;
 // 卓への入場券。URL から受け取る。これが無ければ何も始まらない。
@@ -483,17 +485,21 @@ function updateTable(next) {
 }
 
 // 場のエピタフ。裏の札は、プレーヤーには裏面で、マスターには絵柄を暗くして見せる。
+// 段ごとの枚数が揃うよう列の数を決めて CSS に渡す（7 枚なら 4+3、9 枚なら 3+3+3）。
 function updateEpitaphs() {
 	const box = qs('#epitaphs');
+	const count = table.epitaphs.length;
+	const rows = Math.max(1, Math.ceil(count / EPITAPH_COLUMNS));
+	box.style.setProperty('--epitaph-columns', Math.max(1, Math.ceil(count / rows)));
 	box.replaceChildren();
 	table.epitaphs.forEach((epitaph, index) => {
 		const rank = epitaph.rank ?? myEpitaphs[index]?.rank;
-		const node = createEpitaphNode(rank, epitaph.open, 'card-sm');
+		const node = createEpitaphNode(rank, epitaph.open, 'card-lg');
 		node.dataset.eid = `${index}`;
 		box.append(node);
 	});
-	if (0 === table.epitaphs.length) {
-		box.append(createEmptySlot('card-sm'));
+	if (0 === count) {
+		box.append(createEmptySlot('card-lg'));
 	}
 }
 

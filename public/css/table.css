@@ -22,6 +22,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	--felt-rim: #2a4f45;
 	/* トランプの裏の色。svg-cards の裏は fill を受け継いで塗られる。 */
 	--card-back: red;
+	/* 場の札の幅。エピタフの並びの幅もここから決める。 */
+	--card-lg-width: 76px;
 }
 
 /* ---------- 卓とレール ---------- */
@@ -111,20 +113,21 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 /* ---------- 場 ---------- */
 
+/* 見出しと札の上端を揃える。区切りの線は場の高さまで伸ばす。 */
 .center {
 	position: relative;
 	z-index: 1;
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
-	align-items: flex-end;
+	align-items: stretch;
 	gap: 2rem;
 	min-height: 150px;
 }
 
 .cluster {
 	display: flex;
-	align-items: flex-end;
+	align-items: flex-start;
 	gap: 1.375rem;
 }
 
@@ -174,7 +177,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 }
 
 .card-lg {
-	width: 76px;
+	width: var(--card-lg-width);
 	height: 110px;
 }
 
@@ -319,13 +322,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 /* ---------- エピタフ ---------- */
 
-/* 8 枚で折り返す。 */
+/* 列の数は play.js が --epitaph-columns で渡す。 */
 .epitaphs {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
 	gap: 6px;
-	max-width: calc(8 * 44px + 7 * 6px);
+	max-width: calc(var(--epitaph-columns, 4) * var(--card-lg-width) + (var(--epitaph-columns, 4) - 1) * 6px);
 }
 
 .epitaph {
