@@ -1,0 +1,339 @@
+/**
+Copyright (c) 2022-2024 Hidenori ISHIKAWA. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/* エピタフの卓（mode が epitaph）の見た目。play.js が html に data-mode を付けたときだけ効き、ほかの卓は app.css と table.css のまま。 */
+
+:root[data-mode="epitaph"] {
+	/* 地と線 */
+	--ground: #efe4c8;
+	--panel: #f6edd6;
+	--panel-2: #f6edd6;
+	--field: #fbf5e4;
+	--line: #7d6120;
+	--line-soft: #cdb88a;
+
+	/* 文字 */
+	--ink: #1f1a14;
+	--ink-dim: #5c4d36;
+	--ink-faint: #7a6a4f;
+
+	/* 差し色。真鍮の役を金が、赤の役を深紅が引き受ける。 */
+	--brass: #b8912e;
+	--brass-hi: #cfa846;
+	--brass-dim: #7d6120;
+	--red: #6e1a1a;
+	--red-hi: #8a2424;
+	--gold: #b8912e;
+	--gold-dark: #7d6120;
+	--crimson: #6e1a1a;
+	--parchment: #f3e6c4;
+
+	--radius: 2px;
+
+	/* 卓 */
+	--felt: #e8d9b2;
+	--felt-rim: #3a2c12;
+	--card-back: #1b1611;
+	--paper-noise: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='220'%20height='220'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.75'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20values='0%200%200%200%200.36%200%200%200%200%200.26%200%200%200%200%200.1%200%200%200%200.16%200'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url%28%23n%29'/%3E%3C/svg%3E");
+	--seat-line: inset 0 0 0 3px rgba(255, 250, 236, 0.78), inset 0 0 0 4px rgba(184, 145, 46, 0.55);
+
+	/* 数字とラベルの欧文のセリフ。 */
+	--roman: Georgia, "Times New Roman", serif;
+}
+
+/* ---------- 地と文字 ---------- */
+
+/* 羊皮紙の質感と、周りの焼け。 */
+[data-mode="epitaph"] body {
+	background-image:
+		radial-gradient(120% 90% at 50% 30%, transparent 55%, rgba(120, 88, 34, 0.22) 100%),
+		var(--paper-noise);
+	background-attachment: fixed;
+}
+
+[data-mode="epitaph"] h2,
+[data-mode="epitaph"] .modal-header h5 {
+	color: var(--ink);
+}
+
+[data-mode="epitaph"] .panel > h2 {
+	padding-bottom: 0.3125rem;
+	border-bottom: 1px solid rgba(125, 97, 32, 0.6);
+	font-size: 1rem;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+}
+
+[data-mode="epitaph"] .modal-header h5 {
+	font-weight: 800;
+	letter-spacing: 0.08em;
+}
+
+[data-mode="epitaph"] pre {
+	color: var(--ink);
+}
+
+[data-mode="epitaph"] ::selection {
+	background: var(--crimson);
+	color: var(--parchment);
+}
+
+[data-mode="epitaph"] .head .sub,
+[data-mode="epitaph"] .slot-label {
+	font-family: var(--roman);
+	font-variant-caps: small-caps;
+}
+
+[data-mode="epitaph"] .slot-count,
+[data-mode="epitaph"] .seat-count,
+[data-mode="epitaph"] .seat-role {
+	font-family: var(--roman);
+	font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* ---------- 見出し ---------- */
+
+[data-mode="epitaph"] .head {
+	align-items: center;
+}
+
+/* 卓の字を、金の縁の墨の箱に入れる。 */
+[data-mode="epitaph"] .head h1 {
+	padding: 0 0.5rem;
+	border: 1px solid var(--gold);
+	background: var(--ink);
+	box-shadow: inset 0 0 0 3px var(--ink), inset 0 0 0 4px var(--gold-dark);
+	color: #e8d9b2;
+	font-weight: 800;
+}
+
+[data-mode="epitaph"] .head .sub {
+	font-size: 0.8125rem;
+	letter-spacing: 0.16em;
+}
+
+[data-mode="epitaph"] .tag {
+	padding: 0.0625rem 0.625rem;
+	border-color: var(--gold-dark);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-weight: 700;
+	letter-spacing: 0.04em;
+}
+
+/* ---------- 右の欄 ---------- */
+
+[data-mode="epitaph"] .panel {
+	border: 1px solid var(--gold-dark);
+	border-radius: 2px;
+	background: rgba(255, 250, 236, 0.72);
+}
+
+/* ---------- ボタンと入力 ---------- */
+
+[data-mode="epitaph"] .btn,
+[data-mode="epitaph"] .btn-primary {
+	color: var(--parchment);
+	background-color: #2a2118;
+	border-color: var(--gold-dark);
+	font-weight: 700;
+}
+
+[data-mode="epitaph"] .btn:hover,
+[data-mode="epitaph"] .btn-primary:hover:not(:disabled) {
+	background-color: var(--crimson);
+	border-color: var(--gold);
+}
+
+[data-mode="epitaph"] .btn:disabled:hover {
+	background-color: #2a2118;
+	border-color: var(--gold-dark);
+}
+
+[data-mode="epitaph"] .btn-secondary {
+	color: var(--ink);
+	background-color: var(--field);
+}
+
+[data-mode="epitaph"] .btn-secondary:hover {
+	color: var(--ink);
+	background-color: var(--ground);
+	border-color: var(--gold-dark);
+}
+
+[data-mode="epitaph"] .form-select {
+	background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Cpath%20fill='none'%20stroke='%231f1a14'%20stroke-linecap='round'%20stroke-linejoin='round'%20stroke-width='2'%20d='m2%205%206%206%206-6'/%3E%3C/svg%3E");
+}
+
+[data-mode="epitaph"] .form-control:focus,
+[data-mode="epitaph"] .form-select:focus {
+	border-color: var(--gold-dark);
+	box-shadow: 0 0 0 3px rgba(184, 145, 46, 0.3);
+}
+
+/* ---------- ダイアログ ---------- */
+
+[data-mode="epitaph"] dialog {
+	background: var(--paper-noise), var(--panel);
+	border: 1px solid var(--gold-dark);
+	border-radius: 2px;
+	box-shadow:
+		inset 0 0 0 4px var(--panel), inset 0 0 0 5px rgba(184, 145, 46, 0.7),
+		0 24px 48px -16px rgba(31, 26, 20, 0.6);
+}
+
+[data-mode="epitaph"] dialog::backdrop {
+	background-color: rgba(31, 26, 20, 0.55);
+}
+
+[data-mode="epitaph"] .modal-header {
+	border-bottom: 1px solid rgba(125, 97, 32, 0.6);
+}
+
+/* ---------- 卓 ---------- */
+
+/* 羊皮紙の卓に、金の二重線と四隅の唐草。唐草は背景の先頭 4 枚。 */
+[data-mode="epitaph"] .felt {
+	border: 1px solid var(--felt-rim);
+	border-radius: 2px;
+	background:
+		url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cg%20%20fill='none'%20stroke='%23b8912e'%20stroke-width='1.4'%3E%3Cpath%20d='M4%2060V18Q4%204%2018%204H60'/%3E%3Cpath%20d='M10%2060V22Q10%2010%2022%2010H60'%20opacity='0.6'/%3E%3Cpath%20d='M18%2018m-6%200a6%206%200%201%201%206%206a3.5%203.5%200%201%201-3.5-3.5'/%3E%3Cpath%20d='M28%204q3%207%2011%207M4%2028q7%203%207%2011'/%3E%3Cg%20fill='%23b8912e'%20stroke='none'%3E%3Ccircle%20cx='60'%20cy='4'%20r='1.8'/%3E%3Ccircle%20cx='4'%20cy='60'%20r='1.8'/%3E%3Ccircle%20cx='42'%20cy='10'%20r='1.3'/%3E%3Ccircle%20cx='10'%20cy='42'%20r='1.3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") left 14px top 14px / 58px 58px no-repeat,
+		url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cg%20transform='translate%2864%200%29%20scale%28-1%201%29'%20fill='none'%20stroke='%23b8912e'%20stroke-width='1.4'%3E%3Cpath%20d='M4%2060V18Q4%204%2018%204H60'/%3E%3Cpath%20d='M10%2060V22Q10%2010%2022%2010H60'%20opacity='0.6'/%3E%3Cpath%20d='M18%2018m-6%200a6%206%200%201%201%206%206a3.5%203.5%200%201%201-3.5-3.5'/%3E%3Cpath%20d='M28%204q3%207%2011%207M4%2028q7%203%207%2011'/%3E%3Cg%20fill='%23b8912e'%20stroke='none'%3E%3Ccircle%20cx='60'%20cy='4'%20r='1.8'/%3E%3Ccircle%20cx='4'%20cy='60'%20r='1.8'/%3E%3Ccircle%20cx='42'%20cy='10'%20r='1.3'/%3E%3Ccircle%20cx='10'%20cy='42'%20r='1.3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") right 14px top 14px / 58px 58px no-repeat,
+		url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cg%20transform='translate%280%2064%29%20scale%281%20-1%29'%20fill='none'%20stroke='%23b8912e'%20stroke-width='1.4'%3E%3Cpath%20d='M4%2060V18Q4%204%2018%204H60'/%3E%3Cpath%20d='M10%2060V22Q10%2010%2022%2010H60'%20opacity='0.6'/%3E%3Cpath%20d='M18%2018m-6%200a6%206%200%201%201%206%206a3.5%203.5%200%201%201-3.5-3.5'/%3E%3Cpath%20d='M28%204q3%207%2011%207M4%2028q7%203%207%2011'/%3E%3Cg%20fill='%23b8912e'%20stroke='none'%3E%3Ccircle%20cx='60'%20cy='4'%20r='1.8'/%3E%3Ccircle%20cx='4'%20cy='60'%20r='1.8'/%3E%3Ccircle%20cx='42'%20cy='10'%20r='1.3'/%3E%3Ccircle%20cx='10'%20cy='42'%20r='1.3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") left 14px bottom 14px / 58px 58px no-repeat,
+		url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cg%20transform='translate%2864%2064%29%20scale%28-1%20-1%29'%20fill='none'%20stroke='%23b8912e'%20stroke-width='1.4'%3E%3Cpath%20d='M4%2060V18Q4%204%2018%204H60'/%3E%3Cpath%20d='M10%2060V22Q10%2010%2022%2010H60'%20opacity='0.6'/%3E%3Cpath%20d='M18%2018m-6%200a6%206%200%201%201%206%206a3.5%203.5%200%201%201-3.5-3.5'/%3E%3Cpath%20d='M28%204q3%207%2011%207M4%2028q7%203%207%2011'/%3E%3Cg%20fill='%23b8912e'%20stroke='none'%3E%3Ccircle%20cx='60'%20cy='4'%20r='1.8'/%3E%3Ccircle%20cx='4'%20cy='60'%20r='1.8'/%3E%3Ccircle%20cx='42'%20cy='10'%20r='1.3'/%3E%3Ccircle%20cx='10'%20cy='42'%20r='1.3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") right 14px bottom 14px / 58px 58px no-repeat,
+		radial-gradient(110% 80% at 50% 45%, transparent 50%, rgba(110, 78, 28, 0.28) 100%),
+		var(--paper-noise),
+		var(--felt);
+	box-shadow:
+		inset 0 0 0 5px var(--felt), inset 0 0 0 6px var(--gold),
+		inset 0 0 0 9px var(--felt), inset 0 0 0 10px rgba(184, 145, 46, 0.6),
+		0 12px 26px -16px rgba(58, 44, 18, 0.7);
+}
+
+/* 内側の線は box-shadow で引いているので、table.css の線は出さない。 */
+[data-mode="epitaph"] .felt::after {
+	display: none;
+}
+
+[data-mode="epitaph"] .cluster + .cluster,
+[data-mode="epitaph"] .tarot-slot {
+	border-left: 1px solid rgba(125, 97, 32, 0.6);
+}
+
+[data-mode="epitaph"] .slot-label {
+	font-size: 0.78rem;
+	letter-spacing: 0.14em;
+}
+
+[data-mode="epitaph"] .slot-count {
+	font-size: 0.9375rem;
+	font-weight: 700;
+	color: var(--ink);
+}
+
+[data-mode="epitaph"] .card {
+	box-shadow: 0 2px 5px rgba(40, 28, 10, 0.35);
+}
+
+[data-mode="epitaph"] .card-empty {
+	border: 1px dashed #9a8458;
+	box-shadow: none;
+}
+
+[data-mode="epitaph"] .clickable:hover,
+[data-mode="epitaph"] .clickable:focus-visible {
+	box-shadow: 0 8px 14px rgba(40, 28, 10, 0.35);
+}
+
+/* ---------- 席 ---------- */
+
+[data-mode="epitaph"] .seat {
+	border: 1px solid var(--gold-dark);
+	border-radius: 2px;
+	background: rgba(255, 250, 236, 0.78);
+	box-shadow: var(--seat-line);
+}
+
+[data-mode="epitaph"] .seat-me {
+	border-top-color: var(--gold-dark);
+	background: rgba(255, 250, 236, 0.9);
+}
+
+[data-mode="epitaph"] .seat-name {
+	font-weight: 700;
+	letter-spacing: 0.06em;
+}
+
+[data-mode="epitaph"] .seat-count {
+	border: 1px solid var(--gold);
+	border-radius: 1px;
+	background: var(--crimson);
+	color: var(--parchment);
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
+[data-mode="epitaph"] .seat-role {
+	border-color: var(--gold-dark);
+	border-radius: 0;
+	background: var(--ink);
+	color: var(--parchment);
+	font-variant-caps: small-caps;
+}
+
+[data-mode="epitaph"] .seat-me .seat-role {
+	border-color: var(--gold);
+	background: var(--gold);
+	color: var(--ink);
+}
+
+/* 動いた席は、金の縁と金の光。 */
+[data-mode="epitaph"] .seat-acting {
+	border-color: var(--gold);
+	box-shadow: var(--seat-line), 0 0 0 1px var(--gold), 0 0 20px rgba(184, 145, 46, 0.7);
+}
+
+/* 吹き出しは、両端が燕尾に切れた深紅のリボン。 */
+[data-mode="epitaph"] .bubble {
+	padding: 0.125rem 1rem;
+	border-radius: 0;
+	background: var(--crimson);
+	color: var(--parchment);
+	clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 50%, 100% 100%, 0 100%, 7px 50%);
+	letter-spacing: 0.06em;
+}
+
+[data-mode="epitaph"] .bubble::after {
+	display: none;
+}
+
+/* マスターにだけ見える、裏の札の印。 */
+[data-mode="epitaph"] .epitaph-tag {
+	border-radius: 0;
+	background: var(--crimson);
+	color: var(--parchment);
+}
+
+/* ---------- 狭い画面 ---------- */
+
+@media (max-width: 900px) {
+	[data-mode="epitaph"] .felt {
+		background-size: 40px 40px, 40px 40px, 40px 40px, 40px 40px, auto, auto, auto;
+		box-shadow:
+			inset 0 0 0 4px var(--felt), inset 0 0 0 5px var(--gold),
+			0 10px 20px -14px rgba(58, 44, 18, 0.7);
+	}
+
+	/* 場が折り返して縦に並ぶので、区切りの線は引かない。 */
+	[data-mode="epitaph"] .cluster + .cluster {
+		border-left: 0;
+	}
+}
