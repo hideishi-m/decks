@@ -10,7 +10,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 /*
- * 卓。他席の弧 / 場 / 自席 の 3 段。
+ * 卓。他席 / 場 / 自席 の 3 段。
  * 自席は他席と同じ .seat で、面が表を向いていることだけが違う。
  */
 
@@ -20,6 +20,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	--felt-deep: #0f2c26;
 	--felt-edge: #0a1d19;
 	--felt-rim: #2a4f45;
+	/* トランプの裏の色。svg-cards の裏は fill を受け継いで塗られる。 */
+	--card-back: red;
 }
 
 /* ---------- 卓とレール ---------- */
@@ -63,7 +65,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 .felt {
 	position: relative;
 	display: grid;
-	grid-template-rows: minmax(210px, 1fr) auto auto;
+	/* 他席の段数で高さが変わるので、1 段目の行は中身より縮めない。 */
+	grid-template-rows: minmax(max-content, 1fr) auto auto;
 	justify-items: center;
 	align-items: center;
 	gap: 0.875rem;
@@ -87,11 +90,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	pointer-events: none;
 }
 
+/* 他席は横に並べ、卓の幅に入らなければ次の段へ送る。弧に置くと 4 人から隣の席を覆った。 */
 .opponents {
-	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-content: center;
+	gap: 1.75rem 1rem;
 	width: 100%;
-	height: 100%;
 	min-height: 210px;
+	padding-top: 1.5rem;
 }
 
 .hint-line {
@@ -156,6 +164,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
 }
 
+.card-back {
+	fill: var(--card-back);
+}
+
 .card-sm {
 	width: 44px;
 	height: 64px;
@@ -204,17 +216,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	border: 1px solid transparent;
 	border-radius: 8px;
 	background: rgba(6, 20, 17, 0.55);
-}
-
-@media (min-width: 901px) {
-	.opponents > .seat {
-		position: absolute;
-		left: var(--x);
-		top: var(--y);
-		transform: translate(-50%, -50%);
-		/* auto だと使える幅が「卓の幅 − left」になり、右の席ほど狭くなって .fan が折り返す。 */
-		width: max-content;
-	}
 }
 
 .seat-me {
@@ -438,16 +439,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	}
 
 	.opponents {
-		display: flex;
-		gap: 0.625rem;
-		height: auto;
 		min-height: 0;
-		padding-bottom: 0.375rem;
-		overflow-x: auto;
-	}
-
-	.opponents > .seat {
-		flex: none;
 	}
 
 	.center,

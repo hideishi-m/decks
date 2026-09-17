@@ -1434,11 +1434,14 @@ components:
       required:
         - gid
         - players
+        - mode
       properties:
         gid:
           $ref: '#/components/schemas/Id'
         players:
           $ref: '#/components/schemas/Players'
+        mode:
+          $ref: '#/components/schemas/Mode'
     Length:
       type: integer
       format: int64

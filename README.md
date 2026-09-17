@@ -71,8 +71,8 @@ response: { version: "1.6.0" }
 
 ### 卓を開く
 
-ticket がどの卓のものかを返す。席の一覧も一緒に返るので、
-参加者はこれ 1 回で席を選べる。
+ticket がどの卓のものかを返す。席の一覧と卓の種類（mode）も一緒に返るので、
+参加者はこれ 1 回で席を選べ、画面も卓の種類に合わせられる。
 
 GET /join
 
@@ -80,7 +80,8 @@ header: Authorization: Ticket <ticket>
 
 response: {
   gid: "1",
-  players: [ "マスター", "pc1", "pc2", "pc3" ]
+  players: [ "マスター", "pc1", "pc2", "pc3" ],
+  mode: "tarot"
 }
 
 ### トークン取得

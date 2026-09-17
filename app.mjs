@@ -416,6 +416,7 @@ export function createApp(emitter, options) {
 			res.statusJson(200, {
 				gid: req.gid,
 				players: players,
+				mode: game.getMode(),
 			});
 		});
 

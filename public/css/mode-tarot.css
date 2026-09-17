@@ -1,0 +1,300 @@
+/**
+Copyright (c) 2022-2024 Hidenori ISHIKAWA. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/* タロットの卓（mode が tarot）の見た目。play.js が html に data-mode を付けたときだけ効き、ほかの卓は app.css と table.css のまま。 */
+
+:root[data-mode="tarot"] {
+	/* 地と線 */
+	--ground: #ffffff;
+	--panel: #ffffff;
+	--panel-2: #ffffff;
+	--field: #ffffff;
+	--line: #111111;
+	--line-soft: #c9c9c5;
+
+	/* 文字 */
+	--ink: #111111;
+	--ink-dim: #5d5d5a;
+	--ink-faint: #7a7a76;
+
+	/* 差し色。真鍮の役を赤が引き受ける。 */
+	--brass: #e60012;
+	--brass-hi: #ff2a3a;
+	--brass-dim: #111111;
+	--red: #e60012;
+	--red-hi: #ff2a3a;
+	--accent: #e60012;
+
+	--radius: 0px;
+
+	/* 卓 */
+	--felt: #e4e4e1;
+	--felt-rim: #111111;
+	--window: rgba(255, 255, 255, 0.38);
+	--card-back: #111111;
+
+	/* 数字とラベルの細身の欧文。Windows は Bahnschrift、Mac は DIN Condensed。 */
+	--cond: Bahnschrift, "DIN Condensed", "Avenir Next Condensed", "Arial Narrow", sans-serif;
+}
+
+/* ---------- 文字 ---------- */
+
+[data-mode="tarot"] h2,
+[data-mode="tarot"] .modal-header h5 {
+	color: var(--ink);
+}
+
+[data-mode="tarot"] .panel > h2 {
+	font-size: 1rem;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+}
+
+[data-mode="tarot"] .modal-header h5 {
+	font-weight: 800;
+}
+
+[data-mode="tarot"] pre {
+	color: var(--ink);
+}
+
+[data-mode="tarot"] ::selection {
+	background: var(--accent);
+	color: #ffffff;
+}
+
+[data-mode="tarot"] .head .sub,
+[data-mode="tarot"] .slot-label,
+[data-mode="tarot"] .slot-count,
+[data-mode="tarot"] .seat-count,
+[data-mode="tarot"] .seat-role {
+	font-family: var(--cond);
+	font-stretch: condensed;
+}
+
+/* ---------- 見出し ---------- */
+
+[data-mode="tarot"] .head {
+	align-items: center;
+}
+
+/* 卓の字を、黒枠の赤い箱に入れる。 */
+[data-mode="tarot"] .head h1 {
+	padding: 0 0.5rem;
+	border: 3px solid var(--ink);
+	background: var(--accent);
+	color: #ffffff;
+	font-weight: 800;
+}
+
+[data-mode="tarot"] .tag {
+	padding: 0.0625rem 0.625rem;
+	border: 2px solid var(--ink);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-weight: 700;
+	letter-spacing: 0.04em;
+}
+
+/* ---------- 右の欄 ---------- */
+
+[data-mode="tarot"] .panel {
+	border: 2px solid var(--ink);
+	border-radius: 0;
+	background: var(--panel);
+}
+
+/* ---------- ボタンと入力 ---------- */
+
+[data-mode="tarot"] .btn,
+[data-mode="tarot"] .btn-primary {
+	color: #ffffff;
+	background-color: var(--ink);
+	border-color: var(--ink);
+	font-weight: 700;
+}
+
+[data-mode="tarot"] .btn:hover,
+[data-mode="tarot"] .btn-primary:hover:not(:disabled) {
+	background-color: var(--accent);
+	border-color: var(--accent);
+}
+
+[data-mode="tarot"] .btn:disabled:hover {
+	background-color: var(--ink);
+	border-color: var(--ink);
+}
+
+[data-mode="tarot"] .btn-secondary {
+	color: var(--ink);
+	background-color: #ffffff;
+}
+
+[data-mode="tarot"] .btn-secondary:hover {
+	color: var(--ink);
+	background-color: #ececea;
+	border-color: var(--ink);
+}
+
+[data-mode="tarot"] .form-select {
+	background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23111111' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+[data-mode="tarot"] .form-control:focus,
+[data-mode="tarot"] .form-select:focus {
+	border-color: var(--ink);
+	box-shadow: 0 0 0 3px rgba(230, 0, 18, 0.25);
+}
+
+/* ---------- ダイアログ ---------- */
+
+[data-mode="tarot"] dialog {
+	background: var(--panel);
+	border: 3px solid var(--ink);
+	border-radius: 0;
+	box-shadow: 8px 8px 0 var(--ink);
+}
+
+[data-mode="tarot"] dialog::backdrop {
+	background-color: rgba(17, 17, 17, 0.5);
+}
+
+[data-mode="tarot"] .modal-header {
+	border-bottom: 2px solid var(--ink);
+}
+
+/* ---------- 卓 ---------- */
+
+/* 灰の地に、ビルの窓のような格子を薄く敷く。 */
+[data-mode="tarot"] .felt {
+	border: 3px solid var(--ink);
+	border-radius: 0;
+	background:
+		linear-gradient(90deg, var(--window) 0 7px, transparent 7px 22px) 0 0 / 22px 30px,
+		linear-gradient(0deg, var(--window) 0 9px, transparent 9px 30px) 0 0 / 22px 30px,
+		var(--felt);
+	box-shadow: 8px 8px 0 var(--ink);
+}
+
+[data-mode="tarot"] .felt::after {
+	inset: 10px;
+	border-color: rgba(17, 17, 17, 0.28);
+	border-radius: 0;
+}
+
+[data-mode="tarot"] .cluster + .cluster,
+[data-mode="tarot"] .tarot-slot {
+	border-left: 2px solid var(--ink);
+}
+
+[data-mode="tarot"] .slot-label {
+	font-size: 0.75rem;
+	letter-spacing: 0.14em;
+}
+
+[data-mode="tarot"] .slot-count {
+	font-size: 0.9375rem;
+	font-weight: 600;
+	color: var(--ink);
+}
+
+[data-mode="tarot"] .card {
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+[data-mode="tarot"] .card-empty {
+	border: 1.5px dashed #8d8d89;
+	box-shadow: none;
+}
+
+[data-mode="tarot"] .clickable:hover,
+[data-mode="tarot"] .clickable:focus-visible {
+	box-shadow: 0 8px 14px rgba(0, 0, 0, 0.28);
+}
+
+/* ---------- 席 ---------- */
+
+[data-mode="tarot"] .seat {
+	border: 2px solid var(--ink);
+	border-radius: 0;
+	background: #ffffff;
+}
+
+[data-mode="tarot"] .seat-me {
+	border-top-width: 5px;
+	border-top-color: var(--ink);
+	background: #ffffff;
+	box-shadow: none;
+}
+
+[data-mode="tarot"] .seat-name {
+	font-weight: 700;
+}
+
+[data-mode="tarot"] .seat-count {
+	border-radius: 0;
+	color: #ffffff;
+	font-size: 0.75rem;
+	font-weight: 600;
+}
+
+[data-mode="tarot"] .seat-role {
+	border-color: var(--ink);
+	border-radius: 0;
+	background: var(--ink);
+	color: #ffffff;
+}
+
+[data-mode="tarot"] .seat-me .seat-role {
+	border-color: var(--accent);
+	background: var(--accent);
+}
+
+/* 動いた席は、赤い枠と赤いずらし影。 */
+[data-mode="tarot"] .seat-acting {
+	border-color: var(--accent);
+	box-shadow: 5px 5px 0 var(--accent);
+}
+
+/* 吹き出しは斜めの赤い帯。字は傾けないので、帯だけを ::before で描く。 */
+[data-mode="tarot"] .bubble {
+	isolation: isolate;
+	padding: 0.125rem 0.75rem;
+	border-radius: 0;
+	background: transparent;
+	color: #ffffff;
+}
+
+[data-mode="tarot"] .bubble::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: var(--accent);
+	transform: skewX(-12deg);
+}
+
+[data-mode="tarot"] .bubble::after {
+	display: none;
+}
+
+/* ---------- 狭い画面 ---------- */
+
+@media (max-width: 900px) {
+	[data-mode="tarot"] .felt {
+		box-shadow: 4px 4px 0 var(--ink);
+	}
+
+	/* 場が折り返して縦に並ぶので、区切りの線は引かない。 */
+	[data-mode="tarot"] .cluster + .cluster {
+		border-left: 0;
+	}
+}

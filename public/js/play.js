@@ -54,6 +54,11 @@ function tableMode() {
 	return table?.mode;
 }
 
+// 卓の種類で見た目を切り替える（タロットの卓は mode-tarot.css）。
+function applyMode(mode) {
+	document.documentElement.dataset.mode = mode;
+}
+
 function usesTarot() {
 	return 'tarot' === tableMode();
 }
@@ -225,7 +230,7 @@ function createCardSvg(card, size) {
 		const cardId = cardSuits.get(card.suit, 1) + (cardSuits.has(card.suit) ? '_' : '') + cardRanks.get(card.rank, 1);
 		use = `<use href="./images/svg-cards.svg#${cardId}" x="0" y="0" />`;
 	} else {
-		use = '<use href="./images/svg-cards.svg#back" x="0" y="0" fill="red" />';
+		use = '<use href="./images/svg-cards.svg#back" x="0" y="0" class="card-back" />';
 	}
 	const svg = fromHtml(`<svg class="card${size ? ' ' + size : ''}" viewBox="0 0 169 245" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >${use}</svg>`);
 	if (card) {
@@ -399,14 +404,6 @@ function pulse(seatPid, text) {
 
 // ---- 卓 ----
 
-// 他席は弧の上に等間隔で並べる。人数は可変なので座標は計算で出す。
-function placeSeat(node, index, total) {
-	const t = 1 === total ? 0.5 : (index + 0.5) / total;
-	const angle = (170 - t * 160) * Math.PI / 180;
-	node.style.setProperty('--x', `${(50 + 33 * Math.cos(angle)).toFixed(2)}%`);
-	node.style.setProperty('--y', `${(50 - 16 * Math.sin(angle)).toFixed(2)}%`);
-}
-
 function createSeat(seat) {
 	const node = el('div', { class: 'seat', 'data-pid': seat.pid });
 
@@ -444,14 +441,14 @@ function createSeat(seat) {
 
 function updateTable(next) {
 	table = next;
+	applyMode(tableMode());
 	const opponents = qs('#opponents');
 	const others = table.seats.filter((seat) => seat.pid !== pid);
 
 	opponents.replaceChildren();
-	others.forEach((seat, index) => {
-		const node = createSeat(seat);
-		placeSeat(node, index, others.length);
-		opponents.append(node);
+	// 並べ方は table.css（横並び＋折り返し）に任せる。
+	others.forEach((seat) => {
+		opponents.append(createSeat(seat));
 	});
 
 	qs('#deckLabel').textContent = table.deck.length;
@@ -904,6 +901,8 @@ if (null === ticket) {
 	try {
 		const data = await join(ticket);
 		gid = data.gid;
+		// 席を選ぶダイアログの時点で、卓の見た目にしておく。
+		applyMode(data.mode);
 		qs('#gameLabel').textContent = data.gid;
 		updateOptions('#selectPlayerSelect', data.players);
 		updateOptions('#passHandSelect', data.players);

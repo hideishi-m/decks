@@ -477,14 +477,29 @@ describe('入場（ticket）', () => {
 		assert.notEqual(first.body.ticket, second.body.ticket);
 	});
 
-	it('GET /join は入場券だけで卓と席を返す', async () => {
+	it('GET /join は入場券だけで卓と席と卓の種類を返す', async () => {
 		const gid = await newGame();
 		const { status, body } = await call('GET', '/join',
 			{ ticket: ticketOf.get(gid) });
 
 		assert.equal(status, 200);
+		assert.deepEqual(Object.keys(body), [ 'gid', 'players', 'mode' ]);
 		assert.equal(body.gid, gid);
 		assert.deepEqual(body.players, [ 'マスター', ...PLAYERS ]);
+		assert.equal(body.mode, 'tarot');
+	});
+
+	it('GET /join の mode は卓の種類どおり', async () => {
+		// 画面は席を選ぶ前にこれで見た目を決める。
+		for (const body of [
+			{ players: PLAYERS, mode: 'none' },
+			{ players: PLAYERS, mode: 'epitaph', epitaphs: [ '1' ] },
+		]) {
+			const gid = (await create(body)).body.gid;
+			const joined = await call('GET', '/join', { ticket: ticketOf.get(gid) });
+
+			assert.equal(joined.body.mode, body.mode);
+		}
 	});
 
 	it('入場券が無ければ 401', async () => {
