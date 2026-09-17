@@ -75,7 +75,7 @@ async function call(method, path, options) {
 
 async function newGame() {
 	const created = await call('POST', '/games', {
-		body: { players: PLAYERS, mode: 'tarot', tarots: [] },
+		body: { players: PLAYERS, mode: 'tarot', tarots: [ null, null ] },
 	});
 	return created.body;
 }

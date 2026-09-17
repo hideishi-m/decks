@@ -31,6 +31,9 @@ function modeOf(side) {
 }
 
 
+// 席 0 の名前。席名の重複を見るとき（app.mjs）にも使う。
+export const MASTER_NAME = 'マスター';
+
 // 新しい卓の部品を作って配る。
 // タロットの卓でなければ、タロット山札も切り札も空で作る。
 // API を直に叩いても札は 1 枚も出てこない。
@@ -53,7 +56,7 @@ function deal(players, side, decks, jokers, shuffles, draws) {
 		shuffles: shuffles,
 	};
 
-	[ 'マスター', ...players ].forEach((player, index) => {
+	[ MASTER_NAME, ...players ].forEach((player, index) => {
 		parts.playerNames.push(player);
 		parts.hands.push(createHandCards(deck, draws));
 		if (0 === index) {
@@ -396,7 +399,7 @@ export function createGame(players, side, decks, jokers, shuffles, draws) {
 }
 
 // toState の値から卓を戻す。形が合わなければ投げる（読めない保存では起動させない）。
-// 席名は POST /games が形を見ていないので、ここでも見ない。見ると保存した卓で起動できなくなる。
+// 席名の形は見ない。入力検証を入れる前に保存した卓（席名が文字列でないものなど）も戻せるようにするため。
 export function restoreGame(state) {
 	const players = state?.players;
 	if (false === MODES.includes(state?.mode)

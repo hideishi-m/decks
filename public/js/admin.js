@@ -9,7 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ajax, updateStatus, appendOption, removeOption, parseDataValue, parseDataValuesEach, qs, qsa, el, fromHtml, delegate } from './common.js';
+import { ajax, updateStatus, appendOption, removeOption, parseDataValue, parsePlayerRows, qs, qsa, el, fromHtml, delegate } from './common.js';
 import { tarotRanks } from './TNM_tarot.js';
 import { epitaphRanks } from './LRQ_epitaph.js';
 
@@ -87,19 +87,15 @@ qs('#newGame').addEventListener('click', newGame);
 async function newGame() {
 	try {
 		const mode = currentMode();
-		// 卓の種類に合わない札の指定は送らない。
-		const params = parseDataValuesEach('tarot' === mode ? {
-			players: 'input[name^=players]',
-			tarots: 'select[name^=tarots]',
-		} : {
-			players: 'input[name^=players]',
-		});
+		// 直下の行だけを読む。行を足す雛型（.copy）の中の行は読まない。
+		const params = parsePlayerRows(qsa(':scope > .input-group', playersBox));
 		const body = { players: params.players, mode: mode };
+		// 卓の種類に合わない札の指定は送らない。
 		if ('tarot' === mode) {
 			body.tarots = params.tarots.map((value) => tarotRanks.has(value) ? value : null);
 		}
 		if ('epitaph' === mode) {
-			// 0 枚でも作れる。parseDataValuesEach は空を弾くので使わない。
+			// 0 枚でも作れる。
 			body.epitaphs = qsa('input[name^=epitaphs]:checked').map((input) => input.value);
 		}
 		const data = await ajax('./games', {

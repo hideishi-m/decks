@@ -118,9 +118,10 @@ async function newGame() {
 	return created.body.gid;
 }
 
+// pid は文字列で送る（common.js の getToken と同じ）。数値は 400 になる。
 async function tokenFor(gid, pid) {
 	const got = await call('POST', '/token', {
-		body: { pid: pid },
+		body: { pid: `${pid}` },
 		ticket: ticketOf.get(gid),
 	});
 	assert.equal(got.status, 200);
@@ -492,8 +493,8 @@ describe('入場（ticket）', () => {
 	});
 
 	it('入場券は卓ごとに違う', async () => {
-		const first = await call('POST', '/games', { body: { players: PLAYERS, mode: 'tarot', tarots: [] } });
-		const second = await call('POST', '/games', { body: { players: PLAYERS, mode: 'tarot', tarots: [] } });
+		const first = await call('POST', '/games', { body: { players: PLAYERS, mode: 'tarot', tarots: [ null, null ] } });
+		const second = await call('POST', '/games', { body: { players: PLAYERS, mode: 'tarot', tarots: [ null, null ] } });
 
 		assert.notEqual(first.body.ticket, second.body.ticket);
 	});
@@ -1066,5 +1067,113 @@ describe('再起動で卓が残る', () => {
 		await call('POST', '/games', { origin: missing.origin, body: TABLE });
 
 		assert.doesNotThrow(() => missing.stop());
+	});
+});
+
+describe('入力検証', () => {
+	const NAME_32 = '𠮷'.repeat(32);  // サロゲートペアも 1 文字と数える
+
+	for (const players of [
+		[ 'p1' ],
+		[ 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8' ],
+		[ NAME_32, 'a b' ],
+	]) {
+		it(`受け付ける席（${players.length} 人: ${JSON.stringify(players[0])}）`, async () => {
+			const created = await create({ players: players, mode: 'none' });
+
+			assert.equal(created.status, 200);
+			assert.deepEqual(created.body.players, [ 'マスター', ...players ]);
+		});
+	}
+
+	for (const [ label, players ] of [
+		[ '配列でない', 'p1' ],
+		[ '0 人', [] ],
+		[ '9 人', [ 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9' ] ],
+		[ '文字列でない', [ 'p1', 1 ] ],
+		[ 'null', [ 'p1', null ] ],
+		[ 'オブジェクト', [ { a: 1 } ] ],
+		[ '空文字', [ '' ] ],
+		[ '空白だけ', [ ' \u3000 ' ] ],
+		[ '33 文字', [ NAME_32 + 'a' ] ],
+		[ '改行', [ 'p1\nPOST game 0' ] ],
+		[ 'NUL', [ 'p1\u0000' ] ],
+		[ 'タブ', [ 'p\t1' ] ],
+		[ '同じ名前', [ 'p1', 'p1' ] ],
+		[ '前後の空白を除くと同じ名前', [ 'p1', ' p1 ' ] ],
+		[ 'マスターと同じ名前', [ 'マスター' ] ],
+	]) {
+		it(`players が不正なら 400（${label}）`, async () => {
+			const created = await create({ players: players, mode: 'none' });
+
+			assert.equal(created.status, 400);
+			assert.equal(created.body.error.message, 'invalid value for players');
+		});
+	}
+
+	it('tarots の null はその席に切り札を配らない', async () => {
+		const created = await create({ players: PLAYERS, mode: 'tarot', tarots: [ null, '18' ] });
+		const gid = created.body.gid;
+		const first = await call('GET', `/games/${gid}/tarot/players/1`, { token: await tokenFor(gid, 1) });
+		const second = await call('GET', `/games/${gid}/tarot/players/2`, { token: await tokenFor(gid, 2) });
+
+		assert.equal(created.status, 200);
+		assert.equal(first.body.hand.length, 0);
+		assert.equal(second.body.hand.card.rank, '18');
+	});
+
+	for (const [ label, tarots ] of [
+		[ '省略', undefined ],
+		[ '配列でない', '4' ],
+		[ '席より少ない', [ '4' ] ],
+		[ '席より多い', [ '4', '18', null ] ],
+		[ '知らない番号', [ '4', '99' ] ],
+		[ '数値', [ 4, null ] ],
+		[ '同じ切り札', [ '4', '4' ] ],
+	]) {
+		it(`タロットの卓で tarots が不正なら 400（${label}）`, async () => {
+			const created = await create({ players: PLAYERS, mode: 'tarot', tarots: tarots });
+
+			assert.equal(created.status, 400);
+			assert.equal(created.body.error.message, 'invalid value for tarots');
+		});
+	}
+
+	for (const pid of [ 1, [ '1' ], '01x', '' ]) {
+		it(`POST /token の pid は数字の文字列だけ（${JSON.stringify(pid)} は 400）`, async () => {
+			const gid = await newGame();
+			const got = await call('POST', '/token', { body: { pid: pid }, ticket: ticketOf.get(gid) });
+
+			assert.equal(got.status, 400);
+			assert.equal(got.body.error.message, 'invalid format for pid');
+		});
+	}
+
+	it('壊れた JSON は 500 ではなく 400', async () => {
+		const response = await fetch(`${origin}/games`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: '{bad',
+		});
+		const body = await response.json();
+
+		assert.equal(response.status, 400);
+		assert.equal(typeof body.error.message, 'string');
+	});
+
+	it('16 KB を超える本文は 413', async () => {
+		const created = await call('POST', '/games', {
+			body: { players: PLAYERS, mode: 'none', padding: 'x'.repeat(16 * 1024) },
+		});
+
+		assert.equal(created.status, 413);
+		assert.equal(typeof created.body.error.message, 'string');
+	});
+
+	it('パスの符号化が壊れていれば 500 ではなく 400', async () => {
+		const got = await call('GET', '/games/%zz');
+
+		assert.equal(got.status, 400);
+		assert.equal(typeof got.body.error.message, 'string');
 	});
 });

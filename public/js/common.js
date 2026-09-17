@@ -16,7 +16,14 @@ export const retryWait = 5000;
 export async function ajax(url, args) {
 	const response = await fetch(url, args);
 	if (false === response.ok) {
-		throw new Error(`${response.status} ${response.statusText}`);
+		// サーバが理由を返していれば添える。400 だけでは何を直せばよいか分からない。
+		let reason;
+		try {
+			reason = (await response.json())?.error?.message;
+		} catch {
+			// 本文が JSON でなければ理由は無い。
+		}
+		throw new Error(`${response.status} ${response.statusText}${reason ? `: ${reason}` : ''}`);
 	}
 	return await response.json();
 }
@@ -163,19 +170,21 @@ export function parseDataValue(settings) {
 	return data;
 }
 
-export function parseDataValuesEach(settings) {
-	const data = {};
-	for (const [key, selector] of Object.entries(settings)) {
-		data[key] = [];
-		for (const node of qsa(selector)) {
-			const value = undefined !== node.dataset[key] ? node.dataset[key] : node.value;
-			if (value) {
-				data[key].push(value);
-			}
+// 席の行（名前の input[name^=players] と切り札の select[name^=tarots] の組）を読む。
+// 名前が空の行は切り札ごと読まない。名前と切り札を別々に集めると、空の行の分だけ
+// 後ろの席の切り札がずれるので、必ず行単位で読む。
+export function parsePlayerRows(rows) {
+	const data = { players: [], tarots: [] };
+	for (const row of rows) {
+		const name = qs('input[name^=players]', row)?.value.trim() ?? '';
+		if ('' === name) {
+			continue;
 		}
-		if (0 === data[key].length) {
-			throw new Error(key + ' is empty');
-		}
+		data.players.push(name);
+		data.tarots.push(qs('select[name^=tarots]', row)?.value);
+	}
+	if (0 === data.players.length) {
+		throw new Error('players is empty');
 	}
 	return data;
 }

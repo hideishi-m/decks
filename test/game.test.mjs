@@ -638,7 +638,7 @@ describe('保存と復元', () => {
 	});
 
 	it('席名の形は見ない', () => {
-		// POST /games が受け付けた卓を、戻せなくしないこと。
+		// 入力検証を入れる前に保存した卓を、戻せなくしないこと。
 		const game = createGame([ { a: 1 }, null ], []);
 
 		assert.deepEqual(roundTrip(game).getAllPlayers(), [ 'マスター', { a: 1 }, null ]);

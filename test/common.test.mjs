@@ -21,6 +21,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { JSDOM } from 'jsdom';
 
@@ -30,7 +31,7 @@ globalThis.window = dom.window;
 globalThis.document = document;
 
 const { ajax, join, getToken, updateStatus, appendLog, appendOption, updateOptions,
-	removeOption, parseDataValue, parseDataValuesEach } =
+	removeOption, parseDataValue, parsePlayerRows, qs, qsa } =
 	await import('../public/js/common.js');
 
 function html(markup) {
@@ -207,47 +208,65 @@ describe('parseDataValue', () => {
 	});
 });
 
-describe('parseDataValuesEach', () => {
-	it('マッチした全ての要素から集める', () => {
-		html(`
-			<input class="p" value="DEIRmen">
-			<input class="p" value="Litzia">
-			<input class="p" value="yuzuki">
-		`);
+describe('parsePlayerRows', () => {
+	// 名前と切り札の 1 行。tarot を省くと select の無い行になる。
+	function row(name, tarot) {
+		const select = undefined === tarot ? ''
+			: `<select name="tarots[]"><option>タロットを選ぶ</option><option value="${tarot}" selected>${tarot}</option></select>`;
+		return `<div class="row"><input name="players[]" value="${name}">${select}</div>`;
+	}
 
-		assert.deepEqual(parseDataValuesEach({ players: '.p' }),
-			{ players: [ 'DEIRmen', 'Litzia', 'yuzuki' ] });
-	});
+	function rows() {
+		return qsa('.row');
+	}
 
-	it('空の値は落とす', () => {
-		// admin.html の .copy（新しい行のひな型）が空の input を持つので、
-		// これが落ちないと空のプレーヤーが混ざる。
-		html('<input class="p" value="p1"><input class="p" value=""><input class="p" value="p2">');
+	it('行ごとに名前と切り札を組にして読む', () => {
+		html(row('p1', '4') + row('p2', '18'));
 
-		assert.deepEqual(parseDataValuesEach({ players: '.p' }),
-			{ players: [ 'p1', 'p2' ] });
-	});
-
-	it('data-<key> があればそれを読む', () => {
-		html('<span class="p" data-players="x"></span>');
-
-		assert.deepEqual(parseDataValuesEach({ players: '.p' }), { players: [ 'x' ] });
-	});
-
-	it('1 つも集まらなければ throw する', () => {
-		html('<input class="p" value="">');
-
-		assert.throws(() => parseDataValuesEach({ players: '.p' }), /players is empty/);
-	});
-
-	it('複数のキーをまとめて集める', () => {
-		html(`
-			<input class="p" value="p1"><select class="t"><option value="4" selected>カブト</option></select>
-			<input class="p" value="p2"><select class="t"><option value="18" selected>マヤカシ</option></select>
-		`);
-
-		assert.deepEqual(parseDataValuesEach({ players: '.p', tarots: '.t' }),
+		assert.deepEqual(parsePlayerRows(rows()),
 			{ players: [ 'p1', 'p2' ], tarots: [ '4', '18' ] });
+	});
+
+	it('名前が空の行は切り札ごと読まない', () => {
+		// 名前と切り札を別々に集めると、p3 に空の行の切り札（9）が付いてしまう。
+		html(row('p1', '4') + row('', '9') + row('p3', '18'));
+
+		assert.deepEqual(parsePlayerRows(rows()),
+			{ players: [ 'p1', 'p3' ], tarots: [ '4', '18' ] });
+	});
+
+	it('名前の前後の空白を除き、空白だけの名前は空として扱う', () => {
+		html(row('  p1 ', '4') + row('   ', '9'));
+
+		assert.deepEqual(parsePlayerRows(rows()),
+			{ players: [ 'p1' ], tarots: [ '4' ] });
+	});
+
+	it('切り札の無い行は undefined を並べる', () => {
+		html(row('p1'));
+
+		assert.deepEqual(parsePlayerRows(rows()),
+			{ players: [ 'p1' ], tarots: [ undefined ] });
+	});
+
+	it('1 行も読めなければ throw する', () => {
+		html(row('', '4'));
+
+		assert.throws(() => parsePlayerRows(rows()), /players is empty/);
+		assert.throws(() => parsePlayerRows([]), /players is empty/);
+	});
+
+	it('admin.html の行を足す雛型（.copy）は読まない', () => {
+		// admin.js と同じく、席の行が並ぶ箱の直下だけを読む。
+		const page = readFileSync(new URL('../public/admin.html', import.meta.url), 'utf8');
+		html(page.slice(page.indexOf('<body'), page.indexOf('</body>')).replace(/^<body[^>]*>/, ''));
+		const box = qs('#players').parentElement;
+		qs('.copy input[name^=players]').value = 'template';
+
+		const params = parsePlayerRows(qsa(':scope > .input-group', box));
+
+		assert.deepEqual(params.players, [ 'DEIRmen', 'Litzia', 'yuzuki' ]);
+		assert.equal(params.tarots.length, params.players.length);
 	});
 });
 
@@ -262,7 +281,31 @@ describe('ajax', () => {
 		globalThis.fetch = async () => ({ ok: false, status: 404, statusText: 'Not Found' });
 
 		await assert.rejects(() => ajax('./games/9', { method: 'GET' }),
-			/404 Not Found/);
+			/^Error: 404 Not Found$/);
+	});
+
+	it('サーバが理由を返していれば添える', async () => {
+		globalThis.fetch = async () => ({
+			ok: false,
+			status: 400,
+			statusText: 'Bad Request',
+			json: async () => ({ error: { message: 'invalid value for players' } }),
+		});
+
+		await assert.rejects(() => ajax('./games', { method: 'POST' }),
+			/^Error: 400 Bad Request: invalid value for players$/);
+	});
+
+	it('本文が JSON でなければ理由は添えない', async () => {
+		globalThis.fetch = async () => ({
+			ok: false,
+			status: 502,
+			statusText: 'Bad Gateway',
+			json: async () => { throw new SyntaxError('Unexpected token <'); },
+		});
+
+		await assert.rejects(() => ajax('./games', { method: 'GET' }),
+			/^Error: 502 Bad Gateway$/);
 	});
 });
 

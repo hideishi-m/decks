@@ -18,14 +18,18 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import jwt from 'jsonwebtoken';
 
-import { MODES, createGame, restoreGame } from './game.mjs';
+import { MASTER_NAME, MODES, createGame, restoreGame } from './game.mjs';
 import { getLogger } from './logger.mjs';
 import { epitaphRanks } from './public/js/LRQ_epitaph.js';
+import { tarotRanks } from './public/js/TNM_tarot.js';
 import { createStore } from './store.mjs';
 
 import pkgJson from './package.json' with { type: 'json' };
 
 const MASTER = '0';
+// POST /games で受け付ける席の数と、席名の長さ（コードポイント数）の上限。
+const MAX_PLAYERS = 8;
+const MAX_NAME_LENGTH = 32;
 
 class AppError extends Error {
 	constructor(code = 500, message, options) {
@@ -38,7 +42,8 @@ export function createApp(emitter, options) {
 
 	function validateId(req, res, next, value, key) {
 		// \d は ASCII の 0-9 だけなので、通れば必ず 0 以上。範囲の検査は要らない。
-		if (false === /^\d+$/.test(value)) {
+		// 文字列に限る。本文の pid は数値や配列（1 や ["1"]）でも、test に渡すと数字の文字列になって通ってしまう。
+		if ('string' !== typeof value || false === /^\d+$/.test(value)) {
 			throw new AppError(400, `invalid format for ${key}`, { cause: { [key]: value } });
 		}
 		next();
@@ -78,8 +83,18 @@ export function createApp(emitter, options) {
 		next();
 	}
 
-	function validateArray(req, res, next, value, key) {
-		if (false === Array.isArray(value)) {
+	// 席は 1〜MAX_PLAYERS 人。席名は画面とログにそのまま出るので、空白だけの名前、
+	// 長すぎる名前、制御文字（改行でログの行を偽れる）を含む名前は受け付けない。
+	// 席を選ぶ画面で見分けられるよう、マスターも含めて同じ名前を並べない。
+	function validatePlayers(req, res, next, value, key) {
+		const valid = Array.isArray(value)
+			&& 1 <= value.length && value.length <= MAX_PLAYERS
+			&& value.every((name) => 'string' === typeof name
+				&& '' !== name.trim()
+				&& [ ...name ].length <= MAX_NAME_LENGTH
+				&& false === /\p{Cc}/u.test(name))
+			&& new Set([ MASTER_NAME, ...value.map((name) => name.trim()) ]).size === 1 + value.length;
+		if (false === valid) {
 			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
 		}
 		next();
@@ -94,11 +109,21 @@ export function createApp(emitter, options) {
 	}
 
 	// tarots を見るのはタロットの卓だけ。ほかの卓では省略してよく、送られても使わない。
+	// 席と同じ長さで、各席に知っている番号か null（切り札なし）。同じ切り札を 2 人に配らない。
+	// players は先に validatePlayers を通っている。
 	function validateTarots(req, res, next, value, key) {
 		if ('tarot' !== req.body?.mode) {
 			return next();
 		}
-		return validateArray(req, res, next, value, key);
+		const ranks = Array.isArray(value) ? value.filter((rank) => null !== rank) : [];
+		const valid = Array.isArray(value)
+			&& value.length === req.body.players.length
+			&& ranks.every((rank) => tarotRanks.has(rank))
+			&& ranks.length === new Set(ranks).size;
+		if (false === valid) {
+			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
+		}
+		next();
 	}
 
 	// epitaphs を見るのはエピタフの卓だけ。空の配列は許し、知らない番号と重複は受け付けない。
@@ -441,8 +466,9 @@ export function createApp(emitter, options) {
 			stream: stream,
 	}));
 	app.use(helmet());
+	// 一番大きい本文でも POST /games（席 8 人と切り札）で、数百バイトに収まる。
 	app.use(express.json({
-		limit: '10mb',
+		limit: '16kb',
 	}));
 
 	app.use((req, res, next) => {
@@ -528,7 +554,7 @@ export function createApp(emitter, options) {
 				games: gids,
 			});
 		})
-		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateMode, ['body', 'mode']), partialReqKey(validateTarots, ['body', 'tarots']), partialReqKey(validateEpitaphs, ['body', 'epitaphs']), (req, res, next) => {
+		.post(partialReqKey(validatePlayers, ['body', 'players']), partialReqKey(validateMode, ['body', 'mode']), partialReqKey(validateTarots, ['body', 'tarots']), partialReqKey(validateEpitaphs, ['body', 'epitaphs']), (req, res, next) => {
 			const gid = games.push(createGame(req.body.players, sideOf(req.body))) - 1;
 			tickets[gid] = createTicket();
 			uids[gid] = createUid();
@@ -911,6 +937,13 @@ export function createApp(emitter, options) {
 			res.statusJson(err.code, { error: {
 				message: err.message,
 				cause: err.cause,
+			} });
+		} else if (400 <= err.status && err.status < 500) {
+			// express と body-parser が付けた 4xx。壊れた JSON（400）、大きすぎる本文（413）、
+			// パスの壊れた符号化（400）など。送った側の誤りなので 500 にしない。
+			logger.log(`${err.status} ${err.name}: ${err.message}`);
+			res.statusJson(err.status, { error: {
+				message: err.message,
 			} });
 		} else {
 			logger.error(err);
