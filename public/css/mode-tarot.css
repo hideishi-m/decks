@@ -86,7 +86,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	align-items: center;
 }
 
-/* 卓の字を、黒枠の赤い箱に入れる。 */
+/* 卓の名前を、黒枠の赤い箱に入れる。 */
 [data-mode="tarot"] .head h1 {
 	padding: 0 0.5rem;
 	border: 3px solid var(--ink);
@@ -291,10 +291,5 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 @media (max-width: 900px) {
 	[data-mode="tarot"] .felt {
 		box-shadow: 4px 4px 0 var(--ink);
-	}
-
-	/* 場が折り返して縦に並ぶので、区切りの線は引かない。 */
-	[data-mode="tarot"] .cluster + .cluster {
-		border-left: 0;
 	}
 }
