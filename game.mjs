@@ -10,7 +10,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 
 import { createDeckCards, createPileCards, createHandCards, createTarotDeckCards, createTarotHandCards, createEpitaphCards } from './card.mjs';
+import { restoreDeckCards, restoreTarotCards, restoreTarotPileCards, restoreEpitaphCards } from './card.mjs';
 
+
+// 卓の脇に置く札の種類。
+export const MODES = [ 'tarot', 'epitaph', 'none' ];
 
 // 卓の脇に置く札の種類を、createGame の 2 番目の引数の形から決める。
 //   配列（省略を含む）: tarot   … 配列は席ごとの切り札
@@ -27,33 +31,70 @@ function modeOf(side) {
 }
 
 
-class Game {
-	constructor(players, side, decks, jokers, shuffles, draws) {
-		// タロットの卓でなければ、タロット山札も切り札も空で作る。
-		// API を直に叩いても札は 1 枚も出てこない。
-		this.mode = modeOf(side);
-		const tarots = 'tarot' === this.mode ? side : [];
-		this.playerNames = [];
-		this.deck = createDeckCards(decks, jokers, shuffles);
-		this.pile = createPileCards();
-		this.hands = [];
-		this.tarotDeck = 'tarot' === this.mode
+// 新しい卓の部品を作って配る。
+// タロットの卓でなければ、タロット山札も切り札も空で作る。
+// API を直に叩いても札は 1 枚も出てこない。
+function deal(players, side, decks, jokers, shuffles, draws) {
+	const mode = modeOf(side);
+	const tarots = 'tarot' === mode ? side : [];
+	const deck = createDeckCards(decks, jokers, shuffles);
+	const parts = {
+		mode: mode,
+		playerNames: [],
+		deck: deck,
+		pile: createPileCards(),
+		hands: [],
+		tarotDeck: 'tarot' === mode
 			? createTarotDeckCards(shuffles, tarots)
-			: createTarotHandCards();  // 空の TarotCards
-		this.tarotPile = createPileCards();
-		this.tarotHands = [];
-		this.epitaphs = createEpitaphCards('epitaph' === this.mode ? side.epitaphs : []);
-		this.shuffles = shuffles;
+			: createTarotHandCards(),  // 空の TarotCards
+		tarotPile: createPileCards(),
+		tarotHands: [],
+		epitaphs: createEpitaphCards('epitaph' === mode ? side.epitaphs : []),
+		shuffles: shuffles,
+	};
 
-		[ 'マスター', ...players ].forEach((player, index) => {
-			this.playerNames.push(player);
-			this.hands.push(createHandCards(this.deck, draws));
-			if (0 === index) {
-				this.tarotHands.push(createTarotHandCards());
-			} else {
-				this.tarotHands.push(createTarotHandCards([tarots[index - 1]]));
-			}
-		});
+	[ 'マスター', ...players ].forEach((player, index) => {
+		parts.playerNames.push(player);
+		parts.hands.push(createHandCards(deck, draws));
+		if (0 === index) {
+			parts.tarotHands.push(createTarotHandCards());
+		} else {
+			parts.tarotHands.push(createTarotHandCards([tarots[index - 1]]));
+		}
+	});
+	return parts;
+}
+
+
+class Game {
+	// 部品は createGame（新しく配る）か restoreGame（保存から戻す）が作る。
+	constructor(parts) {
+		this.mode = parts.mode;
+		this.playerNames = parts.playerNames;
+		this.deck = parts.deck;
+		this.pile = parts.pile;
+		this.hands = parts.hands;
+		this.tarotDeck = parts.tarotDeck;
+		this.tarotPile = parts.tarotPile;
+		this.tarotHands = parts.tarotHands;
+		this.epitaphs = parts.epitaphs;
+		this.shuffles = parts.shuffles;
+	}
+
+	// 保存用の素の値。restoreGame に渡すと、山札の並びまで同じ卓に戻る。
+	toState() {
+		return {
+			mode: this.mode,
+			players: [ ...this.playerNames ],
+			shuffles: this.shuffles,
+			deck: this.deck.toStates(),
+			pile: this.pile.toStates(),
+			hands: this.hands.map((hand) => hand.toStates()),
+			tarotDeck: this.tarotDeck.toStates(),
+			tarotPile: this.tarotPile.toStates(),
+			tarotHands: this.tarotHands.map((hand) => hand.toStates()),
+			epitaphs: this.epitaphs.toStates(),
+		};
 	}
 
 	toJson() {
@@ -351,5 +392,32 @@ export function createGame(players, side, decks, jokers, shuffles, draws) {
 	jokers = jokers ?? 2;
 	shuffles = shuffles ?? 10;
 	draws = draws ?? 4;
-	return new Game(players, side, decks, jokers, shuffles, draws);
+	return new Game(deal(players, side, decks, jokers, shuffles, draws));
+}
+
+// toState の値から卓を戻す。形が合わなければ投げる（読めない保存では起動させない）。
+// 席名は POST /games が形を見ていないので、ここでも見ない。見ると保存した卓で起動できなくなる。
+export function restoreGame(state) {
+	const players = state?.players;
+	if (false === MODES.includes(state?.mode)
+		|| false === Array.isArray(players)
+		|| false === Number.isInteger(state.shuffles)
+		|| false === Array.isArray(state.hands)
+		|| false === Array.isArray(state.tarotHands)
+		|| players.length !== state.hands.length
+		|| players.length !== state.tarotHands.length) {
+		throw new TypeError('invalid game state');
+	}
+	return new Game({
+		mode: state.mode,
+		playerNames: [ ...players ],
+		deck: restoreDeckCards(state.deck),
+		pile: restoreDeckCards(state.pile),
+		hands: state.hands.map((hand) => restoreDeckCards(hand)),
+		tarotDeck: restoreTarotCards(state.tarotDeck),
+		tarotPile: restoreTarotPileCards(state.tarotPile),
+		tarotHands: state.tarotHands.map((hand) => restoreTarotCards(hand)),
+		epitaphs: restoreEpitaphCards(state.epitaphs),
+		shuffles: state.shuffles,
+	});
 }

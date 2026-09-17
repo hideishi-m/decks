@@ -12,12 +12,13 @@
   },
   "scripts": {
     "start": "node --env-file=.env index.mjs",
-    "test": "node --test",
+    "test": "node --test --experimental-test-module-mocks",
     "redocly": "node node_modules/.bin/redocly build-docs swagger.yaml -o public/spec.html"
   },
   "author": "Hidenori ISHIKAWA",
   "files": [
     "*.mjs",
+    "data/.gitkeep",
     "logs/.gitkeep",
     "public/**/*.css",
     "public/**/*.html",

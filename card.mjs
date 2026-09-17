@@ -24,6 +24,10 @@ class Card {
 	name() {
 		return `${cardSuits.get(this.suit)} ${cardRanks.get(this.rank)} (${this.deck})`;
 	}
+
+	toState() {
+		return { suit: this.suit, rank: this.rank, deck: this.deck };
+	}
 }
 
 
@@ -40,6 +44,10 @@ class TarotCard {
 	flip() {
 		this.position = cardPositions.flip(this.position);
 	}
+
+	toState() {
+		return { rank: this.rank, position: this.position };
+	}
 }
 
 
@@ -54,12 +62,21 @@ class EpitaphCard {
 	name() {
 		return `${epitaphRanks.get(this.rank)} ${this.open ? '表' : '裏'}`;
 	}
+
+	toState() {
+		return { rank: this.rank, open: this.open };
+	}
 }
 
 
 class Cards extends Array {
 	names() {
 		return this.map((item) => item.name());
+	}
+
+	// 保存用の素の配列。並びはそのまま。
+	toStates() {
+		return [ ...this ].map((item) => item.toState());
 	}
 
 	shuffle(n) {
@@ -158,4 +175,51 @@ export function createEpitaphCards(epitaphs) {
 		epitaphCards.push(new EpitaphCard(rank));
 	});
 	return epitaphCards;
+}
+
+
+// toStates の値から札を作り直す。入れ物のクラスも作ったときと揃える
+// （TarotCards の shuffle は向きも変える）。自分が書かない値が混じっていたら投げる。
+function restoreCards(cards, items, valid, create) {
+	if (false === Array.isArray(items)) {
+		throw new TypeError(`cards must be an array: ${JSON.stringify(items)}`);
+	}
+	items.forEach((item) => {
+		if (false === valid(item ?? {})) {
+			throw new TypeError(`invalid card: ${JSON.stringify(item)}`);
+		}
+		cards.push(create(item));
+	});
+	return cards;
+}
+
+// 山札・捨て札・手札。
+export function restoreDeckCards(items) {
+	return restoreCards(new Cards(), items,
+		(item) => cardSuits.has(item.suit) && cardRanks.has(item.rank) && Number.isInteger(item.deck),
+		(item) => new Card(item.suit, item.rank, item.deck));
+}
+
+function validTarot(item) {
+	return tarotRanks.has(item.rank) && cardPositions.has(item.position);
+}
+
+function createTarot(item) {
+	return new TarotCard(item.rank, item.position);
+}
+
+// タロット山札と切り札。
+export function restoreTarotCards(items) {
+	return restoreCards(new TarotCards(), items, validTarot, createTarot);
+}
+
+// タロット捨て札。createPileCards と同じく Cards に入れる。
+export function restoreTarotPileCards(items) {
+	return restoreCards(new Cards(), items, validTarot, createTarot);
+}
+
+export function restoreEpitaphCards(items) {
+	return restoreCards(new Cards(), items,
+		(item) => epitaphRanks.has(item.rank) && 'boolean' === typeof item.open,
+		(item) => new EpitaphCard(item.rank, item.open));
 }

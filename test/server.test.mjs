@@ -13,13 +13,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  * WebSocket の配信。接続を identity で束ねていないことを見る。
  */
 
-import { after, before, describe, it } from 'node:test';
+import { after, before, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { WebSocket } from 'ws';
 
-import { createServer } from '../server.mjs';
+import * as store from '../store.mjs';
 
 const PLAYERS = [ 'p1', 'p2' ];
 const SETTLE = 300;
@@ -27,6 +30,17 @@ const SETTLE = 300;
 let server;
 let port;
 let emitter;
+// close で卓が書き出される。app.mjs は保存先を ./data に決め打ちにしているので、
+// store.mjs を差し替えて、リポジトリの data/ ではなく使い捨ての場所へ向ける。
+// 差し替えには --experimental-test-module-mocks が要る（npm test に付けてある）。
+const DATA_DIR = mkdtempSync(join(tmpdir(), 'decks-server-'));
+mock.module('../store.mjs', {
+	namedExports: {
+		createStore: () => store.createStore(DATA_DIR),
+	},
+});
+// 差し替えた後に読み込む。先に読み込むと本物の store.mjs を掴む。
+const { createServer } = await import('../server.mjs');
 
 before(async () => {
 	emitter = new EventEmitter();
@@ -37,6 +51,7 @@ before(async () => {
 
 after(() => {
 	emitter.emit('close');
+	rmSync(DATA_DIR, { recursive: true, force: true });
 });
 
 async function call(method, path, options) {

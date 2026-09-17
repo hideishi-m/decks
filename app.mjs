@@ -18,15 +18,14 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import jwt from 'jsonwebtoken';
 
-import { createGame } from './game.mjs';
+import { MODES, createGame, restoreGame } from './game.mjs';
 import { getLogger } from './logger.mjs';
 import { epitaphRanks } from './public/js/LRQ_epitaph.js';
+import { createStore } from './store.mjs';
 
 import pkgJson from './package.json' with { type: 'json' };
 
 const MASTER = '0';
-// 卓の脇に置く札の種類。POST /games では必須で、既定値は無い。
-const MODES = [ 'tarot', 'epitaph', 'none' ];
 
 class AppError extends Error {
 	constructor(code = 500, message, options) {
@@ -86,7 +85,7 @@ export function createApp(emitter, options) {
 		next();
 	}
 
-	// 省略も 400。
+	// POST /games の mode は必須で、既定値は無い。省略も 400。
 	function validateMode(req, res, next, value, key) {
 		if (false === MODES.includes(value)) {
 			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
@@ -158,6 +157,12 @@ export function createApp(emitter, options) {
 		return randomBytes(16).toString('base64url');
 	}
 
+	// 卓ごとの識別子。トークンに入れて、同じ gid で作り直された卓と見分ける。
+	// 書き出さずに落ちると、起動中に作った卓の gid が次の起動で再び払い出されるため。
+	function createUid() {
+		return randomBytes(16).toString('base64url');
+	}
+
 	// 合う卓の gid を返す。無ければ undefined。
 	function findTicket(ticket) {
 		const given = Buffer.from(ticket);
@@ -206,13 +211,19 @@ export function createApp(emitter, options) {
 				res.set('WWW-Authenticate', `Bearer realem="/games"`);
 				throw new AppError(401, 'authorization required');
 			}
+			let decoded;
 			try {
-				req.decoded = jwt.verify(req.token(), secret);
+				decoded = jwt.verify(req.token(), secret);
 			} catch (error) {
 				logger.error(error);
 				res.set('WWW-Authenticate', `Bearer realem="/games", error="invalid_token", error_description="${error.message}"`);
 				throw new AppError(401, 'authorization failed', { cause: `${error.name}: ${error.message}` });
 			}
+			if (undefined === decoded.uid || uids[decoded.gid] !== decoded.uid) {
+				res.set('WWW-Authenticate', `Bearer realem="/games", error="invalid_token", error_description="token for another game"`);
+				throw new AppError(401, 'authorization failed', { cause: 'token for another game' });
+			}
+			req.decoded = decoded;
 		}
 		if (undefined !== req.params.gid) {
 			if (req.params.gid !== req.decoded.gid) {
@@ -274,10 +285,62 @@ export function createApp(emitter, options) {
 		});
 	}
 
+	// 保存した卓を同じ gid に戻す。消した卓（null）は欠番のまま残し、
+	// その gid を払い出さない。読めなければ投げて起動を止める（store.mjs を参照）。
+	function restoreGames() {
+		let gid;
+		try {
+			const saved = store.load();
+			for (gid = 0; gid < saved.length; gid++) {
+				const entry = saved[gid];
+				if (null === entry) {
+					continue;
+				}
+				if (false === Number.isInteger(entry?.seq)
+					|| 'string' !== typeof entry.ticket
+					|| 'string' !== typeof entry.uid) {
+					throw new TypeError('invalid seq, ticket or uid');
+				}
+				games[gid] = restoreGame(entry);
+				seqs[gid] = entry.seq;
+				tickets[gid] = entry.ticket;
+				uids[gid] = entry.uid;
+			}
+			games.length = saved.length;
+		} catch (error) {
+			const where = undefined === gid ? '' : ` at gid ${gid}`;
+			throw new Error(`cannot restore games from ${store.path}${where}`, { cause: error });
+		}
+		logger.log(`restored ${games.filter((game) => undefined !== game).length} games from ${store.path}`);
+	}
+
+	// 終了時に全卓を書き出す。消した卓は null にして gid の位置を保つ。
+	// 書けなくても終了は止めない（書けなかったことだけ残す）。
+	function dumpGames() {
+		const saved = Array.from(games, (game, gid) => {
+			if (undefined === game) {
+				return null;
+			}
+			return {
+				...game.toState(),
+				seq: seqs[gid] ?? 0,
+				ticket: tickets[gid],
+				uid: uids[gid],
+			};
+		});
+		try {
+			store.save(saved);
+			logger.log(`saved ${saved.filter((entry) => null !== entry).length} games to ${store.path}`);
+		} catch (error) {
+			logger.error(error);
+		}
+	}
+
 	const logger = getLogger(`${pkgJson.name}:app`);
 	const games = [];
 	const seqs = [];
 	const tickets = [];
+	const uids = [];
 
 	// 席とカードの検査は verifyToken の後ろに置く。app.param は認証より先に
 	// 走るため、param に置くと 404 と 401 の差で席数と手札の枚数を測られる。
@@ -289,6 +352,16 @@ export function createApp(emitter, options) {
 	const secret = options.secret ?? randomBytes(64).toString('hex');
 
 	logger(`secret "${secret}"`);
+	if (undefined === options.secret) {
+		// 乱数の secret は起動ごとに変わる。卓は戻っても、再起動の前に配った
+		// トークンは通らず、参加者は席を選び直すことになる。
+		logger.error('SECRET is not set; tokens will not survive a restart');
+	}
+
+	const store = createStore(fileURLToPath(new URL('./data', import.meta.url)));
+
+	restoreGames();
+	emitter.on('close', dumpGames);
 
 	const stream = createWriteStream(fileURLToPath(new URL(`./logs/access.log-${getDateString()}`, import.meta.url)), { flags: 'a' });
 
@@ -431,6 +504,7 @@ export function createApp(emitter, options) {
 			const token = jwt.sign({
 				gid: req.gid,
 				pid: `${req.body.pid}`,
+				uid: uids[req.gid],
 			}, secret, { expiresIn: '1d' });
 			logger.log(`POST token for player ${req.body.pid} in game ${req.gid}`);
 			res.statusJson(200, {
@@ -457,6 +531,7 @@ export function createApp(emitter, options) {
 		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateMode, ['body', 'mode']), partialReqKey(validateTarots, ['body', 'tarots']), partialReqKey(validateEpitaphs, ['body', 'epitaphs']), (req, res, next) => {
 			const gid = games.push(createGame(req.body.players, sideOf(req.body))) - 1;
 			tickets[gid] = createTicket();
+			uids[gid] = createUid();
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
 			// GET /games/:gid と同じ形で返すので、作った直後に引き直さなくてよい。
 			res.statusJson(200, describeGame(gid));
@@ -474,6 +549,7 @@ export function createApp(emitter, options) {
 			delete games[req.params.gid];
 			delete seqs[req.params.gid];
 			delete tickets[req.params.gid];
+			delete uids[req.params.gid];
 			logger.log(`DELETE game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,

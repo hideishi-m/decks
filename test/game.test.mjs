@@ -12,7 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createGame } from '../game.mjs';
+import { createGame, restoreGame } from '../game.mjs';
 
 // shuffles を 0 にすると山札の並びが決定的になるので、
 // 「どの札がどこへ動いたか」まで固定できる。並びは
@@ -574,5 +574,96 @@ describe('Game.toJson', () => {
 		assert.deepEqual([ ...json.players[1].hand ], [ 'クラブ 2 (0)' ]);
 		assert.deepEqual([ ...json.players[1].tarotHand ], [ 'カブト 正位置' ]);
 		assert.equal(json.tarotDeck.length, 27);
+	});
+});
+
+describe('保存と復元', () => {
+	// 保存はファイルを経るので、JSON を一度通してから戻す。
+	function roundTrip(game) {
+		return restoreGame(JSON.parse(JSON.stringify(game.toState())));
+	}
+
+	it('山札の並び・手札・捨て札・切り札の向きまで戻る', () => {
+		const game = createGame([ 'p1', 'p2' ], [ '4', '18' ], 2, 2, 3, 4);
+		game.getHandOfPlayer(1).discard(0);
+		game.getTarotDeck().discard(0);
+		game.getTarotPile().flip();
+		game.getTarotHandOfPlayer(2).discard(0);
+
+		const restored = roundTrip(game);
+
+		assert.equal(restored.getMode(), 'tarot');
+		assert.deepEqual(restored.toState(), game.toState());
+		assert.deepEqual(restored.toJson(), game.toJson());
+	});
+
+	it('エピタフの表裏が戻る', () => {
+		const game = plainGame([ 'p1' ], { epitaphs: [ '1', '12' ] });
+		game.getEpitaphs().open(1);
+
+		const restored = roundTrip(game);
+
+		assert.equal(restored.getMode(), 'epitaph');
+		assert.deepEqual(restored.getEpitaphs().toJson(true),
+			[ { open: false, rank: '1' }, { open: true, rank: '12' } ]);
+		assert.deepEqual([ ...restored.toJson().epitaphs ], [ 'ルシファー 裏', 'トリガー 表' ]);
+	});
+
+	it('タロットを使わない卓はそのまま戻る', () => {
+		const restored = roundTrip(plainGame([ 'p1' ], false));
+
+		assert.equal(restored.getMode(), 'none');
+		assert.equal(restored.getTarotDeck().toJson().length, 0);
+	});
+
+	it('戻した卓もそのまま遊べる', () => {
+		// 入れ物と札のクラスが作ったときと揃っていないと、flip や shuffle が無くなる。
+		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 1);
+		const restored = roundTrip(game);
+
+		for (const key of [ 'deck', 'pile', 'tarotDeck', 'tarotPile', 'epitaphs' ]) {
+			assert.equal(restored[key].constructor, game[key].constructor, key);
+		}
+		assert.equal(restored.hands[1].constructor, game.hands[1].constructor);
+		assert.equal(restored.hands[1][0].constructor, game.hands[1][0].constructor);
+		assert.equal(restored.tarotHands[1].constructor, game.tarotHands[1].constructor);
+		assert.equal(restored.tarotHands[1][0].constructor, game.tarotHands[1][0].constructor);
+		assert.equal(restored.tarotDeck[0].constructor, game.tarotDeck[0].constructor);
+
+		restored.getTarotHandOfPlayer(1).discard(0);
+		restored.getTarotPile().flip();
+		assert.equal(restored.getTarotPile().toJson().card.name(), 'カブト 逆位置');
+		restored.getHandOfPlayer(1).draw();
+		assert.equal(restored.getHandOfPlayer(1).toJson().length, 2);
+	});
+
+	it('席名の形は見ない', () => {
+		// POST /games が受け付けた卓を、戻せなくしないこと。
+		const game = createGame([ { a: 1 }, null ], []);
+
+		assert.deepEqual(roundTrip(game).getAllPlayers(), [ 'マスター', { a: 1 }, null ]);
+	});
+
+	it('自分が書かない形は投げる', () => {
+		const broken = [
+			[ '卓の種類', (state) => { state.mode = 'poker'; } ],
+			[ 'shuffles', (state) => { state.shuffles = '10'; } ],
+			[ '席と手札の数', (state) => { state.hands.pop(); } ],
+			[ '席と切り札の数', (state) => { state.tarotHands.pop(); } ],
+			[ '山札が配列でない', (state) => { state.deck = {}; } ],
+			[ 'スート', (state) => { state.deck[0].suit = 'Z'; } ],
+			[ '組', (state) => { state.hands[1][0].deck = '0'; } ],
+			[ '捨て札の札', (state) => { state.pile.push(null); } ],
+			[ 'タロットの rank', (state) => { state.tarotDeck[0].rank = '99'; } ],
+			[ '切り札の向き', (state) => { state.tarotHands[1][0].position = 'X'; } ],
+			[ 'タロット捨て札の向き', (state) => { state.tarotPile.push({ rank: '4' }); } ],
+			[ 'エピタフの表裏', (state) => { state.epitaphs = [ { rank: '1', open: 'yes' } ]; } ],
+		];
+		for (const [ label, breakIt ] of broken) {
+			const state = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 1).toState();
+			breakIt(state);
+			assert.throws(() => restoreGame(state), TypeError, label);
+		}
+		assert.throws(() => restoreGame(null), TypeError);
 	});
 });

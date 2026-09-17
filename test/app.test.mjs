@@ -13,15 +13,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  * HTTP レベルの検査。supertest は使わず、素の http サーバをポート 0 で起こして fetch で叩く。
  */
 
-import { after, before, describe, it } from 'node:test';
+import { after, before, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createApp } from '../app.mjs';
+import debug from 'debug';
+
+import * as store from '../store.mjs';
 
 const PLAYERS = [ 'p1', 'p2' ];
 const TAROTS = [ '4', '18' ];
@@ -32,6 +35,23 @@ let emitter;
 const seen = [];
 
 const LOG_DIR = fileURLToPath(new URL('../logs', import.meta.url));
+
+// app.mjs は卓の保存先を ./data に決め打ちにしている。リポジトリの data/ を
+// 読み書きしないよう、store.mjs を差し替えて使い捨ての場所へ向ける。
+// 差し替えには --experimental-test-module-mocks が要る（npm test に付けてある）。
+const DATA_DIR = mkdtempSync(join(tmpdir(), 'decks-app-'));
+const requested = [];
+let dataDir = DATA_DIR;
+mock.module('../store.mjs', {
+	namedExports: {
+		createStore: (dir) => {
+			requested.push(dir);
+			return store.createStore(dataDir);
+		},
+	},
+});
+// 差し替えた後に読み込む。先に読み込むと本物の store.mjs を掴む。
+const { createApp } = await import('../app.mjs');
 
 // logs/ が無いときは空として扱う。ここで落とすと before ごと崩れ、
 // 原因を言うべきテストではなく無関係なテストが一斉に落ちる。
@@ -63,6 +83,7 @@ before(async () => {
 
 after(() => {
 	server.close();
+	rmSync(DATA_DIR, { recursive: true, force: true });
 });
 
 async function call(method, path, options) {
@@ -76,7 +97,7 @@ async function call(method, path, options) {
 	if (options?.body) {
 		headers['Content-Type'] = 'application/json';
 	}
-	const response = await fetch(`${origin}${path}`, {
+	const response = await fetch(`${options?.origin ?? origin}${path}`, {
 		method: method,
 		headers: headers,
 		body: options?.body ? JSON.stringify(options.body) : undefined,
@@ -848,5 +869,202 @@ describe('WebSocket へ流す action', () => {
 		await call('GET', `/games/${gid}/players/1`, { token: token });
 
 		assert.equal(seen.length, before);
+	});
+});
+
+describe('再起動で卓が残る', () => {
+	const TABLE = { players: PLAYERS, mode: 'tarot', tarots: TAROTS };
+	const booted = [];
+
+	// 途中で落ちたテストの app も止める。残るとテストのプロセスが終わらない。
+	after(() => {
+		for (const server of booted) {
+			server.closeAllConnections();
+			if (server.listening) {
+				server.close();
+			}
+		}
+	});
+
+	// 同じ保存先で app を起こし直す。stop は index.mjs のシグナルと同じく close を流す。
+	// kill は close を流さずに止める（書き出す前に落ちた場合）。
+	async function boot(dir, options) {
+		const emitter = new EventEmitter();
+		const actions = [];
+		emitter.on('action', (data) => actions.push(data));
+		dataDir = dir;
+		const server = http.createServer(createApp(emitter, { secret: 'test-secret', ...options }));
+		booted.push(server);
+		await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+		return {
+			origin: `http://127.0.0.1:${server.address().port}`,
+			actions: actions,
+			stop() {
+				emitter.emit('close');
+				server.close();
+			},
+			kill() {
+				server.close();
+			},
+		};
+	}
+
+	async function seatIn(origin, ticket, pid) {
+		const got = await call('POST', '/token', { origin: origin, ticket: ticket, body: { pid: pid } });
+		assert.equal(got.status, 200);
+		return got.body.token;
+	}
+
+	it('保存先はアプリの隣の data/ に決め打ち', () => {
+		// createWriteStream の logs/ と同じく、起動の引数では変えられない。
+		assert.ok(requested.length > 0);
+		for (const dir of requested) {
+			assert.equal(dir, fileURLToPath(new URL('../data', import.meta.url)));
+		}
+	});
+
+	it('終了時にだけ書き出し、起動し直すと同じ卓に戻る', async () => {
+		const dir = mkdtempSync(join(DATA_DIR, 'boot-'));
+		const file = join(dir, 'games.json');
+		const first = await boot(dir);
+		const created = (await call('POST', '/games', { origin: first.origin, body: TABLE })).body;
+		const gid = created.gid;
+		const before = { origin: first.origin, token: await seatIn(first.origin, created.ticket, '1') };
+		await call('PUT', `/games/${gid}/players/1/draw`, before);
+		await call('PUT', `/games/${gid}/deck/discard`, before);
+		const table = (await call('GET', `/games/${gid}/table`, before)).body;
+		const hand = (await call('GET', `/games/${gid}/players/1`, before)).body;
+
+		// 操作ごとには書かない。
+		assert.equal(existsSync(file), false);
+		first.stop();
+		assert.equal(statSync(file).mode & 0o777, 0o600, '入場券が入るので所有者だけが読める');
+
+		const second = await boot(dir);
+		// 再起動の前に配ったトークンがそのまま使える（secret が同じなら）。
+		const after = { origin: second.origin, token: before.token };
+		assert.deepEqual((await call('GET', `/games/${gid}`, { origin: second.origin })).body, created);
+		assert.deepEqual((await call('GET', `/games/${gid}/table`, after)).body, table);
+		assert.deepEqual((await call('GET', `/games/${gid}/players/1`, after)).body, hand);
+		assert.equal((await call('GET', '/join', { origin: second.origin, ticket: created.ticket })).status, 200);
+
+		// action の番号は続きから振られる。飛ぶとクライアントが取りこぼしと見なす。
+		await call('PUT', `/games/${gid}/deck/discard`, after);
+		assert.equal(second.actions[0].seq, first.actions.at(-1).seq + 1);
+
+		second.stop();
+	});
+
+	it('消した卓は戻らず、その gid も払い出さない', async () => {
+		const dir = mkdtempSync(join(DATA_DIR, 'boot-'));
+		const first = await boot(dir);
+		const kept = (await call('POST', '/games', { origin: first.origin, body: TABLE })).body.gid;
+		const removed = (await call('POST', '/games', { origin: first.origin, body: TABLE })).body.gid;
+		await call('DELETE', `/games/${removed}`, { origin: first.origin });
+		first.stop();
+
+		const second = await boot(dir);
+		const listed = (await call('GET', '/games', { origin: second.origin })).body.games;
+		const next = (await call('POST', '/games', { origin: second.origin, body: TABLE })).body.gid;
+
+		assert.deepEqual(listed, [ { gid: kept } ]);
+		assert.equal(next, `${Number(removed) + 1}`);
+
+		second.stop();
+	});
+
+	it('書き出す前に落ちても、同じ gid で作り直された卓に古いトークンは通らない', async () => {
+		// 書き出さずに落ちると、起動中に作った卓の gid が次の起動でまた払い出される。
+		// 自動で繋ぎ直した古いページが、その新しい卓に入れてはいけない。
+		const dir = mkdtempSync(join(DATA_DIR, 'boot-'));
+		const first = await boot(dir);
+		const lost = (await call('POST', '/games', { origin: first.origin, body: TABLE })).body;
+		const stale = await seatIn(first.origin, lost.ticket, '1');
+		first.kill();
+
+		const second = await boot(dir);
+		const reborn = (await call('POST', '/games', { origin: second.origin, body: TABLE })).body;
+		const fresh = await seatIn(second.origin, reborn.ticket, '1');
+		const denied = await call('GET', `/games/${reborn.gid}/table`, { origin: second.origin, token: stale });
+		const allowed = await call('GET', `/games/${reborn.gid}/table`, { origin: second.origin, token: fresh });
+
+		assert.equal(reborn.gid, lost.gid);
+		assert.equal(denied.status, 401);
+		assert.equal(denied.body.error.cause, 'token for another game');
+		assert.equal(allowed.status, 200);
+
+		second.stop();
+	});
+
+	it('secret を与えないと警告し、再起動の前のトークンは通らない', async () => {
+		// 卓と入場券は戻るので、参加者は席を選び直せば続けられる。
+		const dir = mkdtempSync(join(DATA_DIR, 'boot-'));
+		const lines = [];
+		const enabled = debug.disable();
+		const log = debug.log;
+		debug.enable('decks:app:error');
+		debug.log = (...args) => lines.push(args.join(' '));
+		let first;
+		try {
+			first = await boot(dir, { secret: undefined });
+		} finally {
+			debug.log = log;
+			debug.disable();
+			debug.enable(enabled);
+		}
+		const created = (await call('POST', '/games', { origin: first.origin, body: TABLE })).body;
+		const stale = await seatIn(first.origin, created.ticket, '1');
+		first.stop();
+
+		const second = await boot(dir, { secret: undefined });
+		const denied = await call('GET', `/games/${created.gid}/table`, { origin: second.origin, token: stale });
+		const fresh = await seatIn(second.origin, created.ticket, '1');
+		const allowed = await call('GET', `/games/${created.gid}/table`, { origin: second.origin, token: fresh });
+
+		assert.ok(lines.some((line) => line.includes('SECRET is not set')), '起動時に警告する');
+		assert.equal(denied.status, 401);
+		assert.equal(allowed.status, 200);
+
+		second.stop();
+	});
+
+	it('読めない保存ファイルがあると起動しない', async () => {
+		// 空で起動すると、次の終了で壊れたファイルを空の卓で上書きしてしまう。
+		const dir = mkdtempSync(join(DATA_DIR, 'boot-'));
+		const first = await boot(dir);
+		await call('POST', '/games', { origin: first.origin, body: TABLE });
+		first.stop();
+		const saved = JSON.parse(readFileSync(join(dir, 'games.json'), 'utf8'));
+		const without = (key) => ({ ...saved, games: [ { ...saved.games[0], [key]: undefined } ] });
+
+		const cases = [
+			[ 'ファイルでない', null, /from .*games\.json$/ ],
+			[ 'JSON でない', 'not json', /from .*games\.json$/ ],
+			[ '版が違う', { version: 2, games: [] }, /from .*games\.json$/ ],
+			[ 'games が配列でない', { version: 1, games: {} }, /from .*games\.json$/ ],
+			[ '卓の形が違う', { version: 1, games: [ null, { mode: 'tarot' } ] }, /at gid 1$/ ],
+			[ '入場券が無い', without('ticket'), /at gid 0$/ ],
+			[ 'uid が無い', without('uid'), /at gid 0$/ ],
+			[ 'seq が無い', without('seq'), /at gid 0$/ ],
+		];
+		for (const [ label, content, where ] of cases) {
+			const broken = mkdtempSync(join(DATA_DIR, 'broken-'));
+			if (null === content) {
+				mkdirSync(join(broken, 'games.json'));
+			} else {
+				writeFileSync(join(broken, 'games.json'), 'string' === typeof content ? content : JSON.stringify(content));
+			}
+			dataDir = broken;
+			assert.throws(() => createApp(new EventEmitter(), { secret: 'test-secret' }),
+				(error) => error.message.startsWith('cannot restore games from') && where.test(error.message),
+				label);
+		}
+	});
+
+	it('書き出せなくても終了は止めない', async () => {
+		const missing = await boot(join(DATA_DIR, 'no', 'such', 'dir'));
+		await call('POST', '/games', { origin: missing.origin, body: TABLE });
+
+		assert.doesNotThrow(() => missing.stop());
 	});
 });
