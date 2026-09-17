@@ -20,8 +20,13 @@ import jwt from 'jsonwebtoken';
 
 import { createGame } from './game.mjs';
 import { getLogger } from './logger.mjs';
+import { epitaphRanks } from './public/js/LRQ_epitaph.js';
 
 import pkgJson from './package.json' with { type: 'json' };
+
+const MASTER = '0';
+// 卓の脇に置く札の種類。POST /games では必須で、既定値は無い。
+const MODES = [ 'tarot', 'epitaph', 'none' ];
 
 class AppError extends Error {
 	constructor(code = 500, message, options) {
@@ -81,20 +86,70 @@ export function createApp(emitter, options) {
 		next();
 	}
 
-	// 省略は許す。省略時の値は呼ぶ側で決める。
-	function validateOptionalBoolean(req, res, next, value, key) {
-		if (undefined !== value && 'boolean' !== typeof value) {
+	// 省略も 400。
+	function validateMode(req, res, next, value, key) {
+		if (false === MODES.includes(value)) {
 			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
 		}
 		next();
 	}
 
-	// タロットを使わない卓では tarots を見ない。省略してよく、送られても使わない。
+	// tarots を見るのはタロットの卓だけ。ほかの卓では省略してよく、送られても使わない。
 	function validateTarots(req, res, next, value, key) {
-		if (false === req.body?.useTarot) {
+		if ('tarot' !== req.body?.mode) {
 			return next();
 		}
 		return validateArray(req, res, next, value, key);
+	}
+
+	// epitaphs を見るのはエピタフの卓だけ。空の配列は許し、知らない番号と重複は受け付けない。
+	function validateEpitaphs(req, res, next, value, key) {
+		if ('epitaph' !== req.body?.mode) {
+			return next();
+		}
+		const valid = Array.isArray(value)
+			&& value.every((rank) => epitaphRanks.has(rank))
+			&& value.length === new Set(value).size;
+		if (false === valid) {
+			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
+		}
+		next();
+	}
+
+	function validateEpitaph(req, res, next, value, key) {
+		const epitaphs = games[req.params.gid].getEpitaphs();
+		if (undefined === epitaphs.at(value)) {
+			throw new AppError(404, 'epitaph not found for eid', { cause: {
+				gid: req.params.gid,
+				[key]: value,
+			} });
+		}
+		next();
+	}
+
+	// 卓の脇に置く札を、createGame の引数の形にする（game.mjs の modeOf と対）。
+	function sideOf(body) {
+		switch (body.mode) {
+			case 'none':
+				return false;
+			case 'epitaph':
+				return { epitaphs: body.epitaphs };
+			default:  // tarot（validateMode を通った後なので 3 つのどれか）
+				return body.tarots;
+		}
+	}
+
+	// 管理面で 1 卓を表す形。POST /games と GET /games/:gid が同じものを返す。
+	// 入場券と、裏のものも含めたエピタフを返すので、前段で保護すること。
+	function describeGame(gid) {
+		const game = games[gid];
+		return {
+			gid: `${gid}`,
+			players: game.getAllPlayers(),
+			mode: game.getMode(),
+			epitaphs: game.getEpitaphs().ranks(),
+			ticket: tickets[gid],
+		};
 	}
 
 	// 卓への入場券。卓を作ったときに 1 つだけ発行し、以後は再発行しない。
@@ -133,6 +188,15 @@ export function createApp(emitter, options) {
 			throw new AppError(401, 'ticket not accepted');
 		}
 		req.gid = gid;
+		next();
+	}
+
+	// 場のエピタフを表にする・裏にするのはマスターだけ。
+	// 席同士は保護しない（入場券があればマスターの席にもなれる）ので、誤操作よけ。
+	function verifyMaster(req, res, next) {
+		if (MASTER !== req.decoded.pid) {
+			throw new AppError(403, 'only the master may turn epitaphs', { cause: { pid: req.decoded.pid } });
+		}
 		next();
 	}
 
@@ -191,7 +255,7 @@ export function createApp(emitter, options) {
 
 	// WebSocket へ流す 1 アクション。受け取った側が再フェッチせずに
 	// 卓を描き直せるよう、公開状態（table）を丸ごと載せる。
-	// ⚠ card に入れてよいのは「場に表で出た札」だけ。伏せたままの札は載せない。
+	// card に入れてよいのは「場に表で出た札」だけ。伏せたままの札は載せない。
 	function emitAction(req, type, extra) {
 		const gid = req.params.gid;
 		const game = games[gid];
@@ -215,11 +279,12 @@ export function createApp(emitter, options) {
 	const seqs = [];
 	const tickets = [];
 
-	// ⚠ 席とカードの検査は verifyToken の後ろに置く。app.param は認証より先に
-	//    走るため、param に置くと 404 と 401 の差で席数と手札の枚数を測られる。
+	// 席とカードの検査は verifyToken の後ろに置く。app.param は認証より先に
+	// 走るため、param に置くと 404 と 401 の差で席数と手札の枚数を測られる。
 	const checkPlayer = partialReqKey(validatePlayer, ['params', 'pid']);
 	const checkTarget = partialReqKey(validatePlayer, ['params', 'tid']);
 	const checkCard = partialReqKey(validateCard, ['params', 'cid']);
+	const checkEpitaph = partialReqKey(validateEpitaph, ['params', 'eid']);
 	const app = express();
 	const secret = options.secret ?? randomBytes(64).toString('hex');
 
@@ -334,6 +399,7 @@ export function createApp(emitter, options) {
 	app.param('pid', validateId);
 	app.param('cid', validateId);
 	app.param('tid', validateId);
+	app.param('eid', validateId);
 
 	app.route('/version')
 		.get((req, res, next) => {
@@ -373,7 +439,7 @@ export function createApp(emitter, options) {
 
 	// 管理面。一覧は gid だけを返す。卓の中身を載せないので、応答は卓の
 	// 数にしか比例しない。席と入場券は GET /games/:gid が 1 卓ずつ返す。
-	// ⚠ POST は入場券を返すので、前段（nginx 等）で保護すること。
+	// POST は入場券を返すので、前段（nginx 等）で保護すること。
 	app.route('/games')
 		.get((req, res, next) => {
 			const gids = [];
@@ -387,33 +453,21 @@ export function createApp(emitter, options) {
 				games: gids,
 			});
 		})
-		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateOptionalBoolean, ['body', 'useTarot']), partialReqKey(validateTarots, ['body', 'tarots']), (req, res, next) => {
-			const tarots = false === req.body.useTarot ? false : req.body.tarots;
-			const gid = games.push(createGame(req.body.players, tarots)) - 1;
+		.post(partialReqKey(validateArray, ['body', 'players']), partialReqKey(validateMode, ['body', 'mode']), partialReqKey(validateTarots, ['body', 'tarots']), partialReqKey(validateEpitaphs, ['body', 'epitaphs']), (req, res, next) => {
+			const gid = games.push(createGame(req.body.players, sideOf(req.body))) - 1;
 			tickets[gid] = createTicket();
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
 			// GET /games/:gid と同じ形で返すので、作った直後に引き直さなくてよい。
-			res.statusJson(200, {
-				gid: `${gid}`,
-				players: games[gid].getAllPlayers(),
-				useTarot: games[gid].usesTarot(),
-				ticket: tickets[gid],
-			});
+			res.statusJson(200, describeGame(gid));
 		});
 
 	// 1 卓ぶん。一覧は gid だけなので、席と入場券はここで引く。
-	// ⚠ 入場券を返すので、前段で保護すること。
+	// 入場券を返すので、前段で保護すること。
 	app.route('/games/:gid')
 		.get((req, res, next) => {
 			const game = games[req.params.gid];
-			const players = game.getAllPlayers();
-			logger.log(`GET game ${req.params.gid} for players ${players}`);
-			res.statusJson(200, {
-				gid: req.params.gid,
-				players: players,
-				useTarot: game.usesTarot(),
-				ticket: tickets[req.params.gid],
-			});
+			logger.log(`GET game ${req.params.gid} for players ${game.getAllPlayers()}`);
+			res.statusJson(200, describeGame(req.params.gid));
 		})
 		.delete((req, res, next) => {
 			delete games[req.params.gid];
@@ -707,6 +761,48 @@ export function createApp(emitter, options) {
 				player: player,
 				pile: pile.toJson(),
 				hand: hand.toJson(),
+			});
+		});
+
+	// 場のエピタフ。マスターには裏の札も番号つきで返し、ほかの席には卓と同じものを返す。
+	app.route('/games/:gid/epitaphs')
+		.get(verifyToken, (req, res, next) => {
+			const epitaphs = games[req.params.gid].getEpitaphs();
+			logger.log(`GET epitaphs in game ${req.params.gid}`);
+			res.statusJson(200, {
+				gid: req.params.gid,
+				epitaphs: epitaphs.toJson(MASTER === req.decoded.pid),
+			});
+		});
+
+	app.route('/games/:gid/epitaphs/:eid/open')
+		.put(verifyToken, verifyMaster, checkEpitaph, (req, res, next) => {
+			const epitaphs = games[req.params.gid].getEpitaphs();
+			epitaphs.open(req.params.eid);
+			logger.log(`OPEN epitaph ${req.params.eid} in game ${req.params.gid}`);
+			emitAction(req, 'epitaph-open', { card: {
+				eid: req.params.eid,
+				...epitaphs.toJson(false)[req.params.eid],
+			} });
+			res.statusJson(200, {
+				gid: req.params.gid,
+				epitaphs: epitaphs.toJson(true),
+			});
+		});
+
+	app.route('/games/:gid/epitaphs/:eid/close')
+		.put(verifyToken, verifyMaster, checkEpitaph, (req, res, next) => {
+			const epitaphs = games[req.params.gid].getEpitaphs();
+			epitaphs.close(req.params.eid);
+			logger.log(`CLOSE epitaph ${req.params.eid} in game ${req.params.gid}`);
+			// 裏にした札は、配信に rank を載せない。
+			emitAction(req, 'epitaph-close', { card: {
+				eid: req.params.eid,
+				...epitaphs.toJson(false)[req.params.eid],
+			} });
+			res.statusJson(200, {
+				gid: req.params.gid,
+				epitaphs: epitaphs.toJson(true),
 			});
 		});
 

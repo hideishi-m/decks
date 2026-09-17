@@ -9,29 +9,46 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { createDeckCards, createPileCards, createHandCards, createTarotDeckCards, createTarotHandCards } from './card.mjs';
+import { createDeckCards, createPileCards, createHandCards, createTarotDeckCards, createTarotHandCards, createEpitaphCards } from './card.mjs';
+
+
+// 卓の脇に置く札の種類を、createGame の 2 番目の引数の形から決める。
+//   配列（省略を含む）: tarot   … 配列は席ごとの切り札
+//   false:              none    … 何も置かない
+//   { epitaphs }:       epitaph … 配列は場に置くエピタフ
+function modeOf(side) {
+	if (false === side) {
+		return 'none';
+	}
+	if (undefined !== side?.epitaphs) {
+		return 'epitaph';
+	}
+	return 'tarot';
+}
 
 
 class Game {
-	constructor(players, tarots, decks, jokers, shuffles, draws) {
-		// tarots が false の卓はタロットを使わない。タロット山札も切り札も空で作るので、
+	constructor(players, side, decks, jokers, shuffles, draws) {
+		// タロットの卓でなければ、タロット山札も切り札も空で作る。
 		// API を直に叩いても札は 1 枚も出てこない。
-		this.useTarot = false !== tarots;
+		this.mode = modeOf(side);
+		const tarots = 'tarot' === this.mode ? side : [];
 		this.playerNames = [];
 		this.deck = createDeckCards(decks, jokers, shuffles);
 		this.pile = createPileCards();
 		this.hands = [];
-		this.tarotDeck = this.useTarot
+		this.tarotDeck = 'tarot' === this.mode
 			? createTarotDeckCards(shuffles, tarots)
 			: createTarotHandCards();  // 空の TarotCards
 		this.tarotPile = createPileCards();
 		this.tarotHands = [];
+		this.epitaphs = createEpitaphCards('epitaph' === this.mode ? side.epitaphs : []);
 		this.shuffles = shuffles;
 
 		[ 'マスター', ...players ].forEach((player, index) => {
 			this.playerNames.push(player);
 			this.hands.push(createHandCards(this.deck, draws));
-			if (0 === index || false === this.useTarot) {
+			if (0 === index) {
 				this.tarotHands.push(createTarotHandCards());
 			} else {
 				this.tarotHands.push(createTarotHandCards([tarots[index - 1]]));
@@ -41,7 +58,7 @@ class Game {
 
 	toJson() {
 		return {
-			useTarot: this.useTarot,
+			mode: this.mode,
 			deck: this.deck.names(),
 			pile: this.pile.names(),
 			players: this.playerNames.map((player, index) => {
@@ -53,11 +70,12 @@ class Game {
 			}),
 			tarotDeck: this.tarotDeck.names(),
 			tarotPile: this.tarotPile.names(),
+			epitaphs: this.epitaphs.names(),
 		};
 	}
 
-	usesTarot() {
-		return this.useTarot;
+	getMode() {
+		return this.mode;
 	}
 
 	getAllPlayers() {
@@ -117,11 +135,17 @@ class Game {
 			hands: this.tarotHands,
 		}, player);
 	}
+
+	getEpitaphs() {
+		return new Epitaphs({
+			epitaphs: this.epitaphs,
+		});
+	}
 }
 
 // 卓の公開状態。全員が同じものを見る。
-// ⚠ 伏せられている札は length だけを出す。中身をクライアントへ渡さない
-//    （表示側で隠すだけだと DevTools から読める）。
+// 伏せられている札は length だけを出す。中身をクライアントへ渡さない
+// （表示側で隠すだけだと DevTools から読める）。
 class Table {
 	constructor(game) {
 		this.game = game;
@@ -130,7 +154,7 @@ class Table {
 	toJson() {
 		const game = this.game;
 		return {
-			useTarot: game.useTarot,
+			mode: game.mode,
 			seats: game.playerNames.map((player, index) => {
 				return {
 					pid: `${index}`,
@@ -149,6 +173,7 @@ class Table {
 				length: game.tarotPile.length,
 				card: game.tarotPile[0],
 			},
+			epitaphs: game.getEpitaphs().toJson(false),
 		};
 	}
 }
@@ -282,15 +307,49 @@ class TarotHand extends Hand {
 }
 
 
-export function createGame(players, tarots, decks, jokers, shuffles, draws) {
+// 場のエピタフ。表にする・裏にするのはマスターだけ（ルート側で確かめる）。
+class Epitaphs {
+	constructor(game) {
+		this.epitaphs = game.epitaphs;
+	}
+
+	at(index) {
+		return this.epitaphs[index];
+	}
+
+	open(index) {
+		this.epitaphs[index].open = true;
+	}
+
+	close(index) {
+		this.epitaphs[index].open = false;
+	}
+
+	ranks() {
+		return [ ...this.epitaphs ].map((card) => card.rank);
+	}
+
+	// 裏の札の rank は、見てよい人（マスター）にしか出さない。
+	toJson(master) {
+		return [ ...this.epitaphs ].map((card) => {
+			return card.open || master
+				? { open: card.open, rank: card.rank }
+				: { open: false };
+		});
+	}
+}
+
+
+// side の形は modeOf を参照。
+export function createGame(players, side, decks, jokers, shuffles, draws) {
 	players = players ? [ ...players ] : [];
-	// false はタロットを使わない卓。省略は「使うが誰にも配らない」で、別物として扱う。
-	if (false !== tarots) {
-		tarots = tarots ? [ ...tarots ] : [];
+	// 省略は「タロットを使うが誰にも配らない」。false（使わない）とは別物。
+	if ('tarot' === modeOf(side)) {
+		side = side ? [ ...side ] : [];
 	}
 	decks = decks ?? 2;
 	jokers = jokers ?? 2;
 	shuffles = shuffles ?? 10;
 	draws = draws ?? 4;
-	return new Game(players, tarots, decks, jokers, shuffles, draws);
+	return new Game(players, side, decks, jokers, shuffles, draws);
 }

@@ -60,7 +60,7 @@ async function call(method, path, options) {
 
 async function newGame() {
 	const created = await call('POST', '/games', {
-		body: { players: PLAYERS, tarots: [] },
+		body: { players: PLAYERS, mode: 'tarot', tarots: [] },
 	});
 	return created.body;
 }
@@ -96,7 +96,7 @@ async function seat(game, pid) {
 }
 
 describe('WebSocket の配信', () => {
-	it('⚠ 同じ席を 2 つ開いても両方に届く', async () => {
+	it('同じ席を 2 つ開いても両方に届く', async () => {
 		// 接続を {gid, pid, ip} で束ねると後勝ちで上書きされ、
 		// 先に開いた方は open のまま何も受け取らなくなる。
 		const game = await newGame();
@@ -140,7 +140,7 @@ describe('WebSocket の配信', () => {
 		}
 	});
 
-	it('⚠ 別の卓には届かない', async () => {
+	it('別の卓には届かない', async () => {
 		const mine = await newGame();
 		const other = await newGame();
 		const listener = await connect(other.gid, '1', await seat(other, '1'));

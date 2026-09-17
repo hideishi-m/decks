@@ -12,6 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import { ping, timeout, retryWait, ajax, join, getToken, updateStatus, appendLog, updateOptions, removeOption, parseDataValue, qs, el, fromHtml, delegate, createDialog } from './common.js';
 import { cardSuits, cardRanks, cardPositions } from './attr.js';
 import { tarotRanks } from './TNM_tarot.js';
+import { epitaphRanks } from './LRQ_epitaph.js';
 
 const MASTER = '0';
 // 他席の扇に並べる伏せ札の上限。これを超えたら重ねたままにする。
@@ -23,6 +24,10 @@ const ticket = new URLSearchParams(document.location.search).get('ticket');
 let table;
 // 自分の切り札。面は自分にしか見えないので table からは引けない。
 let myTarot;
+// マスターだけが持つ、裏の札も含めたエピタフの並び。卓の配信には載らない。
+let myEpitaphs = [];
+// ダイアログで開いているエピタフの並びの番号。
+let selectedEid;
 // 直前に処理した action.seq。飛んでいたら取りこぼしなので卓を取り直す。
 let lastSeq;
 // 一度切れたか。切れた後に開いたときだけ取り直す（初回は参加時に取得済み）。
@@ -38,14 +43,23 @@ const pileModal = createDialog('pileModal');
 const tarotDeckModal = createDialog('tarotDeckModal');
 const tarotHandModal = createDialog('tarotHandModal');
 const tarotPileModal = createDialog('tarotPileModal');
+const epitaphModal = createDialog('epitaphModal');
 
 function isMaster() {
 	return MASTER === pid;
 }
 
-// タロットを使わない卓か。useTarot が無ければ API の既定と同じく使うものとする。
+// 卓の脇に置く札の種類。
+function tableMode() {
+	return table?.mode;
+}
+
 function usesTarot() {
-	return false !== table?.useTarot;
+	return 'tarot' === tableMode();
+}
+
+function usesEpitaphs() {
+	return 'epitaph' === tableMode();
 }
 
 function seatOf(seatPid) {
@@ -100,6 +114,12 @@ function cardName(card) {
 	if (undefined !== card.suit) {
 		return `（${cardSuits.get(card.suit)}の${cardRanks.get(card.rank)}）`;
 	}
+	// エピタフは裏にしたとき rank が載らないので、並びの位置で言う。
+	if (undefined !== card.eid) {
+		return undefined !== card.rank
+			? `「${epitaphRanks.get(card.rank)}」`
+			: `（${Number(card.eid) + 1}枚目）`;
+	}
 	return `（${tarotRanks.get(card.rank)} ${cardPositions.get(card.position)}）`;
 }
 
@@ -130,6 +150,10 @@ function describeAction(action) {
 			return `${who} が切り札を捨て札にした${card}`;
 		case 'tarot-flip':
 			return `${who} がタロット捨て札を反転させた${card}`;
+		case 'epitaph-open':
+			return `${who} がエピタフ${card}を表にした`;
+		case 'epitaph-close':
+			return `${who} がエピタフ${card}を裏にした`;
 		default:
 			return `${who} が ${action.type} をした`;
 	}
@@ -142,6 +166,7 @@ async function resync() {
 		await fetchTable();
 		await updateHand();
 		await fetchTarotHand();
+		await fetchEpitaphs();
 	} catch (error) {
 		updateStatus(`${error.name}: ${error.message}`);
 	}
@@ -179,6 +204,9 @@ async function onMessage(event) {
 		if (null !== action.tid) {
 			pulse(action.tid, 'pick' === action.type ? '抜かれた' : '受け取った');
 		}
+		if ('epitaph-open' === action.type || 'epitaph-close' === action.type) {
+			flash(qs(`#epitaphs [data-eid="${action.card.eid}"]`));
+		}
 
 		// 自分の手札の中身は action に載らないので、動いたときだけ取り直す。
 		if (pid === action.pid || pid === action.tid) {
@@ -215,6 +243,27 @@ function createTarotCardImg(card, size) {
 		return fromHtml(`<img class="${cls}" style="${style}" src="./images/TNM_tarot/${img}.webp" title="${title}" alt="${title}">`);
 	}
 	return fromHtml(`<img class="${cls}" src="./images/TNM_tarot/99.webp" alt="伏せたタロット">`);
+}
+
+// 裏面のファイル名は空白を含むので、URL にするときに符号化する。
+function epitaphSrc(rank) {
+	return `./images/LRQ_epitaph/${encodeURIComponent(epitaphRanks.get(rank, 1))}.webp`;
+}
+
+// rank が分からなければ裏面。分かっていて裏の札なら、暗くして「伏せ」を添える（マスターの見え方）。
+function createEpitaphNode(rank, open, size) {
+	const cls = `card${size ? ' ' + size : ''}`;
+	if (undefined === rank) {
+		return el('div', { class: 'epitaph' },
+			fromHtml(`<img class="${cls}" src="${epitaphSrc()}" alt="伏せたエピタフ">`));
+	}
+	const title = `${epitaphRanks.get(rank)}${open ? '' : '（裏）'}`;
+	const node = el('div', { class: open ? 'epitaph' : 'epitaph epitaph-peek' },
+		fromHtml(`<img class="${cls}" src="${epitaphSrc(rank)}" title="${title}" alt="${title}">`));
+	if (false === open) {
+		node.append(el('span', { class: 'epitaph-tag' }, '伏せ'));
+	}
+	return node;
 }
 
 function createEmptySlot(size) {
@@ -296,6 +345,10 @@ function verbOf(action) {
 			return '切り札を切った';
 		case 'tarot-flip':
 			return '反転させた';
+		case 'epitaph-open':
+			return '表にした';
+		case 'epitaph-close':
+			return '裏にした';
 		default:
 			return action.type;
 	}
@@ -319,6 +372,15 @@ function fly(fromRect, toRect, card) {
 		});
 	});
 	setTimeout(() => ghost.remove(), 500);
+}
+
+// 表・裏が変わったエピタフを光らせる。
+function flash(node) {
+	if (null === node || undefined === node) {
+		return;
+	}
+	node.classList.add('epitaph-flash');
+	setTimeout(() => node.classList.remove('epitaph-flash'), 1600);
 }
 
 function pulse(seatPid, text) {
@@ -372,7 +434,7 @@ function createSeat(seat) {
 	if (usesTarot()) {
 		row.append(el('div', { class: 'tarot-slot' },
 			el('span', { class: 'slot-label' }, '切り札'),
-			// ⚠ 他席の切り札は非公開。持っているかどうかだけが分かる。
+			// 他席の切り札は非公開。持っているかどうかだけが分かる。
 			0 < seat.tarot.length ? createTarotCardImg(null, 'card-sm') : createEmptySlot('card-sm')));
 	}
 
@@ -400,9 +462,13 @@ function updateTable(next) {
 	qs('#pile').replaceChildren(
 		table.pile.card ? createCardSvg(table.pile.card, 'card-lg') : createEmptySlot('card-lg'));
 
-	// タロットを使わない卓では、場のタロットも自席の切り札も出さない。
+	// タロットの卓だけタロットを、エピタフの卓だけエピタフを出す。
 	qs('#tarotCluster').hidden = false === usesTarot();
 	qs('#myTarot').hidden = false === usesTarot();
+	qs('#epitaphCluster').hidden = false === usesEpitaphs();
+	if (usesEpitaphs()) {
+		updateEpitaphs();
+	}
 	if (usesTarot()) {
 		qs('#tarotDeckLabel').textContent = table.tarotDeck.length;
 		qs('#tarotDeck').replaceChildren(
@@ -417,6 +483,36 @@ function updateTable(next) {
 	if (mine) {
 		qs('#handLabel').textContent = mine.hand.length;
 	}
+}
+
+// 場のエピタフ。裏の札は、プレーヤーには裏面で、マスターには絵柄を暗くして見せる。
+function updateEpitaphs() {
+	const box = qs('#epitaphs');
+	box.replaceChildren();
+	table.epitaphs.forEach((epitaph, index) => {
+		const rank = epitaph.rank ?? myEpitaphs[index]?.rank;
+		const node = createEpitaphNode(rank, epitaph.open, 'card-sm');
+		node.dataset.eid = `${index}`;
+		box.append(node);
+	});
+	if (0 === table.epitaphs.length) {
+		box.append(createEmptySlot('card-sm'));
+	}
+}
+
+// マスターだけ、裏の札の番号を取っておく。
+async function fetchEpitaphs() {
+	myEpitaphs = [];
+	if (false === usesEpitaphs() || false === isMaster()) {
+		return;
+	}
+	const data = await ajax('./games/' + gid + '/epitaphs', {
+		method: 'GET',
+		headers: { 'Authorization': `Bearer ${token}` },
+	});
+	updateStatus(JSON.stringify(data, null, 2));
+	myEpitaphs = data.epitaphs;
+	updateEpitaphs();
 }
 
 async function fetchTable() {
@@ -502,6 +598,7 @@ async function selectPlayer() {
 		qs('#playerTag').textContent = player;
 		await updateHand();
 		await fetchTarotHand();
+		await fetchEpitaphs();
 
 		socket = createSocket();
 		keepAlive();
@@ -756,6 +853,37 @@ qs('#flipTarotPile').addEventListener('click', flipTarotPile);
 async function flipTarotPile() {
 	try {
 		const data = await ajax('./games/' + gid + '/tarot/pile/flip', {
+			method: 'PUT',
+			headers: { 'Authorization': `Bearer ${token}` },
+		});
+		updateStatus(JSON.stringify(data, null, 2));
+	} catch (error) {
+		updateStatus(`${error.name}: ${error.message}`);
+	}
+}
+
+// #epitaphs
+delegate(epitaphModal.node, 'button', 'click', () => epitaphModal.toggle());
+
+delegate(qs('#epitaphs'), '[data-eid]', 'click', function () {
+	selectedEid = this.dataset.eid;
+	const epitaph = table.epitaphs[selectedEid];
+	const rank = epitaph.rank ?? myEpitaphs[selectedEid]?.rank;
+	qs('#epitaphModalCard').replaceChildren(createEpitaphNode(rank, epitaph.open, 'card-lg'));
+	// 表・裏を切り替えるのはマスターだけ。今と逆の操作だけを出す。
+	qs('#openEpitaph').hidden = false === isMaster() || epitaph.open;
+	qs('#closeEpitaph').hidden = false === isMaster() || false === epitaph.open;
+	qs('#epitaphModalNote').textContent = isMaster()
+		? ''
+		: 'マスターだけが表・裏を切り替えられる。';
+	epitaphModal.toggle();
+});
+
+qs('#openEpitaph').addEventListener('click', () => turnEpitaph('open'));
+qs('#closeEpitaph').addEventListener('click', () => turnEpitaph('close'));
+async function turnEpitaph(turn) {
+	try {
+		const data = await ajax('./games/' + gid + '/epitaphs/' + selectedEid + '/' + turn, {
 			method: 'PUT',
 			headers: { 'Authorization': `Bearer ${token}` },
 		});

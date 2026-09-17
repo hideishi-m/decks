@@ -126,7 +126,7 @@ export function appendLog(data) {
 	log.textContent = data + '\n' + log.textContent;
 }
 
-// ⚠ マッチした全ての select に効く。admin.js が select[name^=tarots] に対して
+// マッチした全ての select に効く。admin.js が select[name^=tarots] に対して
 // この前提で呼ぶので、querySelector（単数）に変えてはいけない。
 export function appendOption(selector, id, text) {
 	for (const select of qsa(selector)) {

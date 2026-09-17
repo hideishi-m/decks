@@ -31,7 +31,8 @@ tags:
       protected from each other.
 
       Nothing guards the admin calls, and `POST /games` and `GET /games/{gid}`
-      hand back the tickets, so put those and admin.html behind the proxy.
+      hand back the tickets and the face-down epitaphs, so put those and
+      admin.html behind the proxy.
       Cover `/admin.html`, `/js/admin.js`, `/games` and `/games/<digits>` —
       and nothing deeper, since `/games/1/table` and the rest are what the
       players call.
@@ -188,10 +189,12 @@ paths:
         Creates a new game and issues the ticket that opens it. The ticket is
         returned here once and is not reissued; hand it out as a link.
 
-        With `useTarot: false` the table has no tarot: its tarot deck, pile
-        and trumps are all created empty, and `tarots` may be left out.
+        `mode` is required and says what lies beside the deck: tarot,
+        epitaph or none. There is no default. Unless it is tarot, the tarot
+        deck, pile and trumps are all created empty. `tarots` and `epitaphs` are read only for their own
+        mode and may be left out otherwise.
 
-        ⚠ This returns a ticket. Keep it behind the proxy together with
+        This returns a ticket. Keep it behind the proxy together with
         admin.html.
       requestBody:
         description: game attributes
@@ -223,7 +226,7 @@ paths:
         so this is where an admin page reads the rest, one table at a time.
         `POST /games` returns exactly this shape.
 
-        ⚠ This returns the ticket. Keep it behind the proxy together with
+        This returns the ticket. Keep it behind the proxy together with
         admin.html.
       parameters:
         - name: gid
@@ -1056,6 +1059,162 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /games/{gid}/epitaphs:
+    get:
+      tags:
+        - players
+      security:
+        - JWT: []
+      summary: retrieve the epitaphs
+      operationId: getEpitaphs
+      description: |
+        With the master's token, face-down epitaphs come with their rank.
+        With any other seat's token, this is the `epitaphs` of the table.
+      parameters:
+        - name: gid
+          in: path
+          description: Game ID
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        200:
+          description: game ID and epitaphs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameEpitaphs'
+        400:
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: no token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/epitaphs/{eid}/open:
+    put:
+      tags:
+        - players
+      security:
+        - JWT: []
+      summary: turn an epitaph face up
+      operationId: openEpitaph
+      description: |
+        Master only. Turning a face-up epitaph face up again changes nothing.
+
+        Seats are not protected from each other, so the 403 keeps a
+        player's page from doing this by mistake rather than keeping anyone
+        out.
+      parameters:
+        - name: gid
+          in: path
+          description: Game ID
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+        - name: eid
+          in: path
+          description: Position in the epitaphs
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        200:
+          description: game ID and epitaphs, as the master sees them
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameEpitaphs'
+        400:
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: no token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: not the master
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: no game for gid, or no epitaph for eid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /games/{gid}/epitaphs/{eid}/close:
+    put:
+      tags:
+        - players
+      security:
+        - JWT: []
+      summary: turn an epitaph face down
+      operationId: closeEpitaph
+      description: |
+        Master only. Turning a face-down epitaph face down again changes
+        nothing. The action it sends carries no rank.
+      parameters:
+        - name: gid
+          in: path
+          description: Game ID
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+        - name: eid
+          in: path
+          description: Position in the epitaphs
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        200:
+          description: game ID and epitaphs, as the master sees them
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameEpitaphs'
+        400:
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: no token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: not the master
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: no game for gid, or no epitaph for eid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /games/{gid}/dump:
     put:
       tags:
@@ -1157,15 +1316,22 @@ components:
       required:
         - gid
         - players
-        - useTarot
+        - mode
+        - epitaphs
         - ticket
       properties:
         gid:
           $ref: '#/components/schemas/Id'
         players:
           $ref: '#/components/schemas/Players'
-        useTarot:
-          $ref: '#/components/schemas/UseTarot'
+        mode:
+          $ref: '#/components/schemas/Mode'
+        epitaphs:
+          allOf:
+            - $ref: '#/components/schemas/EpitaphRanks'
+          description: |
+            Every epitaph on the table, face down or not. Empty unless the
+            mode is epitaph.
         ticket:
           $ref: '#/components/schemas/Ticket'
     Games:
@@ -1194,29 +1360,75 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/TarotRank'
-    UseTarot:
-      type: boolean
+    Mode:
+      type: string
       description: |
-        Whether the table uses tarot. A table without it has an empty tarot
-        deck, pile and trumps from the start.
-      example: true
+        What lies beside the deck. Unless it is tarot, the tarot deck, pile
+        and trumps are empty from the start.
+      enum:
+        - tarot
+        - epitaph
+        - none
+      example: tarot
+    EpitaphRank:
+      type: string
+      enum: ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31']
+    EpitaphRanks:
+      type: array
+      uniqueItems: true
+      items:
+        $ref: '#/components/schemas/EpitaphRank'
+    Epitaph:
+      type: object
+      description: |
+        One epitaph on the table. `rank` is left out while it is face down,
+        except in what the master is given.
+      required:
+        - open
+      properties:
+        open:
+          type: boolean
+          description: Whether it is face up.
+        rank:
+          $ref: '#/components/schemas/EpitaphRank'
+    Epitaphs:
+      type: array
+      description: The epitaphs in table order. `eid` is the position in it.
+      items:
+        $ref: '#/components/schemas/Epitaph'
+    GameEpitaphs:
+      type: object
+      required:
+        - gid
+        - epitaphs
+      properties:
+        gid:
+          $ref: '#/components/schemas/Id'
+        epitaphs:
+          $ref: '#/components/schemas/Epitaphs'
     GameAttributes:
       type: object
       required:
         - players
+        - mode
       properties:
         players:
           $ref: '#/components/schemas/Players'
+        mode:
+          $ref: '#/components/schemas/Mode'
         tarots:
           allOf:
             - $ref: '#/components/schemas/Tarots'
           description: |
-            One trump per player, in the order of `players`. Required unless
-            `useTarot` is false, and ignored when it is.
-        useTarot:
+            One trump per player, in the order of `players`. Required when
+            the mode is tarot, and ignored otherwise.
+        epitaphs:
           allOf:
-            - $ref: '#/components/schemas/UseTarot'
-          default: true
+            - $ref: '#/components/schemas/EpitaphRanks'
+          description: |
+            The epitaphs to lay face down, in any order; they are laid in
+            rank order. May be empty. Required when the mode is epitaph, and
+            ignored otherwise.
     GamePlayers:
       type: object
       required:
@@ -1264,15 +1476,16 @@ components:
         The public state of the table. Face-down cards are reported by count
         only; their contents are never included.
       required:
-        - useTarot
+        - mode
         - seats
         - deck
         - pile
         - tarotDeck
         - tarotPile
+        - epitaphs
       properties:
-        useTarot:
-          $ref: '#/components/schemas/UseTarot'
+        mode:
+          $ref: '#/components/schemas/Mode'
         seats:
           $ref: '#/components/schemas/Seats'
         deck:
@@ -1283,6 +1496,8 @@ components:
           $ref: '#/components/schemas/Deck'
         tarotPile:
           $ref: '#/components/schemas/TarotPile'
+        epitaphs:
+          $ref: '#/components/schemas/Epitaphs'
     GameTable:
       allOf:
         - type: object
@@ -1309,6 +1524,8 @@ components:
         - tarot-deck-discard
         - tarot-discard
         - tarot-flip
+        - epitaph-open
+        - epitaph-close
     Action:
       type: object
       required:
@@ -1358,8 +1575,24 @@ components:
           oneOf:
             - $ref: '#/components/schemas/Card'
             - $ref: '#/components/schemas/TarotCard'
+            - $ref: '#/components/schemas/EpitaphTurn'
         table:
           $ref: '#/components/schemas/Table'
+    EpitaphTurn:
+      type: object
+      description: |
+        The epitaph that was turned, for epitaph-open and epitaph-close.
+        `rank` is there only when it was turned face up.
+      required:
+        - eid
+        - open
+      properties:
+        eid:
+          $ref: '#/components/schemas/Id'
+        open:
+          type: boolean
+        rank:
+          $ref: '#/components/schemas/EpitaphRank'
     ActionMessage:
       type: object
       required:

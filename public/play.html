@@ -50,6 +50,12 @@
                 <span id="tarotPileLabel" class="slot-count"></span>
               </div>
             </div>
+            <div id="epitaphCluster" class="cluster" hidden>
+              <div class="slot">
+                <span class="slot-label">エピタフ</span>
+                <div id="epitaphs" class="epitaphs"></div>
+              </div>
+            </div>
           </div>
 
           <div id="myseat" class="seat seat-me">
@@ -291,6 +297,38 @@
             <div class="row mb-3">
               <div class="col">
                 <button id="discardTarotHand" type="button" class="btn btn-primary btn-block">捨て札にする</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <button type="button" class="btn btn-secondary btn-block">やめる</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: epitaph -->
+  <dialog id="epitaphModal">
+    <div class="modal-header">
+      <h5>エピタフ</h5>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <div class="row">
+          <div id="epitaphModalCard" class="col"></div>
+          <div class="col">
+            <div class="row mb-3">
+              <div class="col">
+                <button id="openEpitaph" type="button" class="btn btn-primary btn-block">表にする</button>
+                <button id="closeEpitaph" type="button" class="btn btn-primary btn-block">裏にする</button>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <p id="epitaphModalNote" class="note"></p>
               </div>
             </div>
             <div class="row mb-3">

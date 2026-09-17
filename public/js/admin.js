@@ -11,9 +11,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import { ajax, updateStatus, appendOption, removeOption, parseDataValue, parseDataValuesEach, qs, qsa, el, fromHtml, delegate } from './common.js';
 import { tarotRanks } from './TNM_tarot.js';
+import { epitaphRanks } from './LRQ_epitaph.js';
 
 for (const [rank, name] of tarotRanks.entries()) {
 	appendOption('select[name^=tarots]', rank, name);
+}
+
+// エピタフは表の番号順に並べ、マスターが任意の枚数を選ぶ。
+for (const [rank, name] of epitaphRanks.entries()) {
+	qs('#epitaphPicker').append(el('label', { class: 'form-check' },
+		el('input', { type: 'checkbox', name: 'epitaphs[]', value: rank }), ` ${name}`));
 }
 
 // 新しい行を足す先。#players は 1 行目の .input-group なので、その親。
@@ -22,6 +29,18 @@ const playersBox = qs('#players').parentElement;
 // 参加者へ配る URL。ticket だけで卓が決まる。
 function playUrl(ticket) {
 	return new URL(`./play.html?ticket=${ticket}`, document.location.href).href;
+}
+
+// 卓リストでプレーヤーの後ろに添える、卓の種類。
+function modeLabel(game) {
+	switch (game.mode) {
+		case 'epitaph':
+			return `（エピタフ ${game.epitaphs.length}枚）`;
+		case 'none':
+			return '（タロットなし）';
+		default:
+			return '';
+	}
 }
 
 // common
@@ -39,7 +58,7 @@ function appendGame(game) {
 		class: 'btn btn-secondary copy-invite',
 		'data-url': url,
 	}, 'コピー');
-	const players = String(game.players) + (false === game.useTarot ? '（タロットなし）' : '');
+	const players = String(game.players) + modeLabel(game);
 	qs('#game').append(
 		el('div', { class: 'col-1', 'data-gid': game.gid }, game.gid),
 		el('div', { class: 'col-3', 'data-gid': game.gid }, players),
@@ -67,17 +86,21 @@ delegate(qs('#game'), '.copy-invite', 'click', function () {
 qs('#newGame').addEventListener('click', newGame);
 async function newGame() {
 	try {
-		const useTarot = qs('#useTarot').checked;
-		// 使わない卓には tarots を送らない。
-		const params = parseDataValuesEach(useTarot ? {
+		const mode = currentMode();
+		// 卓の種類に合わない札の指定は送らない。
+		const params = parseDataValuesEach('tarot' === mode ? {
 			players: 'input[name^=players]',
 			tarots: 'select[name^=tarots]',
 		} : {
 			players: 'input[name^=players]',
 		});
-		const body = { players: params.players, useTarot: useTarot };
-		if (useTarot) {
+		const body = { players: params.players, mode: mode };
+		if ('tarot' === mode) {
 			body.tarots = params.tarots.map((value) => tarotRanks.has(value) ? value : null);
+		}
+		if ('epitaph' === mode) {
+			// 0 枚でも作れる。parseDataValuesEach は空を弾くので使わない。
+			body.epitaphs = qsa('input[name^=epitaphs]:checked').map((input) => input.value);
 		}
 		const data = await ajax('./games', {
 			method: 'POST',
@@ -94,13 +117,18 @@ async function newGame() {
 	}
 }
 
-// #useTarot
-// 使わない卓では席ごとの切り札を選ばせない。行を足す雛型（.copy）の select も
-// 一緒に隠すので、後から足した行も同じ状態で出てくる。
-qs('#useTarot').addEventListener('change', function () {
+// #mode
+function currentMode() {
+	return qs('input[name=mode]:checked').value;
+}
+
+// タロットの卓だけ席ごとの切り札を、エピタフの卓だけエピタフの一覧を出す。
+// 行を足す雛型（.copy）の select も一緒に隠すので、後から足した行も同じ状態で出てくる。
+delegate(qs('#mode'), 'input[name=mode]', 'change', () => {
 	for (const select of qsa('select[name^=tarots]')) {
-		select.hidden = false === this.checked;
+		select.hidden = 'tarot' !== currentMode();
 	}
+	qs('#epitaphPicker').hidden = 'epitaph' !== currentMode();
 });
 
 // #players

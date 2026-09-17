@@ -58,7 +58,7 @@ describe('createGame', () => {
 	});
 
 	it('未シャッフルの並びは 10,2..9,A,J,Q,K の順になる', () => {
-		// ⚠ attr.js の ranks は素のオブジェクトリテラルで、'0'(=10) と '2'..'9' が
+		// attr.js の ranks は素のオブジェクトリテラルで、'0'(=10) と '2'..'9' が
 		// 整数キーとして扱われる。JS のプロパティ順は整数キーが昇順で先に来るので、
 		// 'A' より '0' が前に出る。実戦ではシャッフルされるので影響しないが、
 		// 決定的なテストを書くときはこの並びが前提になる。
@@ -117,7 +117,7 @@ describe('createGame', () => {
 
 	it('tarots を省略してもタロットは使う（誰にも配らないだけ）', () => {
 		const game = createGame([ 'p1', 'p2' ]);
-		assert.equal(game.usesTarot(), true);
+		assert.equal(game.getMode(), 'tarot');
 		assert.equal(game.getTarotDeck().toJson().length, 28);
 	});
 });
@@ -175,12 +175,13 @@ describe('タロット', () => {
 });
 
 describe('タロットを使わない卓', () => {
-	it('tarots に false を渡すと使わない', () => {
-		assert.equal(plainGame([ 'p1' ], false).usesTarot(), false);
-		assert.equal(plainGame([ 'p1' ], []).usesTarot(), true);
+	it('2 番目の引数の形で卓の種類が決まる', () => {
+		assert.equal(plainGame([ 'p1' ], []).getMode(), 'tarot');
+		assert.equal(plainGame([ 'p1' ], false).getMode(), 'none');
+		assert.equal(plainGame([ 'p1' ], { epitaphs: [] }).getMode(), 'epitaph');
 	});
 
-	it('⚠ タロット山札・捨て札・切り札を空で作る', () => {
+	it('タロット山札・捨て札・切り札を空で作る', () => {
 		// 画面で隠すだけでなく札そのものを作らない。API を直に叩いても出てこない。
 		const game = plainGame([ 'p1', 'p2' ], false);
 
@@ -210,14 +211,85 @@ describe('タロットを使わない卓', () => {
 			52 - 3 * 4);
 	});
 
-	it('卓の公開状態と dump に useTarot が載る', () => {
+	it('卓の公開状態と dump に mode が載る', () => {
 		const game = plainGame([ 'p1' ], false);
 		const table = game.getTable().toJson();
 
-		assert.equal(table.useTarot, false);
+		assert.equal(table.mode, 'none');
 		assert.equal(table.tarotDeck.length, 0);
 		assert.deepEqual(table.seats.map((seat) => seat.tarot.length), [ 0, 0 ]);
-		assert.equal(game.toJson().useTarot, false);
+		assert.deepEqual(table.epitaphs, []);
+		assert.equal(game.toJson().mode, 'none');
+	});
+});
+
+describe('エピタフの卓', () => {
+	function epitaphGame(epitaphs) {
+		return plainGame([ 'p1', 'p2' ], { epitaphs: epitaphs });
+	}
+
+	it('表の番号順に、すべて裏で並べる（シャッフルしない）', () => {
+		const game = epitaphGame([ '24', '1', '12' ]);
+
+		assert.equal(game.getMode(), 'epitaph');
+		assert.deepEqual(game.getEpitaphs().ranks(), [ '1', '12', '24' ]);
+		assert.deepEqual([ ...game.toJson().epitaphs ],
+			[ 'ルシファー 裏', 'トリガー 裏', 'ホムラ 裏' ]);
+	});
+
+	it('0 枚でも作れる', () => {
+		const game = epitaphGame([]);
+
+		assert.equal(game.getMode(), 'epitaph');
+		assert.deepEqual(game.getTable().toJson().epitaphs, []);
+	});
+
+	it('知らない番号と重複は並べない', () => {
+		// API で弾くが、モデル単体でも崩れないこと。
+		assert.deepEqual(epitaphGame([ '1', '1', '32', '0' ]).getEpitaphs().ranks(), [ '1' ]);
+	});
+
+	it('タロットは使わない', () => {
+		const game = epitaphGame([ '1' ]);
+
+		assert.equal(game.getTarotDeck().toJson().length, 0);
+		for (const pid of [ MASTER, 1, 2 ]) {
+			assert.equal(game.getTarotHandOfPlayer(pid).toJson().length, 0);
+		}
+	});
+
+	it('卓の公開状態には裏の札の番号を出さない', () => {
+		const table = epitaphGame([ '1', '12' ]).getTable().toJson();
+
+		assert.deepEqual(table.epitaphs, [ { open: false }, { open: false } ]);
+		assert.equal(JSON.stringify(table).includes('rank'), false);
+	});
+
+	it('マスターの見え方では裏の札も番号つき', () => {
+		const epitaphs = epitaphGame([ '1', '12' ]).getEpitaphs();
+
+		assert.deepEqual(epitaphs.toJson(true), [
+			{ open: false, rank: '1' },
+			{ open: false, rank: '12' },
+		]);
+	});
+
+	it('表にした札だけ番号が出て、裏に戻すとまた隠れる', () => {
+		const game = epitaphGame([ '1', '12', '24' ]);
+		const epitaphs = game.getEpitaphs();
+
+		epitaphs.open(1);
+		assert.deepEqual(game.getTable().toJson().epitaphs,
+			[ { open: false }, { open: true, rank: '12' }, { open: false } ]);
+		assert.equal(game.toJson().epitaphs[1], 'トリガー 表');
+
+		epitaphs.close(1);
+		assert.deepEqual(game.getTable().toJson().epitaphs,
+			[ { open: false }, { open: false }, { open: false } ]);
+	});
+
+	it('並びの外は undefined', () => {
+		assert.equal(epitaphGame([ '1' ]).getEpitaphs().at(1), undefined);
 	});
 });
 
@@ -424,8 +496,9 @@ describe('Table', () => {
 		const json = game.getTable().toJson();
 
 		assert.deepEqual(Object.keys(json),
-			[ 'useTarot', 'seats', 'deck', 'pile', 'tarotDeck', 'tarotPile' ]);
-		assert.equal(json.useTarot, true);
+			[ 'mode', 'seats', 'deck', 'pile', 'tarotDeck', 'tarotPile', 'epitaphs' ]);
+		assert.equal(json.mode, 'tarot');
+		assert.deepEqual(json.epitaphs, []);
 		assert.equal(json.deck.length, 52 - 3 * 3);
 		assert.deepEqual(json.pile, { length: 0, card: undefined });
 		assert.equal(json.tarotDeck.length, 26);
@@ -442,7 +515,7 @@ describe('Table', () => {
 		]);
 	});
 
-	it('⚠ 手札の中身を出さない', () => {
+	it('手札の中身を出さない', () => {
 		// 表示側で隠すだけだと DevTools から読めるので、ここで止める。
 		const game = createGame([ 'p1' ], [ '4' ], 1, 0, 0, 3);
 		const json = JSON.stringify(game.getTable().toJson());
@@ -493,7 +566,7 @@ describe('Game.toJson', () => {
 		const json = game.toJson();
 
 		assert.deepEqual(Object.keys(json),
-			[ 'useTarot', 'deck', 'pile', 'players', 'tarotDeck', 'tarotPile' ]);
+			[ 'mode', 'deck', 'pile', 'players', 'tarotDeck', 'tarotPile', 'epitaphs' ]);
 		assert.equal(json.deck.length, 50);
 		assert.deepEqual([ ...json.pile ], []);
 		assert.equal(json.players.length, 2);

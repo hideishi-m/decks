@@ -24,7 +24,7 @@ import pkgJson from './package.json' with { type: 'json' };
 export function createServer(emitter, options) {
 
 	// 卓に入れた接続には gid / pid / who が付く。付いていないものは配信対象外。
-	// ⚠ 接続を identity で束ねない。同じ席を 2 つ開いても両方に届くようにするため。
+	// 接続を identity で束ねない。同じ席を 2 つ開いても両方に届くようにするため。
 	function sendToWebSockets(data, type) {
 		const gid = data.gid;
 		if (undefined === gid) {

@@ -42,7 +42,7 @@ function accessLogs() {
 	return readdirSync(LOG_DIR).filter((name) => name.startsWith('access.log-'));
 }
 
-// 消すのは createApp() が出した access.log-<日付> だけ。⚠ logs/ 自体は消さない
+// 消すのは createApp() が出した access.log-<日付> だけ。logs/ 自体は消さない
 // —— 追跡されている logs/.gitkeep ごと消え、次の起動でログが書けなくなる。
 function removeAccessLogs() {
 	for (const name of accessLogs()) {
@@ -89,7 +89,7 @@ const ticketOf = new Map();
 
 async function newGame() {
 	const created = await call('POST', '/games', {
-		body: { players: PLAYERS, tarots: TAROTS },
+		body: { players: PLAYERS, mode: 'tarot', tarots: TAROTS },
 	});
 	assert.equal(created.status, 200);
 	assert.ok(created.body.ticket, '卓を作ったら入場券が返る');
@@ -106,41 +106,52 @@ async function tokenFor(gid, pid) {
 	return got.body.token;
 }
 
-describe('タロットを使わない卓', () => {
-	async function create(body) {
-		const created = await call('POST', '/games', { body: body });
-		if (200 === created.status) {
-			ticketOf.set(created.body.gid, created.body.ticket);
-		}
-		return created;
+// 卓を作る。通れば入場券を覚えておく。
+async function create(body) {
+	const created = await call('POST', '/games', { body: body });
+	if (200 === created.status) {
+		ticketOf.set(created.body.gid, created.body.ticket);
 	}
+	return created;
+}
 
-	it('useTarot を省略すると使う', async () => {
+describe('卓の種類（mode）', () => {
+	it('mode は必須で、省略すると 400（既定値は無い）', async () => {
+		// 古い呼び方（{ players, tarots }）が、黙って別の卓にならないこと。
 		const created = await create({ players: PLAYERS, tarots: TAROTS });
 
-		assert.equal(created.status, 200);
-		assert.equal(created.body.useTarot, true);
+		assert.equal(created.status, 400);
+		assert.equal(created.body.error.message, 'invalid value for mode');
 	});
 
-	it('useTarot: false なら tarots を省略して作れる', async () => {
-		const created = await create({ players: PLAYERS, useTarot: false });
+	it('tarot の卓はエピタフを持たない', async () => {
+		const created = await create({ players: PLAYERS, mode: 'tarot', tarots: TAROTS });
+
+		assert.equal(created.status, 200);
+		assert.equal(created.body.mode, 'tarot');
+		assert.deepEqual(created.body.epitaphs, []);
+	});
+
+	it('none なら tarots を省略して作れる', async () => {
+		const created = await create({ players: PLAYERS, mode: 'none' });
 		const gid = created.body.gid;
 		const got = await call('GET', `/games/${gid}`);
 		const table = await call('GET', `/games/${gid}/table`,
 			{ token: await tokenFor(gid, 1) });
 
 		assert.equal(created.status, 200);
-		assert.equal(created.body.useTarot, false);
-		assert.equal(got.body.useTarot, false);
-		assert.equal(table.body.useTarot, false);
+		assert.equal(created.body.mode, 'none');
+		assert.equal(got.body.mode, 'none');
+		assert.equal(table.body.mode, 'none');
 		assert.equal(table.body.tarotDeck.length, 0);
 		assert.equal(table.body.tarotPile.length, 0);
 		assert.deepEqual(table.body.seats.map((seat) => seat.tarot.length),
 			[ 0, 0, 0 ]);
+		assert.deepEqual(table.body.epitaphs, []);
 	});
 
-	it('useTarot: false と一緒に送られた tarots は使わない', async () => {
-		const created = await create({ players: PLAYERS, tarots: TAROTS, useTarot: false });
+	it('none と一緒に送られた tarots は使わない', async () => {
+		const created = await create({ players: PLAYERS, tarots: TAROTS, mode: 'none' });
 		const gid = created.body.gid;
 		const hand = await call('GET', `/games/${gid}/tarot/players/1`,
 			{ token: await tokenFor(gid, 1) });
@@ -149,34 +160,188 @@ describe('タロットを使わない卓', () => {
 		assert.equal(hand.body.hand.length, 0);
 	});
 
-	it('⚠ API を直に叩いても札は出てこない', async () => {
-		const created = await create({ players: PLAYERS, useTarot: false });
-		const gid = created.body.gid;
-		const token = await tokenFor(gid, 0);
-		const discarded = await call('PUT', `/games/${gid}/tarot/deck/discard`,
-			{ token: token });
+	it('タロットの卓でなければ、API を直に叩いてもタロットは出てこない', async () => {
+		for (const body of [
+			{ players: PLAYERS, mode: 'none' },
+			{ players: PLAYERS, mode: 'epitaph', epitaphs: [ '1' ] },
+		]) {
+			const gid = (await create(body)).body.gid;
+			const discarded = await call('PUT', `/games/${gid}/tarot/deck/discard`,
+				{ token: await tokenFor(gid, 0) });
 
-		assert.equal(discarded.status, 200);
-		assert.equal(discarded.body.pile.length, 0);
-		assert.equal(discarded.body.pile.card, undefined);
+			assert.equal(discarded.status, 200);
+			assert.equal(discarded.body.pile.length, 0);
+			assert.equal(discarded.body.pile.card, undefined);
+		}
 	});
 
-	it('useTarot を使う卓では tarots は今までどおり必須', async () => {
-		const created = await create({ players: PLAYERS });
+	it('タロットの卓では tarots は今までどおり必須', async () => {
+		const created = await create({ players: PLAYERS, mode: 'tarot' });
+
 		assert.equal(created.status, 400);
-
-		const explicit = await create({ players: PLAYERS, useTarot: true });
-		assert.equal(explicit.status, 400);
+		assert.equal(created.body.error.message, 'invalid value for tarots');
 	});
 
-	for (const value of [ 'false', 0, null, [] ]) {
-		it(`useTarot が真偽値でなければ 400（${JSON.stringify(value)}）`, async () => {
-			const created = await create({ players: PLAYERS, tarots: TAROTS, useTarot: value });
+	it('タロットの卓では epitaphs を見ない', async () => {
+		const created = await create({ players: PLAYERS, mode: 'tarot', tarots: TAROTS, epitaphs: 'x' });
+
+		assert.equal(created.status, 200);
+		assert.deepEqual(created.body.epitaphs, []);
+	});
+
+	for (const value of [ 'Tarot', 'epitaphs', '', 0, null, true, [] ]) {
+		it(`mode が知らない値なら 400（${JSON.stringify(value)}）`, async () => {
+			const created = await create({ players: PLAYERS, tarots: TAROTS, mode: value });
 
 			assert.equal(created.status, 400);
-			assert.deepEqual(created.body.error.cause.useTarot, value);
+			assert.deepEqual(created.body.error.cause.mode, value);
 		});
 	}
+});
+
+describe('エピタフの卓', () => {
+	async function epitaphGame(epitaphs) {
+		const created = await create({ players: PLAYERS, mode: 'epitaph', epitaphs: epitaphs });
+		assert.equal(created.status, 200);
+		return created.body.gid;
+	}
+
+	async function epitaphsOf(gid, pid) {
+		const got = await call('GET', `/games/${gid}/epitaphs`,
+			{ token: await tokenFor(gid, pid) });
+		assert.equal(got.status, 200);
+		return got.body.epitaphs;
+	}
+
+	it('管理面には番号順の並びを返す', async () => {
+		const created = await create({ players: PLAYERS, mode: 'epitaph', epitaphs: [ '24', '1', '12' ] });
+		const got = await call('GET', `/games/${created.body.gid}`);
+
+		assert.equal(created.status, 200);
+		assert.deepEqual(Object.keys(created.body),
+			[ 'gid', 'players', 'mode', 'epitaphs', 'ticket' ]);
+		assert.equal(created.body.mode, 'epitaph');
+		assert.deepEqual(created.body.epitaphs, [ '1', '12', '24' ]);
+		assert.deepEqual(got.body, created.body);
+	});
+
+	it('0 枚でも作れる', async () => {
+		const gid = await epitaphGame([]);
+		const table = await call('GET', `/games/${gid}/table`,
+			{ token: await tokenFor(gid, 1) });
+
+		assert.equal(table.body.mode, 'epitaph');
+		assert.deepEqual(table.body.epitaphs, []);
+	});
+
+	for (const value of [ undefined, '1', [ '0' ], [ '32' ], [ 1 ], [ '1', '1' ], [ null ] ]) {
+		it(`epitaphs が不正なら 400（${JSON.stringify(value)}）`, async () => {
+			const created = await create({ players: PLAYERS, mode: 'epitaph', epitaphs: value });
+
+			assert.equal(created.status, 400);
+			assert.deepEqual(created.body.error.cause.epitaphs, value);
+		});
+	}
+
+	it('タロットは使わず、tarots が来ても使わない', async () => {
+		const created = await create({
+			players: PLAYERS, mode: 'epitaph', epitaphs: [ '1' ], tarots: TAROTS,
+		});
+		const gid = created.body.gid;
+		const table = await call('GET', `/games/${gid}/table`,
+			{ token: await tokenFor(gid, 1) });
+
+		assert.equal(created.status, 200);
+		assert.equal(table.body.tarotDeck.length, 0);
+		assert.deepEqual(table.body.seats.map((seat) => seat.tarot.length),
+			[ 0, 0, 0 ]);
+	});
+
+	it('卓の公開状態に裏の札の番号を出さない', async () => {
+		const gid = await epitaphGame([ '1', '12' ]);
+		const table = await call('GET', `/games/${gid}/table`,
+			{ token: await tokenFor(gid, 1) });
+
+		assert.deepEqual(table.body.epitaphs, [ { open: false }, { open: false } ]);
+		assert.equal(JSON.stringify(table.body).includes('"rank"'), false);
+	});
+
+	it('GET /epitaphs はマスターにだけ裏の番号を返す', async () => {
+		const gid = await epitaphGame([ '1', '12' ]);
+
+		assert.deepEqual(await epitaphsOf(gid, 0),
+			[ { open: false, rank: '1' }, { open: false, rank: '12' } ]);
+		assert.deepEqual(await epitaphsOf(gid, 1),
+			[ { open: false }, { open: false } ]);
+	});
+
+	it('マスターが表にすると、全員に番号が見える', async () => {
+		const gid = await epitaphGame([ '1', '12', '24' ]);
+		const opened = await call('PUT', `/games/${gid}/epitaphs/1/open`,
+			{ token: await tokenFor(gid, 0) });
+
+		assert.equal(opened.status, 200);
+		assert.deepEqual(opened.body.epitaphs, [
+			{ open: false, rank: '1' },
+			{ open: true, rank: '12' },
+			{ open: false, rank: '24' },
+		]);
+		assert.deepEqual(await epitaphsOf(gid, 2),
+			[ { open: false }, { open: true, rank: '12' }, { open: false }]);
+	});
+
+	it('マスターが裏にすると、また隠れる', async () => {
+		const gid = await epitaphGame([ '1', '12' ]);
+		const token = await tokenFor(gid, 0);
+
+		await call('PUT', `/games/${gid}/epitaphs/0/open`, { token: token });
+		const closed = await call('PUT', `/games/${gid}/epitaphs/0/close`, { token: token });
+
+		assert.equal(closed.status, 200);
+		assert.deepEqual(await epitaphsOf(gid, 1), [ { open: false }, { open: false } ]);
+	});
+
+	it('表にする・裏にするを繰り返しても同じ状態に落ち着く', async () => {
+		const gid = await epitaphGame([ '1' ]);
+		const token = await tokenFor(gid, 0);
+
+		await call('PUT', `/games/${gid}/epitaphs/0/open`, { token: token });
+		await call('PUT', `/games/${gid}/epitaphs/0/open`, { token: token });
+		assert.deepEqual(await epitaphsOf(gid, 1), [ { open: true, rank: '1' } ]);
+
+		await call('PUT', `/games/${gid}/epitaphs/0/close`, { token: token });
+		await call('PUT', `/games/${gid}/epitaphs/0/close`, { token: token });
+		assert.deepEqual(await epitaphsOf(gid, 1), [ { open: false } ]);
+	});
+
+	for (const turn of [ 'open', 'close' ]) {
+		it(`プレーヤーは ${turn} できない（403）`, async () => {
+			const gid = await epitaphGame([ '1' ]);
+			const turned = await call('PUT', `/games/${gid}/epitaphs/0/${turn}`,
+				{ token: await tokenFor(gid, 1) });
+
+			assert.equal(turned.status, 403);
+			assert.deepEqual(await epitaphsOf(gid, 0), [ { open: false, rank: '1' } ]);
+		});
+
+		it(`${turn}: 並びの外は 404、形が不正なら 400、トークンが無ければ 401`, async () => {
+			const gid = await epitaphGame([ '1' ]);
+			const token = await tokenFor(gid, 0);
+
+			assert.equal((await call('PUT', `/games/${gid}/epitaphs/1/${turn}`, { token: token })).status, 404);
+			assert.equal((await call('PUT', `/games/${gid}/epitaphs/x/${turn}`, { token: token })).status, 400);
+			assert.equal((await call('PUT', `/games/${gid}/epitaphs/0/${turn}`)).status, 401);
+		});
+	}
+
+	it('タロットの卓では並びが空', async () => {
+		const gid = await newGame();
+
+		assert.deepEqual(await epitaphsOf(gid, 0), []);
+		const opened = await call('PUT', `/games/${gid}/epitaphs/0/open`,
+			{ token: await tokenFor(gid, 0) });
+		assert.equal(opened.status, 404);
+	});
 });
 
 describe('GET /games/:gid/table', () => {
@@ -188,8 +353,8 @@ describe('GET /games/:gid/table', () => {
 		assert.equal(status, 200);
 		assert.equal(body.gid, gid);
 		assert.deepEqual(Object.keys(body),
-			[ 'gid', 'useTarot', 'seats', 'deck', 'pile', 'tarotDeck', 'tarotPile' ]);
-		assert.equal(body.useTarot, true);
+			[ 'gid', 'mode', 'seats', 'deck', 'pile', 'tarotDeck', 'tarotPile', 'epitaphs' ]);
+		assert.equal(body.mode, 'tarot');
 		assert.equal(body.seats.length, PLAYERS.length + 1);
 		assert.deepEqual(body.seats[0],
 			{ pid: '0', player: 'マスター', hand: { length: 4 }, tarot: { length: 0 } });
@@ -200,7 +365,7 @@ describe('GET /games/:gid/table', () => {
 		assert.equal(body.tarotDeck.length, 26);
 	});
 
-	it('⚠ 他人の手札の中身を返さない', async () => {
+	it('他人の手札の中身を返さない', async () => {
 		const gid = await newGame();
 		const token = await tokenFor(gid, 1);
 		const { body } = await call('GET', `/games/${gid}/table`, { token: token });
@@ -271,7 +436,7 @@ describe('GET /games/:gid/table', () => {
 		assert.equal(status, 404);
 	});
 
-	it('⚠ トークン無しでは席の数も手札の枚数も測れない', async () => {
+	it('トークン無しでは席の数も手札の枚数も測れない', async () => {
 		// app.param に席とカードの検査を置くと、404 と 401 の差で測れてしまう。
 		const gid = await newGame();
 
@@ -298,7 +463,7 @@ describe('GET /games/:gid/table', () => {
 describe('入場（ticket）', () => {
 	it('卓を作ると入場券が 1 つ返る', async () => {
 		const created = await call('POST', '/games', {
-			body: { players: PLAYERS, tarots: TAROTS },
+			body: { players: PLAYERS, mode: 'tarot', tarots: TAROTS },
 		});
 
 		assert.equal(created.status, 200);
@@ -306,8 +471,8 @@ describe('入場（ticket）', () => {
 	});
 
 	it('入場券は卓ごとに違う', async () => {
-		const first = await call('POST', '/games', { body: { players: PLAYERS, tarots: [] } });
-		const second = await call('POST', '/games', { body: { players: PLAYERS, tarots: [] } });
+		const first = await call('POST', '/games', { body: { players: PLAYERS, mode: 'tarot', tarots: [] } });
+		const second = await call('POST', '/games', { body: { players: PLAYERS, mode: 'tarot', tarots: [] } });
 
 		assert.notEqual(first.body.ticket, second.body.ticket);
 	});
@@ -336,7 +501,7 @@ describe('入場（ticket）', () => {
 		assert.match(body.error.message, /ticket not accepted/);
 	});
 
-	it('⚠ Bearer を Ticket として使い回せない', async () => {
+	it('Bearer を Ticket として使い回せない', async () => {
 		const gid = await newGame();
 		const token = await tokenFor(gid, 1);
 		const { status } = await call('GET', '/join', { token: token });
@@ -344,7 +509,7 @@ describe('入場（ticket）', () => {
 		assert.equal(status, 401);
 	});
 
-	it('⚠ 入場券なしでは席のトークンを作れない', async () => {
+	it('入場券なしでは席のトークンを作れない', async () => {
 		const gid = await newGame();
 		const { status } = await call('POST', '/token', { body: { pid: '1' } });
 
@@ -387,7 +552,7 @@ describe('入場（ticket）', () => {
 });
 
 describe('既存ルートの回帰', () => {
-	it('⚠ アクセスログが logs/ に開いている', async () => {
+	it('アクセスログが logs/ に開いている', async () => {
 		// createApp() は logs/ を作らない。追跡された logs/.gitkeep で
 		// clone した時点から在る状態にしてあるので、それが消えると
 		// morgan の書き込み先が開けず、エラーも出ないままログだけが残らなくなる。
@@ -426,11 +591,11 @@ describe('既存ルートの回帰', () => {
 
 	it('POST /games は GET /games/:gid と同じ形を返す', async () => {
 		const created = await call('POST', '/games', {
-			body: { players: PLAYERS, tarots: TAROTS },
+			body: { players: PLAYERS, mode: 'tarot', tarots: TAROTS },
 		});
 		const got = await call('GET', `/games/${created.body.gid}`);
 
-		assert.deepEqual(Object.keys(created.body), [ 'gid', 'players', 'useTarot', 'ticket' ]);
+		assert.deepEqual(Object.keys(created.body), [ 'gid', 'players', 'mode', 'epitaphs', 'ticket' ]);
 		assert.deepEqual(created.body, got.body);
 	});
 
@@ -439,7 +604,7 @@ describe('既存ルートの回帰', () => {
 		const { status, body } = await call('GET', `/games/${gid}`);
 
 		assert.equal(status, 200);
-		assert.deepEqual(Object.keys(body), [ 'gid', 'players', 'useTarot', 'ticket' ]);
+		assert.deepEqual(Object.keys(body), [ 'gid', 'players', 'mode', 'epitaphs', 'ticket' ]);
 		assert.deepEqual(body.players, [ 'マスター', ...PLAYERS ]);
 		assert.equal(body.ticket, ticketOf.get(gid));
 	});
@@ -452,7 +617,7 @@ describe('既存ルートの回帰', () => {
 		assert.equal(body.games.find((game) => game.gid === gid), undefined);
 	});
 
-	it('⚠ 他人の pid の手札は 403 のまま', async () => {
+	it('他人の pid の手札は 403 のまま', async () => {
 		// /table を足しても、個別の手札は自分のものしか読めない。
 		const gid = await newGame();
 		const token = await tokenFor(gid, 1);
@@ -494,6 +659,24 @@ describe('WebSocket へ流す action', () => {
 		await actionOf('PUT', `/games/${gid}/deck/discard`, token);
 		await actionOf('PUT', `/games/${gid}/deck/recycle`, token);
 		await actionOf('PUT', `/games/${gid}/pile/shuffle`, token);
+	});
+
+	it('エピタフの action は表にしたときだけ番号を載せる', async () => {
+		const created = await create({ players: PLAYERS, mode: 'epitaph', epitaphs: [ '1', '12' ] });
+		const gid = created.body.gid;
+		const token = await tokenFor(gid, 0);
+
+		const opened = await actionOf('PUT', `/games/${gid}/epitaphs/1/open`, token);
+		assert.equal(opened.action.type, 'epitaph-open');
+		assert.equal(opened.action.pid, '0');
+		assert.deepEqual(opened.action.card, { eid: '1', open: true, rank: '12' });
+		assert.deepEqual(opened.action.table.epitaphs,
+			[ { open: false }, { open: true, rank: '12' } ]);
+
+		const closed = await actionOf('PUT', `/games/${gid}/epitaphs/1/close`, token);
+		assert.equal(closed.action.type, 'epitaph-close');
+		assert.deepEqual(closed.action.card, { eid: '1', open: false });
+		assert.equal(JSON.stringify(closed.action).includes('"rank"'), false);
 	});
 
 	it('封筒は seq / at / type / gid / pid / player / tid / target / card / table', async () => {
@@ -570,7 +753,7 @@ describe('WebSocket へ流す action', () => {
 		assert.equal(pick.action.target, 'p2');
 	});
 
-	it('⚠ 伏せたままの札は card に載せない', async () => {
+	it('伏せたままの札は card に載せない', async () => {
 		const gid = await newGame();
 		const token = await tokenFor(gid, 1);
 

@@ -16,7 +16,7 @@
 **token** は席の権限。gid と pid に紐づいていて、`:gid` と `:pid` が
 トークンの中身と一致しないと 403 を返す。有効期限は 1 日。
 
-⚠️ 管理層には認証が無い。`POST /games` と `GET /games/:gid` は ticket を返すので、
+管理層には認証が無い。`POST /games` と `GET /games/:gid` は ticket と伏せたエピタフの中身を返すので、
 **前段（nginx 等）で管理層と `admin.html` を保護すること。** 覆うのは次の 4 つだけ。
 
     /admin.html
@@ -24,7 +24,7 @@
     /games
     /games/<数字>
 
-⚠️ **`/games/<数字>` より深いパスは覆わないこと。** `/games/1/table` や
+**`/games/<数字>` より深いパスは覆わないこと。** `/games/1/table` や
 `/games/1/players/2` は参加者が使うので、`/games` 以下をまとめて覆うと
 参加者が締め出される。nginx なら末尾を `$` で止める。
 
@@ -35,7 +35,7 @@
         # root と try_files をここにも書く。
     }
 
-⚠️ 同じ卓の中では、ticket があればどの席のトークンも取れる。
+同じ卓の中では、ticket があればどの席のトークンも取れる。
 卓の中で席を偽れないようにはなっていない。
 
 `card` は次の形。
@@ -100,30 +100,42 @@ response: { token: "..." }
 
 ### 新規ゲーム作成
 
-⚠️ ticket を含むので、前段で保護すること。
+ticket を含むので、前段で保護すること。
 
 POST /games
 
 request: {
   players: [ "pc1", "pc2", "pc3" ],
-  tarots: [ "4", "18", "7" ],
-  useTarot: true
+  mode: "tarot",
+  tarots: [ "4", "18", "7" ]
 }
 
-useTarot は省略すると true。false の卓はタロットを使わず、タロット山札・捨て札・
-切り札を空で作る。このとき tarots は省略してよく、送られても使わない。
+mode は卓の脇に置く札の種類で、必須（省略すると 400）。既定値は無い。
+
+| mode | 置く札 | 必須 |
+|---|---|---|
+| tarot | タロット山札と、席ごとの切り札 | tarots |
+| epitaph | マスターが選んだエピタフ（すべて裏） | epitaphs |
+| none | 何も置かない | なし |
+
+- タロットの卓でなければ、タロット山札・捨て札・切り札を空で作る。
+- tarots と epitaphs は、その mode のときだけ見る。ほかの mode では省略してよく、送られても使わない。
+- epitaphs は 1〜31 の番号（文字列）。0 枚でもよい。知らない番号と重複は 400。
+  並びはエピタフの番号順で、シャッフルしない。
 
 request: {
   players: [ "pc1", "pc2", "pc3" ],
-  useTarot: false
+  mode: "epitaph",
+  epitaphs: [ "1", "12", "24" ]
 }
 
-`GET /games/:gid` と同じ形を返す。
+`GET /games/:gid` と同じ形を返す。epitaphs はタロットの卓でもあり、空の配列になる。
 
 response: {
   gid: "1",
   players: [ "マスター", "pc1", "pc2", "pc3" ],
-  useTarot: true,
+  mode: "epitaph",
+  epitaphs: [ "1", "12", "24" ],
   ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
 }
 
@@ -144,14 +156,15 @@ response: { games: [ { gid: "1" }, { gid: "2" } ] }
 
 1 卓ぶんの席と ticket。一覧は gid だけなので、卓の中身はここで引く。
 
-⚠️ ticket を含むので、前段で保護すること。
+ticket と、裏のものも含めたエピタフの番号を含むので、前段で保護すること。
 
 GET /games/:gid
 
 response: {
   gid: "1",
   players: [ "マスター", "pc1", "pc2", "pc3" ],
-  useTarot: true,
+  mode: "epitaph",
+  epitaphs: [ "1", "12", "24" ],
   ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
 }
 
@@ -167,13 +180,14 @@ response: { gid: "1" }
 ### 卓
 
 全席の公開状態を1回で取得する。伏せられている札は枚数だけを返し、中身は返さない。
-自分の手札は「手札一覧」で取る。useTarot が false の卓では、タロットの枚数はすべて 0。
+自分の手札は「手札一覧」で取る。タロットの卓でなければ、タロットの枚数はすべて 0。
+エピタフは裏の札の番号を返さない（エピタフの卓でなければ空の配列）。
 
 GET /games/:gid/table
 
 response: {
   gid: "1",
-  useTarot: true,
+  mode: "tarot",
   seats: [
     {
       pid: "0",
@@ -191,7 +205,11 @@ response: {
   tarotPile: {
     length: 1,
     card: card
-  }
+  },
+  epitaphs: [
+    { open: false },
+    { open: true, rank: "12" }
+  ]
 }
 
 
@@ -462,6 +480,57 @@ response: {
 }
 
 
+## エピタフ
+
+eid は並びの位置（0 から）。
+
+### エピタフ一覧
+
+マスター（pid 0）のトークンなら、裏の札も番号つきで返す。
+ほかの席のトークンなら「卓」の epitaphs と同じものを返す。
+
+GET /games/:gid/epitaphs
+
+response: {
+  gid: "1",
+  epitaphs: [
+    { open: false, rank: "1" },
+    { open: true, rank: "12" }
+  ]
+}
+
+### 表にする
+
+マスターだけが呼べる。ほかの席のトークンなら 403。表の札をもう一度表にしても変わらない。
+応答は「エピタフ一覧」をマスターが引いたときと同じ形。
+
+席同士は保護しないので、入場券があればマスターの席にもなれる。403 は誤操作よけ。
+
+PUT /games/:gid/epitaphs/:eid/open
+
+response: {
+  gid: "1",
+  epitaphs: [
+    { open: false, rank: "1" },
+    { open: true, rank: "12" }
+  ]
+}
+
+### 裏にする
+
+「表にする」の逆。配信する action には rank を載せない。
+
+PUT /games/:gid/epitaphs/:eid/close
+
+response: {
+  gid: "1",
+  epitaphs: [
+    { open: false, rank: "1" },
+    { open: false, rank: "12" }
+  ]
+}
+
+
 ## WebSocket
 
 ページと同じパスへ接続し、最初に gid / pid / token を送る。検証に通らなければ切断される。
@@ -511,6 +580,8 @@ type と、そのとき card に入るもの。
 | tarot-deck-discard | タロットをめくる | めくれた札 |
 | tarot-discard | 切り札を捨て札にする | 捨てた札 |
 | tarot-flip | タロット捨て札を反転する | 反転後の札 |
+| epitaph-open | エピタフを表にする | { eid, open: true, rank } |
+| epitaph-close | エピタフを裏にする | { eid, open: false }（rank は載せない） |
 
 空文字列は生存確認に使う。受け取ったらそのまま返す。
 
@@ -540,6 +611,6 @@ response: {
 - 403 トークンの gid / pid がパスと一致しない
 - 404 gid / pid / cid に対応するものが無い
 
-⚠️ 卓の中のエンドポイントは、トークンが無ければ席やカードの存在を確かめる前に
+卓の中のエンドポイントは、トークンが無ければ席やカードの存在を確かめる前に
 401 を返す。存在しない pid でも 404 ではなく 401 になる（席の数や手札の枚数を
 401 と 404 の差で測れないようにするため）。

@@ -11,6 +11,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import { jokerSuit, jokerRank, cardSuits, cardRanks, defaultPosition, cardPositions } from './public/js/attr.js';
 import { tarotRanks } from './public/js/TNM_tarot.js';
+import { epitaphRanks } from './public/js/LRQ_epitaph.js';
 
 
 class Card {
@@ -38,6 +39,20 @@ class TarotCard {
 
 	flip() {
 		this.position = cardPositions.flip(this.position);
+	}
+}
+
+
+// エピタフ。向きは無く、表（open）か裏かだけを持つ。
+// 裏の札の rank を誰に見せるかは game.mjs の Epitaphs.toJson が決める。
+class EpitaphCard {
+	constructor(rank, open) {
+		this.rank = rank;
+		this.open = open ?? false;
+	}
+
+	name() {
+		return `${epitaphRanks.get(this.rank)} ${this.open ? '表' : '裏'}`;
 	}
 }
 
@@ -132,4 +147,15 @@ export function createTarotHandCards(tarots) {
 		tarotCards.push(new TarotCard(rank));
 	});
 	return tarotCards;
+}
+
+
+// 選ばれたエピタフを表の番号順に、すべて裏で並べる。シャッフルはしない。
+export function createEpitaphCards(epitaphs) {
+	epitaphs = epitaphs ? [ ...epitaphs ] : [];
+	const epitaphCards = new Cards();
+	epitaphRanks.keys().filter((rank) => epitaphs.includes(rank)).forEach((rank) => {
+		epitaphCards.push(new EpitaphCard(rank));
+	});
+	return epitaphCards;
 }

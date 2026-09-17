@@ -90,7 +90,7 @@ describe('appendOption', () => {
 		<select class="t"></select>
 	`));
 
-	it('⚠ マッチした全ての select に追加する', () => {
+	it('マッチした全ての select に追加する', () => {
 		// admin.js が select[name^=tarots] に対してこの前提で呼ぶ。
 		// querySelector（単数）に置き換えると 1 つ目にしか入らない。
 		appendOption('.t', '4', 'カブト');
@@ -145,7 +145,7 @@ describe('removeOption', () => {
 		</select>
 	`));
 
-	it('⚠ 全ての select から value 一致の option を消す', () => {
+	it('全ての select から value 一致の option を消す', () => {
 		removeOption('.t', '1');
 
 		assert.deepEqual(optionsOf('.t'), [ [ '0', 'a' ], [ '0', 'a' ] ]);
@@ -219,7 +219,7 @@ describe('parseDataValuesEach', () => {
 			{ players: [ 'DEIRmen', 'Litzia', 'yuzuki' ] });
 	});
 
-	it('⚠ 空の値は落とす', () => {
+	it('空の値は落とす', () => {
 		// admin.html の .copy（新しい行のひな型）が空の input を持つので、
 		// これが落ちないと空のプレーヤーが混ざる。
 		html('<input class="p" value="p1"><input class="p" value=""><input class="p" value="p2">');
@@ -287,7 +287,7 @@ describe('join', () => {
 describe('getToken', () => {
 	beforeEach(() => html('<div id="status"></div>'));
 
-	it('⚠ pid だけを送る。卓を決めるのは入場券。', async () => {
+	it('pid だけを送る。卓を決めるのは入場券。', async () => {
 		let seen;
 		globalThis.fetch = async (url, args) => {
 			seen = { url: url, args: args };

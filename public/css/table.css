@@ -316,6 +316,49 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 	border-left: 1px solid rgba(214, 165, 82, 0.24);
 }
 
+/* ---------- エピタフ ---------- */
+
+/* 8 枚で折り返す。 */
+.epitaphs {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 6px;
+	max-width: calc(8 * 44px + 7 * 6px);
+}
+
+.epitaph {
+	position: relative;
+	cursor: pointer;
+}
+
+/* マスターにだけ見える、裏の札の絵柄。 */
+.epitaph-peek > .card {
+	opacity: 0.45;
+}
+
+.epitaph-tag {
+	position: absolute;
+	left: 50%;
+	bottom: 3px;
+	transform: translateX(-50%);
+	padding: 0 0.25rem;
+	border-radius: 2px;
+	background: rgba(6, 20, 17, 0.85);
+	color: var(--brass);
+	font-size: 0.5625rem;
+	white-space: nowrap;
+}
+
+.epitaph-flash > .card {
+	animation: epitaph-flash 1.6s ease-out;
+}
+
+@keyframes epitaph-flash {
+	from { box-shadow: 0 0 0 3px var(--brass), 0 0 18px var(--brass); }
+	to { box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45); }
+}
+
 /* ---------- 動きを見せる ---------- */
 
 /* 誰が動いたか。1.6 秒で消える。 */
@@ -365,6 +408,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 @media (prefers-reduced-motion: reduce) {
 	.ghost {
 		display: none;
+	}
+
+	.epitaph-flash > .card {
+		animation: none;
 	}
 
 	.seat,

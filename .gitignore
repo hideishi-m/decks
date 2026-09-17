@@ -6,4 +6,5 @@ decks-*.tgz
 package-lock.json
 /public/spec.html
 /public/images/TNM_tarot
+/public/images/LRQ_epitaph
 *.swp
