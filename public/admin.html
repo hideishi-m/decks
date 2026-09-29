@@ -20,7 +20,7 @@
       <h2>卓</h2>
       <div class="row">
         <div class="col-1">卓</div>
-        <div class="col-3">プレーヤー</div>
+        <div class="col-3">卓の名前・プレーヤー</div>
         <div class="col-8">参加者へ配る URL</div>
       </div>
       <div id="game" class="row mb-3"></div>
@@ -29,6 +29,8 @@
           <button id="newGame" class="btn btn-primary" type="button">卓を作る</button>
         </div>
         <div class="col-8">
+          <label for="title" class="form-label">卓の名前</label>
+          <input id="title" class="form-control mb-3" type="text" placeholder="空欄なら GAME と卓の番号">
           <div id="mode" class="form-checks">
             <label class="form-check"><input type="radio" name="mode" value="tarot" checked> タロット</label>
             <label class="form-check"><input type="radio" name="mode" value="epitaph"> エピタフ</label>
@@ -89,6 +91,21 @@
     </section>
 
   </div>
+
+  <!-- Modal: rename -->
+  <dialog id="renameModal">
+    <div class="modal-header">
+      <h5>席の名前を変える</h5>
+    </div>
+    <div class="modal-body">
+      <div id="renamePlayers"></div>
+      <p id="renameError" class="form-error" hidden></p>
+      <div class="input-group">
+        <button id="saveRename" type="button" class="btn btn-primary">変える</button>
+        <button id="cancelRename" type="button" class="btn btn-secondary">やめる</button>
+      </div>
+    </div>
+  </dialog>
 
   <script src="./js/admin.js" type="module"></script>
 </body>

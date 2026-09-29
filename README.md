@@ -6,7 +6,7 @@
 
 | 層 | エンドポイント | 要求するもの |
 |---|---|---|
-| 管理 | `/version`、`GET /games`、`POST /games`、`GET /games/:gid`、`DELETE /games/:gid` | なし |
+| 管理 | `/version`、`GET /games`、`POST /games`、`GET /games/:gid`、`PATCH /games/:gid`、`DELETE /games/:gid` | なし |
 | 入場 | `GET /join`、`POST /token` | `Authorization: Ticket <ticket>` |
 | 卓の中 | それ以外すべて | `Authorization: Bearer <token>` |
 
@@ -91,8 +91,8 @@ response: { version: "1.6.0" }
 
 ### 卓を開く
 
-ticket がどの卓のものかを返す。席の一覧と卓の種類（mode）も一緒に返るので、
-参加者はこれ 1 回で席を選べ、画面も卓の種類に合わせられる。
+ticket がどの卓のものかを返す。卓の名前（title）、席の一覧、卓の種類（mode）も一緒に返るので、
+参加者はこれ 1 回で席を選べ、画面も卓に合わせられる。
 
 GET /join
 
@@ -100,6 +100,7 @@ header: Authorization: Ticket <ticket>
 
 response: {
   gid: "1",
+  title: "第3話 渋谷の夜",
   players: [ "マスター", "pc1", "pc2", "pc3" ],
   mode: "tarot"
 }
@@ -128,6 +129,7 @@ ticket を含むので、前段で保護すること。
 POST /games
 
 request: {
+  title: "第3話 渋谷の夜",
   players: [ "pc1", "pc2", "pc3" ],
   mode: "tarot",
   tarots: [ "4", "18", "7" ]
@@ -141,6 +143,8 @@ mode は卓の脇に置く札の種類で、必須（省略すると 400）。�
 | epitaph | マスターが選んだエピタフ（すべて裏） | epitaphs |
 | none | 何も置かない | なし |
 
+- title は卓の名前で、省略すると `GAME <gid>`（例: GAME 1）になる。40 文字（コードポイント）までの
+  文字列で、空白だけの名前と制御文字を含む名前は 400。作った後は変えられない。
 - players は 1〜8 人。各名前は 32 文字（コードポイント）までの文字列で、空白だけの名前と
   制御文字（改行など）を含む名前は 400。前後の空白を除いて比べて、ほかの名前やマスターと
   同じ名前も 400（席を選ぶ画面で見分けられないため）。
@@ -161,6 +165,7 @@ request: {
 
 response: {
   gid: "1",
+  title: "第3話 渋谷の夜",
   players: [ "マスター", "pc1", "pc2", "pc3" ],
   mode: "epitaph",
   epitaphs: [ "1", "12", "24" ],
@@ -190,11 +195,30 @@ GET /games/:gid
 
 response: {
   gid: "1",
+  title: "第3話 渋谷の夜",
   players: [ "マスター", "pc1", "pc2", "pc3" ],
   mode: "epitaph",
   epitaphs: [ "1", "12", "24" ],
   ticket: "kJ3nQ8vZ2pL7mR4tX1aB9c"
 }
+
+### 席の名前を変える
+
+席 1 以降の名前を差し替える。マスターの名前、席の数、卓の名前、卓の種類は変えない。
+配ったトークンはそのまま使える（名前ではなく gid と pid に紐づいているため）。
+
+`/games/:gid` より深いパスは参加者が使い、前段で保護しないので、管理面の操作であるこの変更は
+`/games/:gid` への PATCH にしている。前段で保護すること。
+
+PATCH /games/:gid
+
+request: { players: [ "pc1", "pc2", "pc3" ] }
+
+- players は「新規ゲーム作成」と同じ条件で検査する。加えて、今の席の数（マスターを除く）と
+  同じ長さでないと 400。
+- 変えると、その卓の全員に WebSocket の action（type: rename）が流れる。
+
+`GET /games/:gid` と同じ形を返す。
 
 ### ゲーム終了
 
@@ -590,6 +614,7 @@ receive: {
 - seq はゲームごとに 1 から増える。飛んでいたら取りこぼしなので「卓」を取り直す。
 - 繋ぎ直したときも「卓」を取り直す。切れている間の操作は送り直されない。
 - tid と target は pass と pick のときだけ入る。それ以外は null。
+- pid と player は操作した席。管理面から席の名前を変えたとき（rename）は null。
 - card は場に表で出た札だけ。伏せたままのときは null。
 - table は「卓」の応答から gid を除いたもの。
 
@@ -609,6 +634,7 @@ type と、そのとき card に入るもの。
 | tarot-discard | 切り札を捨て札にする | 捨てた札 |
 | tarot-flip | タロット捨て札を反転する | 反転後の札 |
 | epitaph-open | エピタフを表にする | { eid, open: true, rank } |
+| rename | 管理面から席の名前を変える（新しい名前は table の seats に入る） | null |
 | epitaph-close | エピタフを裏にする | { eid, open: false }（rank は載せない） |
 
 空文字列は生存確認に使う。受け取ったらそのまま返す。

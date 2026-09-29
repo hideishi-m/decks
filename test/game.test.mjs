@@ -702,3 +702,25 @@ describe('保存と復元', () => {
 		assert.throws(() => restoreGame(null), TypeError);
 	});
 });
+
+describe('席の名前の変更', () => {
+	it('席 1 以降の名前を差し替え、手札と切り札はそのまま', () => {
+		const game = createGame([ 'p1', 'p2' ], tarot('4', '18'), 1, 0, 0, 2);
+		const hands = [ 1, 2 ].map((pid) => names(game.getHandOfPlayer(pid).toJson().cards));
+
+		game.renamePlayers([ 'q1', 'q2' ]);
+
+		assert.deepEqual(game.getAllPlayers(), [ 'マスター', 'q1', 'q2' ]);
+		assert.deepEqual(game.getTable().toJson().seats.map((seat) => seat.player), [ 'マスター', 'q1', 'q2' ]);
+		assert.deepEqual([ 1, 2 ].map((pid) => names(game.getHandOfPlayer(pid).toJson().cards)), hands);
+		assert.equal(game.getTarotHandOfPlayer(2).toJson().card.rank, '18');
+	});
+
+	it('席の数が違えば投げる', () => {
+		const game = plainGame([ 'p1', 'p2' ]);
+
+		assert.throws(() => game.renamePlayers([ 'q1' ]), RangeError);
+		assert.throws(() => game.renamePlayers([ 'q1', 'q2', 'q3' ]), RangeError);
+		assert.deepEqual(game.getAllPlayers(), [ 'マスター', 'p1', 'p2' ]);
+	});
+});

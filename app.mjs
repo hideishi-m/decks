@@ -27,9 +27,10 @@ import { createStore } from './store.mjs';
 import pkgJson from './package.json' with { type: 'json' };
 
 const MASTER = '0';
-// POST /games で受け付ける席の数と、席名の長さ（コードポイント数）の上限。
+// POST /games で受け付ける席の数と、席名・卓の名前の長さ（コードポイント数）の上限。
 const MAX_PLAYERS = 8;
 const MAX_NAME_LENGTH = 32;
+const MAX_TITLE_LENGTH = 40;
 
 class AppError extends Error {
 	constructor(code = 500, message, options) {
@@ -83,18 +84,39 @@ export function createApp(emitter, options) {
 		next();
 	}
 
-	// 席は 1〜MAX_PLAYERS 人。席名は画面とログにそのまま出るので、空白だけの名前、
-	// 長すぎる名前、制御文字（改行でログの行を偽れる）を含む名前は受け付けない。
-	// 席を選ぶ画面で見分けられるよう、マスターも含めて同じ名前を並べない。
+	// 席名と卓の名前は画面とログにそのまま出るので、空白だけの名前、長すぎる名前、
+	// 制御文字（改行でログの行を偽れる）を含む名前は受け付けない。
+	function isName(value, max) {
+		return 'string' === typeof value
+			&& '' !== value.trim()
+			&& [ ...value ].length <= max
+			&& false === /\p{Cc}/u.test(value);
+	}
+
+	// 席は 1〜MAX_PLAYERS 人。席を選ぶ画面で見分けられるよう、マスターも含めて同じ名前を並べない。
 	function validatePlayers(req, res, next, value, key) {
 		const valid = Array.isArray(value)
 			&& 1 <= value.length && value.length <= MAX_PLAYERS
-			&& value.every((name) => 'string' === typeof name
-				&& '' !== name.trim()
-				&& [ ...name ].length <= MAX_NAME_LENGTH
-				&& false === /\p{Cc}/u.test(name))
+			&& value.every((name) => isName(name, MAX_NAME_LENGTH))
 			&& new Set([ MASTER_NAME, ...value.map((name) => name.trim()) ]).size === 1 + value.length;
 		if (false === valid) {
+			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
+		}
+		next();
+	}
+
+	// 席の名前を変えるときは、席の数を変えない（手札があるので増やしも減らしもしない）。
+	// players は先に validatePlayers を通っている。
+	function validateSeats(req, res, next, value, key) {
+		if (value.length !== games[req.params.gid].getAllPlayers().length - 1) {
+			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
+		}
+		next();
+	}
+
+	// 卓の名前は省略してよい（POST /games が GAME <gid> を入れる）。
+	function validateTitle(req, res, next, value, key) {
+		if (undefined !== value && false === isName(value, MAX_TITLE_LENGTH)) {
 			throw new AppError(400, `invalid value for ${key}`, { cause: { [key]: value } });
 		}
 		next();
@@ -157,6 +179,7 @@ export function createApp(emitter, options) {
 		const game = games[gid];
 		return {
 			gid: `${gid}`,
+			title: titles[gid],
 			players: game.getAllPlayers(),
 			mode: game.getMode(),
 			epitaphs: game.getEpitaphs().ranks(),
@@ -280,17 +303,19 @@ export function createApp(emitter, options) {
 	// WebSocket へ流す 1 アクション。受け取った側が再フェッチせずに
 	// 卓を描き直せるよう、公開状態（table）を丸ごと載せる。
 	// card に入れてよいのは「場に表で出た札」だけ。伏せたままの札は載せない。
+	// 管理面の操作（rename）には席が無いので、pid と player は null にする。
 	function emitAction(req, type, extra) {
 		const gid = req.params.gid;
 		const game = games[gid];
+		const pid = req.params.pid ?? req.decoded?.pid ?? null;
 		seqs[gid] = (seqs[gid] ?? 0) + 1;
 		emitter.emit('action', {
 			seq: seqs[gid],
 			at: new Date().toISOString(),
 			type: type,
 			gid: gid,
-			pid: req.params.pid ?? req.decoded.pid,
-			player: game.getPlayer(req.params.pid ?? req.decoded.pid),
+			pid: pid,
+			player: null === pid ? null : game.getPlayer(pid),
 			tid: req.params.tid ?? null,
 			target: undefined !== req.params.tid ? game.getPlayer(req.params.tid) : null,
 			card: extra?.card ?? null,
@@ -311,13 +336,16 @@ export function createApp(emitter, options) {
 				}
 				if (false === Number.isInteger(entry?.seq)
 					|| 'string' !== typeof entry.ticket
-					|| 'string' !== typeof entry.uid) {
-					throw new TypeError('invalid seq, ticket or uid');
+					|| 'string' !== typeof entry.uid
+					|| (undefined !== entry.title && 'string' !== typeof entry.title)) {
+					throw new TypeError('invalid seq, ticket, uid or title');
 				}
 				games[gid] = restoreGame(entry);
 				seqs[gid] = entry.seq;
 				tickets[gid] = entry.ticket;
 				uids[gid] = entry.uid;
+				// 卓の名前を足す前に保存した卓には無いので、作ったときの既定値にする。
+				titles[gid] = entry.title ?? `GAME ${gid}`;
 			}
 			games.length = saved.length;
 		} catch (error) {
@@ -339,6 +367,7 @@ export function createApp(emitter, options) {
 				seq: seqs[gid] ?? 0,
 				ticket: tickets[gid],
 				uid: uids[gid],
+				title: titles[gid],
 			};
 		});
 		try {
@@ -354,6 +383,7 @@ export function createApp(emitter, options) {
 	const seqs = [];
 	const tickets = [];
 	const uids = [];
+	const titles = [];
 
 	// 席とカードの検査は verifyToken の後ろに置く。app.param は認証より先に
 	// 走るため、param に置くと 404 と 401 の差で席数と手札の枚数を測られる。
@@ -502,6 +532,7 @@ export function createApp(emitter, options) {
 			logger.log(`JOIN game ${req.gid} for players ${players}`);
 			res.statusJson(200, {
 				gid: req.gid,
+				title: titles[req.gid],
 				players: players,
 				mode: game.getMode(),
 			});
@@ -542,7 +573,7 @@ export function createApp(emitter, options) {
 				games: gids,
 			});
 		})
-		.post(partialReqKey(validatePlayers, ['body', 'players']), partialReqKey(validateMode, ['body', 'mode']), partialReqKey(validateTarots, ['body', 'tarots']), partialReqKey(validateEpitaphs, ['body', 'epitaphs']), (req, res, next) => {
+		.post(partialReqKey(validatePlayers, ['body', 'players']), partialReqKey(validateTitle, ['body', 'title']), partialReqKey(validateMode, ['body', 'mode']), partialReqKey(validateTarots, ['body', 'tarots']), partialReqKey(validateEpitaphs, ['body', 'epitaphs']), (req, res, next) => {
 			// 卓の設定は、上で検査したキーだけを渡す。createGame は mode に合う札だけを見る。
 			const gid = games.push(createGame(req.body.players, {
 				mode: req.body.mode,
@@ -551,6 +582,8 @@ export function createApp(emitter, options) {
 			})) - 1;
 			tickets[gid] = createTicket();
 			uids[gid] = createUid();
+			// 卓の名前は作ったときに決め、後から変えない。
+			titles[gid] = req.body.title ?? `GAME ${gid}`;
 			logger.log(`POST game ${gid} for players ${req.body.players}`);
 			// GET /games/:gid と同じ形で返すので、作った直後に引き直さなくてよい。
 			res.statusJson(200, describeGame(gid));
@@ -558,10 +591,19 @@ export function createApp(emitter, options) {
 
 	// 1 卓ぶん。一覧は gid だけなので、席と入場券はここで引く。
 	// 入場券を返すので、前段で保護すること。
+	// 席の名前を変える PATCH もここに置く。/games/<数字> より深いパスは参加者が使うので
+	// 前段で保護しない。管理面の操作をそこへ置くと、誰でも名前を変えられてしまう。
 	app.route('/games/:gid')
 		.get((req, res, next) => {
 			const game = games[req.params.gid];
 			logger.log(`GET game ${req.params.gid} for players ${game.getAllPlayers()}`);
+			res.statusJson(200, describeGame(req.params.gid));
+		})
+		.patch(partialReqKey(validatePlayers, ['body', 'players']), partialReqKey(validateSeats, ['body', 'players']), (req, res, next) => {
+			const game = games[req.params.gid];
+			game.renamePlayers(req.body.players);
+			logger.log(`RENAME players in game ${req.params.gid} to ${game.getAllPlayers()}`);
+			emitAction(req, 'rename');
 			res.statusJson(200, describeGame(req.params.gid));
 		})
 		.delete((req, res, next) => {
@@ -569,6 +611,7 @@ export function createApp(emitter, options) {
 			delete seqs[req.params.gid];
 			delete tickets[req.params.gid];
 			delete uids[req.params.gid];
+			delete titles[req.params.gid];
 			logger.log(`DELETE game ${req.params.gid}`);
 			res.statusJson(200, {
 				gid: req.params.gid,

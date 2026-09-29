@@ -499,6 +499,25 @@ details[open] > summary.btn {
 	color: var(--ink);
 }
 
+/* ---------- 卓の一覧 ---------- */
+
+.game-title {
+	font-weight: 700;
+}
+
+.game-cell .rename {
+	margin-top: 0.25rem;
+	padding-block: 0.125rem;
+	font-size: 0.75rem;
+}
+
+/* ダイアログの中で、通らなかった理由を出す。 */
+.form-error {
+	margin: 0 0 1rem;
+	color: var(--red);
+	font-size: 0.8125rem;
+}
+
 /* ---------- 参加者へ配る URL ---------- */
 
 .invite-cell {

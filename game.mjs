@@ -115,6 +115,14 @@ class Game {
 		return this.playerNames[player];
 	}
 
+	// 席 1 以降の名前を差し替える。マスターの名前と席の数は変えない。
+	renamePlayers(names) {
+		if (names.length !== this.playerNames.length - 1) {
+			throw new RangeError(`expected ${this.playerNames.length - 1} names, got ${names.length}`);
+		}
+		this.playerNames.splice(1, names.length, ...names);
+	}
+
 	getTable() {
 		return new Table(this);
 	}

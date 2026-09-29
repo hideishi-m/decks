@@ -9,7 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ajax, updateStatus, appendOption, removeOption, parseDataValue, parsePlayerRows, qs, qsa, el, fromHtml, delegate } from './common.js';
+import { ajax, updateStatus, appendOption, removeOption, parseDataValue, parsePlayerRows, qs, qsa, el, fromHtml, delegate, createDialog } from './common.js';
 import { tarotRanks } from './TNM_tarot.js';
 import { epitaphRanks } from './LRQ_epitaph.js';
 
@@ -25,6 +25,12 @@ for (const [rank, name] of epitaphRanks.entries()) {
 
 // 新しい行を足す先。#players は 1 行目の .input-group なので、その親。
 const playersBox = qs('#players').parentElement;
+
+// 一覧に出している卓（GET /games/:gid の応答）。席の名前を変えるダイアログが読む。
+const known = new Map();
+const renameModal = createDialog('renameModal');
+// ダイアログで名前を変えている卓。
+let renamingGid;
 
 // 参加者へ配る URL。ticket だけで卓が決まる。
 function playUrl(ticket) {
@@ -58,13 +64,56 @@ function appendGame(game) {
 		class: 'btn btn-secondary copy-invite',
 		'data-url': url,
 	}, 'コピー');
-	const players = String(game.players) + modeLabel(game);
+	known.set(game.gid, game);
 	qs('#game').append(
 		el('div', { class: 'col-1', 'data-gid': game.gid }, game.gid),
-		el('div', { class: 'col-3', 'data-gid': game.gid }, players),
+		gameCell(game),
 		el('div', { class: 'col-8 invite-cell', 'data-gid': game.gid }, link, copy)
 	);
 	appendOption('#deleteGameSelect', game.gid, game.gid);
+}
+
+// 卓の名前・プレーヤーの欄。席の名前を変えたら、この欄だけを差し替える。
+function gameCell(game) {
+	return el('div', { class: 'col-3 game-cell', 'data-gid': game.gid },
+		el('div', { class: 'game-title' }, game.title),
+		el('div', null, String(game.players) + modeLabel(game)),
+		el('button', { type: 'button', class: 'btn btn-secondary rename', 'data-gid': game.gid }, '名前を変える'));
+}
+
+// 席の名前を変える。マスターの名前と席の数は変えられないので、席 1 以降だけを並べる。
+delegate(qs('#game'), '.rename', 'click', function () {
+	renamingGid = this.dataset.gid;
+	const game = known.get(renamingGid);
+	qs('#renamePlayers').replaceChildren(...game.players.slice(1).map((player, index) =>
+		el('input', { class: 'form-control mb-3', type: 'text', value: player, 'aria-label': `席 ${index + 1} の名前` })));
+	qs('#renameError').hidden = true;
+	renameModal.open();
+});
+
+qs('#cancelRename').addEventListener('click', () => renameModal.close());
+
+qs('#saveRename').addEventListener('click', renamePlayers);
+async function renamePlayers() {
+	try {
+		const players = qsa('#renamePlayers input').map((input) => input.value.trim());
+		const data = await ajax('./games/' + renamingGid, {
+			method: 'PATCH',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			cache: 'no-cache',
+			body: JSON.stringify({ players: players }),
+		});
+		updateStatus(JSON.stringify(data, null, 2));
+		known.set(data.gid, data);
+		qs(`#game .game-cell[data-gid='${data.gid}']`).replaceWith(gameCell(data));
+		renameModal.close();
+	} catch (error) {
+		// 状態の欄はダイアログの裏に隠れるので、理由はダイアログの中に出す。
+		qs('#renameError').textContent = `${error.name}: ${error.message}`;
+		qs('#renameError').hidden = false;
+	}
 }
 
 // クリップボードに入れる。失敗したら選択しておいて手で写せるようにする。
@@ -90,6 +139,11 @@ async function newGame() {
 		// 直下の行だけを読む。行を足す雛型（.copy）の中の行は読まない。
 		const params = parsePlayerRows(qsa(':scope > .input-group', playersBox));
 		const body = { players: params.players, mode: mode };
+		// 空欄なら送らない。サーバが GAME <gid> を入れる。
+		const title = qs('#title').value.trim();
+		if ('' !== title) {
+			body.title = title;
+		}
 		// 卓の種類に合わない札の指定は送らない。
 		if ('tarot' === mode) {
 			body.tarots = params.tarots.map((value) => tarotRanks.has(value) ? value : null);
@@ -150,6 +204,7 @@ async function deleteGame() {
 		for (const node of qsa(`#game div[data-gid='${data.gid}']`)) {
 			node.remove();
 		}
+		known.delete(data.gid);
 		removeOption('#deleteGameSelect', data.gid);
 	} catch (error) {
 		updateStatus(`${error.name}: ${error.message}`);

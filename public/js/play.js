@@ -9,7 +9,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { ping, timeout, retryWait, ajax, join, getToken, updateStatus, appendLog, updateOptions, removeOption, parseDataValue, qs, el, fromHtml, delegate, createDialog } from './common.js';
+import { ping, timeout, retryWait, ajax, join, getToken, updateStatus, appendLog, updateOptions, removeOption, parseDataValue, qs, qsa, el, fromHtml, delegate, createDialog } from './common.js';
 import { cardSuits, cardRanks, cardPositions } from './attr.js';
 import { tarotRanks } from './TNM_tarot.js';
 import { epitaphRanks } from './LRQ_epitaph.js';
@@ -17,7 +17,7 @@ import { epitaphRanks } from './LRQ_epitaph.js';
 const MASTER = '0';
 // 他席の扇に並べる伏せ札の上限。これを超えたら重ねたままにする。
 const FANNED = 5;
-// 卓の種類ごとの名前。見出しとタブに出す。
+// 卓の種類ごとの名前。見出しに出す（タブには卓の名前を出す）。
 const TABLE_NAMES = { tarot: 'トーキョー・ナイトメア', epitaph: 'ラストレクイエム', none: '卓' };
 
 let gid, pid, socket, token;
@@ -62,9 +62,7 @@ function tableMode() {
 // 卓の種類で見た目と名前を切り替える（タロットの卓は mode-tarot.css）。
 function applyMode(mode) {
 	document.documentElement.dataset.mode = mode;
-	const name = TABLE_NAMES[mode] ?? TABLE_NAMES.none;
-	qs('#tableName').textContent = name;
-	document.title = name;
+	qs('#tableName').textContent = TABLE_NAMES[mode] ?? TABLE_NAMES.none;
 }
 
 function usesTarot() {
@@ -137,6 +135,15 @@ function cardName(card) {
 }
 
 // action は自己記述的なので、1 件から 1 行のログを組み立てられる。
+// 描き直す前の卓と比べて、名前が変わった席を並べる。
+function renamedSeats(next) {
+	const changes = next.seats.flatMap((seat, index) => {
+		const before = table?.seats[index]?.player;
+		return before === seat.player ? [] : [ `${before} → ${seat.player}` ];
+	});
+	return 0 < changes.length ? `（${changes.join('、')}）` : '';
+}
+
 function describeAction(action) {
 	const who = action.player;
 	const card = cardName(action.card);
@@ -167,6 +174,8 @@ function describeAction(action) {
 			return `${who} がエピタフ${card}を表にした`;
 		case 'epitaph-close':
 			return `${who} がエピタフ${card}を裏にした`;
+		case 'rename':
+			return `席の名前が変わった${renamedSeats(action.table)}`;
 		default:
 			return `${who} が ${action.type} をした`;
 	}
@@ -484,9 +493,22 @@ function updateTable(next) {
 			table.tarotPile.card ? createTarotCardImg(table.tarotPile.card, 'card-lg') : createEmptySlot('card-lg'));
 	}
 
+	// 席の名前は管理画面から変わることがある（rename）ので、名前の出る所も合わせる。
 	const mine = seatOf(pid);
 	if (mine) {
 		qs('#handLabel').textContent = mine.hand.length;
+		qs('#playerLabel').textContent = mine.player;
+		qs('#playerTag').textContent = mine.player;
+	}
+	renameOptions('#passHandSelect', table.seats);
+}
+
+// 選択肢の表示名だけを差し替える。作り直さないので、選んでいる席はそのまま残る。
+function renameOptions(selector, seats) {
+	for (const seat of seats) {
+		for (const option of qsa(`${selector} option[value='${seat.pid}']`)) {
+			option.textContent = seat.player;
+		}
 	}
 }
 
@@ -957,7 +979,8 @@ if (null === ticket) {
 		gid = data.gid;
 		// 席を選ぶダイアログの時点で、卓の見た目にしておく。
 		applyMode(data.mode);
-		qs('#gameLabel').textContent = data.gid;
+		qs('#gameTitle').textContent = data.title;
+		document.title = data.title;
 		updateOptions('#selectPlayerSelect', data.players);
 		updateOptions('#passHandSelect', data.players);
 		playerModal.open();

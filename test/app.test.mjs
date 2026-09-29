@@ -241,7 +241,7 @@ describe('エピタフの卓', () => {
 
 		assert.equal(created.status, 200);
 		assert.deepEqual(Object.keys(created.body),
-			[ 'gid', 'players', 'mode', 'epitaphs', 'ticket' ]);
+			[ 'gid', 'title', 'players', 'mode', 'epitaphs', 'ticket' ]);
 		assert.equal(created.body.mode, 'epitaph');
 		assert.deepEqual(created.body.epitaphs, [ '1', '12', '24' ]);
 		assert.deepEqual(got.body, created.body);
@@ -505,7 +505,7 @@ describe('入場（ticket）', () => {
 			{ ticket: ticketOf.get(gid) });
 
 		assert.equal(status, 200);
-		assert.deepEqual(Object.keys(body), [ 'gid', 'players', 'mode' ]);
+		assert.deepEqual(Object.keys(body), [ 'gid', 'title', 'players', 'mode' ]);
 		assert.equal(body.gid, gid);
 		assert.deepEqual(body.players, [ 'マスター', ...PLAYERS ]);
 		assert.equal(body.mode, 'tarot');
@@ -632,7 +632,7 @@ describe('既存ルートの回帰', () => {
 		});
 		const got = await call('GET', `/games/${created.body.gid}`);
 
-		assert.deepEqual(Object.keys(created.body), [ 'gid', 'players', 'mode', 'epitaphs', 'ticket' ]);
+		assert.deepEqual(Object.keys(created.body), [ 'gid', 'title', 'players', 'mode', 'epitaphs', 'ticket' ]);
 		assert.deepEqual(created.body, got.body);
 	});
 
@@ -641,7 +641,7 @@ describe('既存ルートの回帰', () => {
 		const { status, body } = await call('GET', `/games/${gid}`);
 
 		assert.equal(status, 200);
-		assert.deepEqual(Object.keys(body), [ 'gid', 'players', 'mode', 'epitaphs', 'ticket' ]);
+		assert.deepEqual(Object.keys(body), [ 'gid', 'title', 'players', 'mode', 'epitaphs', 'ticket' ]);
 		assert.deepEqual(body.players, [ 'マスター', ...PLAYERS ]);
 		assert.equal(body.ticket, ticketOf.get(gid));
 	});
@@ -1029,6 +1029,31 @@ describe('再起動で卓が残る', () => {
 		second.stop();
 	});
 
+	it('卓の名前と変えた席の名前は再起動の後も残り、名前の無い保存は GAME <gid> になる', async () => {
+		const dir = mkdtempSync(join(DATA_DIR, 'boot-'));
+		const first = await boot(dir);
+		const named = (await call('POST', '/games', { origin: first.origin, body: { ...TABLE, title: '第3話' } })).body;
+		const plain = (await call('POST', '/games', { origin: first.origin, body: TABLE })).body;
+		await call('PATCH', `/games/${named.gid}`, { origin: first.origin, body: { players: [ 'a1', 'a2' ] } });
+		first.stop();
+
+		const second = await boot(dir);
+		const got = (await call('GET', `/games/${named.gid}`, { origin: second.origin })).body;
+		assert.equal(got.title, '第3話');
+		assert.deepEqual(got.players, [ 'マスター', 'a1', 'a2' ]);
+		assert.equal((await call('GET', `/games/${plain.gid}`, { origin: second.origin })).body.title, `GAME ${plain.gid}`);
+		second.stop();
+
+		// 卓の名前を足す前の保存には title が無い。
+		const file = join(dir, 'games.json');
+		const saved = JSON.parse(readFileSync(file, 'utf8'));
+		saved.games = saved.games.map((entry) => ({ ...entry, title: undefined }));
+		writeFileSync(file, JSON.stringify(saved));
+		const third = await boot(dir);
+		assert.equal((await call('GET', `/games/${named.gid}`, { origin: third.origin })).body.title, `GAME ${named.gid}`);
+		third.stop();
+	});
+
 	it('読めない保存ファイルがあると起動しない', async () => {
 		// 空で起動すると、次の終了で壊れたファイルを空の卓で上書きしてしまう。
 		const dir = mkdtempSync(join(DATA_DIR, 'boot-'));
@@ -1047,6 +1072,7 @@ describe('再起動で卓が残る', () => {
 			[ '入場券が無い', without('ticket'), /at gid 0$/ ],
 			[ 'uid が無い', without('uid'), /at gid 0$/ ],
 			[ 'seq が無い', without('seq'), /at gid 0$/ ],
+			[ '卓の名前が文字列でない', { ...saved, games: [ { ...saved.games[0], title: 1 } ] }, /at gid 0$/ ],
 		];
 		for (const [ label, content, where ] of cases) {
 			const broken = mkdtempSync(join(DATA_DIR, 'broken-'));
@@ -1175,5 +1201,120 @@ describe('入力検証', () => {
 
 		assert.equal(got.status, 400);
 		assert.equal(typeof got.body.error.message, 'string');
+	});
+});
+
+describe('卓の名前（title）', () => {
+	it('省略すると GAME <gid> になり、管理面と入場に出る', async () => {
+		const created = await create({ players: PLAYERS, mode: 'none' });
+		const gid = created.body.gid;
+		const joined = await call('GET', '/join', { ticket: ticketOf.get(gid) });
+
+		assert.equal(created.body.title, `GAME ${gid}`);
+		assert.equal((await call('GET', `/games/${gid}`)).body.title, `GAME ${gid}`);
+		assert.equal(joined.body.title, `GAME ${gid}`);
+	});
+
+	for (const title of [ '第3話 渋谷の夜', '𠮷'.repeat(40) ]) {
+		it(`指定した名前をそのまま持つ（${[ ...title ].length} 文字）`, async () => {
+			const created = await create({ players: PLAYERS, mode: 'none', title: title });
+			const joined = await call('GET', '/join', { ticket: ticketOf.get(created.body.gid) });
+
+			assert.equal(created.status, 200);
+			assert.equal(created.body.title, title);
+			assert.equal(joined.body.title, title);
+		});
+	}
+
+	for (const [ label, title ] of [
+		[ '空文字', '' ],
+		[ '空白だけ', '   ' ],
+		[ '41 文字', '𠮷'.repeat(41) ],
+		[ '改行', 'a\nb' ],
+		[ '数値', 1 ],
+		[ 'null', null ],
+		[ '配列', [ 'a' ] ],
+	]) {
+		it(`title が不正なら 400（${label}）`, async () => {
+			const created = await create({ players: PLAYERS, mode: 'none', title: title });
+
+			assert.equal(created.status, 400);
+			assert.equal(created.body.error.message, 'invalid value for title');
+		});
+	}
+});
+
+describe('席の名前の変更（PATCH /games/:gid）', () => {
+	it('席 1 以降の名前が変わり、管理面・入場・卓に出る', async () => {
+		const gid = await newGame();
+		const renamed = await call('PATCH', `/games/${gid}`, { body: { players: [ 'q1', 'q2' ] } });
+		const joined = await call('GET', '/join', { ticket: ticketOf.get(gid) });
+		const table = await call('GET', `/games/${gid}/table`, { token: await tokenFor(gid, 1) });
+
+		assert.equal(renamed.status, 200);
+		assert.deepEqual(renamed.body, (await call('GET', `/games/${gid}`)).body);
+		assert.deepEqual(renamed.body.players, [ 'マスター', 'q1', 'q2' ]);
+		assert.deepEqual(joined.body.players, [ 'マスター', 'q1', 'q2' ]);
+		assert.deepEqual(table.body.seats.map((seat) => seat.player), [ 'マスター', 'q1', 'q2' ]);
+	});
+
+	it('変えた名前は rename の action で卓の全員に届く', async () => {
+		const gid = await newGame();
+		const token = await tokenFor(gid, 1);
+		await call('PUT', `/games/${gid}/deck/discard`, { token: token });
+		const before = seen.at(-1);
+
+		await call('PATCH', `/games/${gid}`, { body: { players: [ 'q1', 'q2' ] } });
+		const action = seen.at(-1);
+
+		assert.equal(action.type, 'rename');
+		assert.equal(action.gid, gid);
+		assert.equal(action.seq, before.seq + 1);
+		assert.equal(action.pid, null);
+		assert.equal(action.player, null);
+		assert.equal(action.card, null);
+		assert.deepEqual(action.table.seats.map((seat) => seat.player), [ 'マスター', 'q1', 'q2' ]);
+	});
+
+	it('名前を変えても、配ったトークンはそのまま使える', async () => {
+		const gid = await newGame();
+		const token = await tokenFor(gid, 1);
+		await call('PATCH', `/games/${gid}`, { body: { players: [ 'q1', 'q2' ] } });
+
+		assert.equal((await call('GET', `/games/${gid}/players/1`, { token: token })).status, 200);
+	});
+
+	it('卓の名前と卓の種類は変えない', async () => {
+		const gid = await newGame();
+		const renamed = await call('PATCH', `/games/${gid}`,
+			{ body: { players: [ 'q1', 'q2' ], title: 'x', mode: 'none' } });
+
+		assert.equal(renamed.body.title, `GAME ${gid}`);
+		assert.equal(renamed.body.mode, 'tarot');
+	});
+
+	for (const [ label, players ] of [
+		[ '省略', undefined ],
+		[ '席より少ない', [ 'q1' ] ],
+		[ '席より多い', [ 'q1', 'q2', 'q3' ] ],
+		[ '同じ名前', [ 'q1', 'q1' ] ],
+		[ 'マスターと同じ名前', [ 'マスター', 'q2' ] ],
+		[ '空白だけ', [ 'q1', '  ' ] ],
+	]) {
+		it(`players が不正なら 400 で、名前は変わらない（${label}）`, async () => {
+			const gid = await newGame();
+			const renamed = await call('PATCH', `/games/${gid}`, { body: { players: players } });
+
+			assert.equal(renamed.status, 400);
+			assert.equal(renamed.body.error.message, 'invalid value for players');
+			assert.deepEqual((await call('GET', `/games/${gid}`)).body.players, [ 'マスター', ...PLAYERS ]);
+		});
+	}
+
+	it('無い卓は 404、gid の形が不正なら 400', async () => {
+		const body = { players: [ 'q1', 'q2' ] };
+
+		assert.equal((await call('PATCH', '/games/9999', { body: body })).status, 404);
+		assert.equal((await call('PATCH', '/games/abc', { body: body })).status, 400);
 	});
 });

@@ -266,6 +266,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - admins
+      summary: rename the players
+      operationId: renamePlayers
+      description: |
+        Renames the seats after the master's. The master's name, the number
+        of seats, the title and the mode stay as they are. Tokens already
+        handed out keep working, since they are bound to gid and pid, not to
+        names. Every socket at the table gets a `rename` action.
+
+        Paths deeper than `/games/{gid}` are for the players and are not
+        behind the proxy, so this admin operation is a PATCH on
+        `/games/{gid}` itself. Keep it behind the proxy together with
+        admin.html.
+      parameters:
+        - name: gid
+          in: path
+          description: Game ID
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+      requestBody:
+        description: the new names
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameRename'
+      responses:
+        200:
+          description: the game, in the same shape as GET /games/{gid}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        400:
+          description: |
+            invalid input, a body that is not JSON, or a number of names that
+            differs from the seats after the master's
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: no game for gid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        413:
+          description: the body is larger than 16 KB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - admins
@@ -1329,6 +1384,7 @@ components:
         not: `GET /games` carries ids alone.
       required:
         - gid
+        - title
         - players
         - mode
         - epitaphs
@@ -1336,6 +1392,8 @@ components:
       properties:
         gid:
           $ref: '#/components/schemas/Id'
+        title:
+          $ref: '#/components/schemas/Title'
         players:
           $ref: '#/components/schemas/Players'
         mode:
@@ -1367,6 +1425,30 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Player'
+    PlayerNames:
+      type: array
+      minItems: 1
+      maxItems: 8
+      description: |
+        The seats after the master's, 1 to 8 of them. Each name is 1 to
+        32 characters (code points), is not blank and has no control
+        characters. After trimming, no name may equal another one or the
+        master's name.
+      items:
+        type: string
+        minLength: 1
+        maxLength: 32
+        example: pc1
+    Title:
+      type: string
+      minLength: 1
+      maxLength: 40
+      description: |
+        The name of the table, shown to the players in place of the game
+        number. Up to 40 characters (code points), not blank, with no control
+        characters. `GAME <gid>` when it was left out. It does not change
+        after the table is created.
+      example: GAME 1
     TarotRank:
       type: string
       enum: ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','-14','-18','-2','-9','-12','-17']
@@ -1432,20 +1514,13 @@ components:
         - players
         - mode
       properties:
-        players:
-          type: array
-          minItems: 1
-          maxItems: 8
+        title:
+          allOf:
+            - $ref: '#/components/schemas/Title'
           description: |
-            The seats after the master's, 1 to 8 of them. Each name is 1 to
-            32 characters (code points), is not blank and has no control
-            characters. After trimming, no name may equal another one or the
-            master's name.
-          items:
-            type: string
-            minLength: 1
-            maxLength: 32
-            example: pc1
+            May be left out, and then the table is named `GAME <gid>`.
+        players:
+          $ref: '#/components/schemas/PlayerNames'
         mode:
           $ref: '#/components/schemas/Mode'
         tarots:
@@ -1461,15 +1536,28 @@ components:
             The epitaphs to lay face down, in any order; they are laid in
             rank order. May be empty. Required when the mode is epitaph, and
             ignored otherwise.
+    GameRename:
+      type: object
+      required:
+        - players
+      properties:
+        players:
+          allOf:
+            - $ref: '#/components/schemas/PlayerNames'
+          description: |
+            As many names as there are seats after the master's.
     GamePlayers:
       type: object
       required:
         - gid
+        - title
         - players
         - mode
       properties:
         gid:
           $ref: '#/components/schemas/Id'
+        title:
+          $ref: '#/components/schemas/Title'
         players:
           $ref: '#/components/schemas/Players'
         mode:
@@ -1561,6 +1649,7 @@ components:
         - tarot-flip
         - epitaph-open
         - epitaph-close
+        - rename
     Action:
       type: object
       required:
@@ -1588,9 +1677,15 @@ components:
         gid:
           $ref: '#/components/schemas/Id'
         pid:
-          $ref: '#/components/schemas/Id'
+          type: string
+          nullable: true
+          description: The seat that acted. Null for rename, which comes from the admin page.
+          example: '1'
         player:
-          $ref: '#/components/schemas/Player'
+          type: string
+          nullable: true
+          description: The name of that seat. Null for rename.
+          example: pc1
         tid:
           type: string
           nullable: true
